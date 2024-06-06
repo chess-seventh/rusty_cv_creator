@@ -2,6 +2,7 @@ mod config_parse;
 mod cli_structure;
 mod file_handlers;
 mod helpers;
+mod database;
 
 use crate::cli_structure::UserInput;
 use crate::config_parse::CONFIG;
@@ -30,4 +31,11 @@ fn main() {
     file_handlers::make_cv_changes_based_on_input(&job_title, quote, &destination_cv_file_full_path);
 
     file_handlers::compile_cv(&created_cv_dir, &cv_template_file);
+}
+
+fn save_new_cv_to_database(destination_cv_file_full_path: &str, job_title: &str, company_name: &str, quote: Option<String>) {
+    let db_path = config_parse::get_db_configurations();
+    let db = database::Database::new(&db_path);
+
+    db.insert_new_cv(destination_cv_file_full_path, job_title, company_name);
 }
