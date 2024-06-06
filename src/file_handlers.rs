@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use crate::{config_parse, helpers};
 
 pub fn create_directory(job_title: &str, company_name: &str) -> String {
-    let destination_folder = config_parse::get_destination_folder();
+    let destination_folder = helpers::fix_home_directory_path(&config_parse::get_destination_folder());
     let now = chrono::offset::Local::now();
 
     match prepare_year_dir(&destination_folder, now) {
@@ -23,14 +23,14 @@ pub fn create_directory(job_title: &str, company_name: &str) -> String {
 }
 
 fn prepare_path_for_new_cv(job_title: &str, company_name: &str, destination_folder: &str, now: DateTime<Local>) -> (String, String) {
-    let cv_template_path: String = config_parse::get_cv_template_directory();
+    let cv_template_path: String = helpers::fix_home_directory_path(&config_parse::get_cv_template_directory());
 
     let formatted_job_title = job_title.replace(' ', "-");
     let formatted_company_name = company_name.replace(' ', "-");
 
 
     let date_dir = now.format("%Y/%Y-%m-%d").to_string();
-    let full_destination_path = format!("{destination_folder}/{date_dir}_{formatted_company_name}_{formatted_job_title}");
+    let full_destination_path = helpers::fix_home_directory_path(&format!("{destination_folder}/{date_dir}_{formatted_company_name}_{formatted_job_title}"));
 
     println!("Creating directory: {full_destination_path}");
     println!("Copying from: {}", cv_template_path.clone());
@@ -65,13 +65,15 @@ pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path
 }
 
 fn write_to_destination_cv_file(cv_file_path: &str, content: &String) -> std::io::Result<()> {
-    fs::write(cv_file_path, content)?;
+    let fix_cv_file_path = helpers::fix_home_directory_path(cv_file_path);
+    fs::write(fix_cv_file_path, content)?;
     Ok(())
 }
 
 fn read_destination_cv_file(destination_cv_file: &str) -> String {
-    println!("Reading CV file: {destination_cv_file}");
-    fs::read_to_string(destination_cv_file)
+    let fix_destination_cv_file = helpers::fix_home_directory_path(destination_cv_file);
+    println!("Reading CV file: {fix_destination_cv_file}");
+    fs::read_to_string(fix_destination_cv_file)
         .expect("Should have been able to read the file")
 }
 

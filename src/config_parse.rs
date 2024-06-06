@@ -7,7 +7,7 @@ pub static CONFIG: OnceCell<Ini> = OnceCell::new();
 
 pub fn read_config_file(read_file_path: &str) -> Ini {
     println!("Reading config file here: {read_file_path}");
-    let file_path = crate::helpers::check_file_exists(read_file_path);
+    let file_path = helpers::fix_home_directory_path(&crate::helpers::check_file_exists(read_file_path));
 
     let contents = fs::read_to_string(file_path)
         .expect("Should have been able to read the file");
@@ -23,14 +23,14 @@ fn load_config(config_string: String) -> Ini {
 pub fn get_cv_template_directory() -> String {
     let config = crate::CONFIG.get().unwrap().clone();
 
-    let cv_template_path: String = config.get("cv", "cv_template_path").unwrap().clone();
+    let cv_template_path: String = helpers::fix_home_directory_path(&config.get("cv", "cv_template_path").unwrap().clone());
     helpers::clean_string_from_quotes(&cv_template_path)
 }
 
 pub fn get_destination_folder() -> String {
     let config = crate::CONFIG.get().unwrap().clone();
 
-    let destination_folder = config.get("destination", "cv_path").unwrap();
+    let destination_folder = helpers::fix_home_directory_path(&config.get("destination", "cv_path").unwrap());
     helpers::clean_string_from_quotes(&destination_folder.clone())
 }
 

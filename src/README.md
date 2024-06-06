@@ -26,3 +26,4 @@ diesel setup
   - Implement `List` with a filter.
 - Add error matching in important methods.
 - Add tests for the all methods.
+- Add logging module.
