@@ -1,6 +1,7 @@
 use clap::{Args, Parser, Subcommand};
+use crate::run_insert;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
 pub struct UserInput {
@@ -17,7 +18,7 @@ pub struct UserInput {
 
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum UserAction {
     Insert(InsertCV),
     Update(UpdateCV),
@@ -27,12 +28,12 @@ pub enum UserAction {
 }
 
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct ListCV {
     pub filter_word: Option<String>,
-}Z
+}
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct ShowCV {
     pub company_name: String,
     pub job_title: String,
@@ -40,30 +41,30 @@ pub struct ShowCV {
 }
 
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct InsertCV {
     pub company_name: String,
     pub job_title: String,
-    pub quote: Option<String>,
+    pub quote: String,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct UpdateCV {
     pub job_title: String,
     pub company_name: String,
     pub quote: Option<String>,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone)]
 pub struct RemoveCV {
     pub job_title: String,
     pub company_name: String,
 }
 
-pub fn match_user_action(action: UserAction) -> (String, String, Option<String>) {
-    match action {
+pub fn match_user_action(input: UserInput) {
+    match input.action {
             UserAction::Insert(insert) => {
-                match_insert(insert)
+                run_insert(input.save_to_database, &insert);
             }
             UserAction::Update(_update) => {
                 todo!();
@@ -71,19 +72,12 @@ pub fn match_user_action(action: UserAction) -> (String, String, Option<String>)
             UserAction::Remove(_remove) => {
                 todo!();
             }
+            UserAction::Show(_show) => {
+                todo!();
+            }
+            UserAction::List(_list) => {
+                todo!();
+            }
     }
 }
 
-fn match_insert(insert: InsertCV) -> (String, String, Option<String>){
-    (insert.job_title, insert.company_name, insert.quote)
-}
-
-fn _match_update(update: &UpdateCV) {
-    println!("Updating CV: {update:#?}");
-    todo!();
-}
-
-fn _match_remove(remove: &RemoveCV) {
-    println!("Removing CV: {remove:#?}");
-    todo!();
-}

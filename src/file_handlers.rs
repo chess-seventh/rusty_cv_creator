@@ -55,7 +55,7 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     }
 }
 
-pub fn make_cv_changes_based_on_input(job_title: &str, quote: Option<String>, cv_file_path: &str) {
+pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path: &str) {
     let cv_file_content = read_destination_cv_file(cv_file_path);
     let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote);
     match write_to_destination_cv_file(cv_file_path, &changed_content) {
@@ -75,7 +75,7 @@ fn read_destination_cv_file(destination_cv_file: &str) -> String {
         .expect("Should have been able to read the file")
 }
 
-fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, quote: Option<String>) -> String {
+fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, quote: &str) -> String {
     let mut modified_cv_content = change_position_in_destination_cv(cv_file_content, job_title);
     modified_cv_content = change_quote_in_destination_cv(&modified_cv_content, quote);
     modified_cv_content
@@ -87,9 +87,9 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
     cv_file_content.replace(replace_position.as_str(), job_title)
 }
 
-fn change_quote_in_destination_cv(cv_file_content: &str, quote: Option<String>) -> String {
+fn change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
     let replace_quote = config_parse::get_quote_value_to_change();
-    if quote.is_none() {
+    if quote.is_empty() {
         println!("Removing quote");
 
         return cv_file_content.lines()
@@ -99,5 +99,5 @@ fn change_quote_in_destination_cv(cv_file_content: &str, quote: Option<String>) 
     }
 
     println!("Changed quote to: {quote:?}");
-    cv_file_content.replace(replace_quote.as_str(), quote.unwrap_or_default().as_str())
+    cv_file_content.replace(replace_quote.as_str(), quote)
 }

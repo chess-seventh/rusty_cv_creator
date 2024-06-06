@@ -5,8 +5,9 @@ use crate::helpers;
 
 pub static CONFIG: OnceCell<Ini> = OnceCell::new();
 
-pub fn read_config_file(file_path: &str) -> Ini {
-    crate::helpers::check_file_exists(file_path);
+pub fn read_config_file(read_file_path: &str) -> Ini {
+    println!("Reading config file here: {read_file_path}");
+    let file_path = crate::helpers::check_file_exists(read_file_path);
 
     let contents = fs::read_to_string(file_path)
         .expect("Should have been able to read the file");
@@ -53,19 +54,6 @@ pub fn get_quote_value_to_change() -> String {
     replace_quote
 }
 
-// pub fn get_configurations(save_to_database: bool) -> (String, Option<String>) {
-//     let cv_path: String = get_cv_template_directory();
-//     crate::helpers::check_file_exists(&cv_path);
-//
-//     if save_to_database {
-//         let db_path: String = get_db_configurations();
-//         crate::helpers::check_file_exists(&db_path);
-//         return (cv_path, Some(db_path));
-//     }
-//
-//     (cv_path, None)
-// }
-
 pub fn get_db_configurations() -> String {
         let config = crate::CONFIG.get().unwrap().clone();
 
@@ -76,4 +64,12 @@ pub fn get_db_configurations() -> String {
         db_path.push('/');
         db_path.push_str(file);
         helpers::clean_string_from_quotes(&db_path)
+}
+
+pub fn get_optional_configurations() -> String {
+        let config = crate::CONFIG.get().unwrap().clone();
+
+        let pdf_viewer = config.get("optional", "pdf_viewer").unwrap().clone();
+
+        helpers::clean_string_from_quotes(&pdf_viewer)
 }

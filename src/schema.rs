@@ -1,11 +1,13 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    cvs (id) {
+    cv (id) {
         id -> Integer,
         job_title -> Text,
         company -> Text,
-        quote -> Nullable<Text>,
+        quote -> Text,
+        pdf_cv_path -> Text,
+        pdf_cv -> Binary,
         generated -> Bool,
     }
 }
