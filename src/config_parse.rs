@@ -66,14 +66,14 @@ pub fn get_quote_value_to_change() -> String {
 //     (cv_path, None)
 // }
 
-// fn get_db_configurations() -> String {
-//     let config = crate::CONFIG.get().unwrap().clone();
-//
-//     let mut db_path = config.get("db", "db_path").unwrap().clone();
-//     let db_file = config.get("db", "db_file").unwrap();
-//     let file: &str = db_file.as_str();
-//
-//     db_path.push('/');
-//     db_path.push_str(file);
-//     helpers::clean_string_from_quotes(&db_path)
-// }
+pub fn get_db_configurations() -> String {
+        let config = crate::CONFIG.get().unwrap().clone();
+
+        let mut db_path = config.get("db", "db_path").unwrap().clone();
+        let db_file = config.get("db", "db_file").unwrap();
+        let file: &str = db_file.as_str();
+
+        db_path.push('/');
+        db_path.push_str(file);
+        helpers::clean_string_from_quotes(&db_path)
+}

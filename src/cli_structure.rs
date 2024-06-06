@@ -9,7 +9,7 @@ pub struct UserInput {
     pub save_to_database: bool,
 
     #[arg(short, long)]
-    #[arg(default_value_t = String::from("./dummy_config.ini"))]
+    #[arg(default_value_t = String::from("~/.config/rusty-cv-creator/rusty-cv-config.ini"))]
     pub config_ini: String,
 
     #[command(subcommand)]
@@ -22,8 +22,23 @@ pub enum UserAction {
     Insert(InsertCV),
     Update(UpdateCV),
     Remove(RemoveCV),
-    // List(ListCV),
+    Show(ShowCV),
+    List(ListCV),
 }
+
+
+#[derive(Args, Debug)]
+pub struct ListCV {
+    pub filter_word: Option<String>,
+}Z
+
+#[derive(Args, Debug)]
+pub struct ShowCV {
+    pub company_name: String,
+    pub job_title: String,
+    pub quote: Option<String>,
+}
+
 
 #[derive(Args, Debug)]
 pub struct InsertCV {
