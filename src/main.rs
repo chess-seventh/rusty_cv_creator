@@ -25,7 +25,7 @@ fn main() {
 }
 
 fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> String {
-    let cv_template_file = helpers::fix_home_directory_path(&config_parse::get_cv_template_file());
+    let cv_template_file = helpers::fix_home_directory_path(&config_parse::get_variable_from_config("cv", "cv_template_file"));
     let created_cv_dir = file_handlers::create_directory(job_title, company_name);
     let destination_cv_file_full_path = helpers::fix_home_directory_path(&format!("{created_cv_dir}/{cv_template_file}"));
 

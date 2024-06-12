@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use crate::{config_parse, helpers};
 
 pub fn create_directory(job_title: &str, company_name: &str) -> String {
-    let destination_folder = helpers::fix_home_directory_path(&config_parse::get_destination_folder());
+    let destination_folder = helpers::fix_home_directory_path(&config_parse::get_variable_from_config("destination", "cv_path"));
     let now = chrono::offset::Local::now();
 
     match prepare_year_dir(&destination_folder, now) {
@@ -23,7 +23,7 @@ pub fn create_directory(job_title: &str, company_name: &str) -> String {
 }
 
 fn prepare_path_for_new_cv(job_title: &str, company_name: &str, destination_folder: &str, now: DateTime<Local>) -> (String, String) {
-    let cv_template_path: String = helpers::fix_home_directory_path(&config_parse::get_cv_template_directory());
+    let cv_template_path: String = helpers::fix_home_directory_path(&config_parse::get_variable_from_config("cv", "cv_template_path"));
 
     let formatted_job_title = job_title.replace(' ', "-");
     let formatted_company_name = company_name.replace(' ', "-");
@@ -84,18 +84,18 @@ fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, quote
 }
 
 fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> String {
-    let replace_position = config_parse::get_position_value_to_change();
+    let replace_position = config_parse::get_variable_from_config("to_replace", "position_line_to_change");
     println!("Changed position to: {job_title}");
     cv_file_content.replace(replace_position.as_str(), job_title)
 }
 
 fn change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
-    let replace_quote = config_parse::get_quote_value_to_change();
+    let replace_quote = config_parse::get_variable_from_config("to_replace", "quote_line_to_change");
     if quote.is_empty() {
         println!("Removing quote");
 
         return cv_file_content.lines()
-            .filter(|&line| line.trim() != replace_quote)
+            .filter(|&line| !line.contains(&replace_quote))
             .collect::<Vec<_>>()
             .join("\n");
     }

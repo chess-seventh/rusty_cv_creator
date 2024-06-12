@@ -1,6 +1,9 @@
 use diesel::prelude::*;
 use std::env;
 use rusty_cv_creator::models::Cv;
+use rusty_cv_creator::models::NewCv;
+use rusty_cv_creator::schema::cv;
+use crate::helpers;
 
 pub fn establish_connection() -> SqliteConnection {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -9,10 +12,6 @@ pub fn establish_connection() -> SqliteConnection {
 }
 
 pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, quote: &str) -> Cv {
-    use rusty_cv_creator::models::NewCv;
-    use rusty_cv_creator::schema::cv;
-    use crate::helpers;
-
     let conn = &mut establish_connection();
 
     let decoded_cv = helpers::read_destination_cv_file(cv_path);

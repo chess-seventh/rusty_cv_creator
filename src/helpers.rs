@@ -44,9 +44,9 @@ pub fn read_destination_cv_file(cv_path: &str) -> Vec<u8> {
 }
 
 pub fn view_cv_file(cv_path: &str) {
-    let file_name = crate::config_parse::get_cv_template_file().to_string();
+    let file_name = crate::config_parse::get_variable_from_config("cv", "cv_template_file").to_string();
     let cv_dir = cv_path.to_string().replace(&file_name, "");
-    let pdf_viewer = config_parse::get_optional_configurations();
+    let pdf_viewer = config_parse::get_variable_from_config("optional", "pdf_viewer");
     let pdf_file = cv_path.replace(".tex", ".pdf");
 
     match Command::new(pdf_viewer)
