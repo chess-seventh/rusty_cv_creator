@@ -33,16 +33,16 @@ pub fn get_variable_from_config(section: &str, variable: &str) -> String {
 pub fn get_db_configurations() -> String {
     let config = get_config_once_cell();
 
-    let mut db_path = helpers::fix_home_directory_path(&config.get("db", "db_path").unwrap().clone());
-    helpers::clean_string_from_quotes(&db_path);
+    let mut db_path = helpers::fix_home_directory_path(
+        &helpers::clean_string_from_quotes(
+            &config.get("db", "db_path").unwrap().clone()
+        )
+    );
 
-    let db_file = config.get("db", "db_file").unwrap();
-    helpers::clean_string_from_quotes(&db_file);
-
-    let file: &str = db_file.as_str();
+    let db_file = helpers::clean_string_from_quotes(&config.get("db", "db_file").unwrap());
 
     db_path.push('/');
-    db_path.push_str(file);
+    db_path.push_str(db_file.as_str());
     db_path
 }
 
