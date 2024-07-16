@@ -7,7 +7,7 @@ use crate::database::{remove_cv, show_cvs};
 #[command(propagate_version = true)]
 pub struct UserInput {
     #[arg(short, long)]
-    #[arg(default_value_t = false)]
+    #[arg(default_value_t = true)]
     pub save_to_database: bool,
 
     #[arg(short, long)]
