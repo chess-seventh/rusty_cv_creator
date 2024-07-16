@@ -476,7 +476,7 @@ dependencies = [
 
 [[package]]
 name = "rusty_cv_creator"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "clap",
@@ -485,6 +485,7 @@ dependencies = [
  "diesel",
  "dirs",
  "dotenvy",
+ "log",
  "once_cell",
 ]
 

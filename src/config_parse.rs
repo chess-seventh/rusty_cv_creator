@@ -1,3 +1,4 @@
+use log::info;
 use configparser::ini::Ini;
 use std::fs;
 use once_cell::sync::OnceCell;
@@ -10,7 +11,7 @@ pub fn get_config_once_cell() -> Ini {
 }
 
 pub fn read_config_file(read_file_path: &str) -> Ini {
-    println!("Reading config file here: {read_file_path}");
+    info!("Reading config file here: {read_file_path}");
     let file_path = helpers::fix_home_directory_path(&crate::helpers::check_file_exists(read_file_path));
 
     let contents = fs::read_to_string(file_path)

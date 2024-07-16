@@ -1,3 +1,5 @@
+use log::info;
+use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
 use crate::config_parse;
@@ -54,7 +56,7 @@ pub fn view_cv_file(cv_path: &str) {
         .stdout(Stdio::null())
         .arg(pdf_file)
         .spawn() {
-        Ok(_) => println!("CV compiled successfully"),
-        Err(e) => println!("Error compiling CV: {e}")
+        Ok(_) => info!("CV compiled successfully"),
+        Err(e) => error!("Error compiling CV: {e}")
     }
 }

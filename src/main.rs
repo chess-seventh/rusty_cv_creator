@@ -4,6 +4,7 @@ mod file_handlers;
 mod helpers;
 mod database;
 
+use log::info;
 use crate::cli_structure::UserInput;
 use crate::config_parse::CONFIG;
 use dotenvy::dotenv;
@@ -39,7 +40,7 @@ fn run_insert(save_to_db: bool, insert: &cli_structure::InsertCV) {
     let destination_cv_file_full_path = prepare_cv(&insert.job_title, &insert.company_name, &insert.quote);
     if save_to_db {
         let _db_cv = database::save_new_cv_to_database(&insert.job_title, &insert.company_name, &destination_cv_file_full_path, &insert.quote);
-        println!("Saved CV to database");
+        info!("Saved CV to database");
         view_cv_file(&destination_cv_file_full_path);
     }
 }
