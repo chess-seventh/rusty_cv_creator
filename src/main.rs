@@ -24,8 +24,9 @@ fn main() {
     helpers::check_if_db_env_is_set_or_set_from_config();
 
     let cv_full_path = cli_structure::match_user_action(user_input);
-    view_cv_file(&cv_full_path);
-
+    if !cv_full_path.is_empty() {
+        view_cv_file(&cv_full_path);
+    }
 }
 
 fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> String {

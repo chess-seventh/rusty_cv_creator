@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use crate::run_insert;
-use crate::database::show_cvs;
+use crate::database::{remove_cv, show_cvs};
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -58,8 +58,8 @@ pub struct UpdateCV {
 
 #[derive(Args, Debug, Clone)]
 pub struct RemoveCV {
-    pub job_title: String,
-    pub company_name: String,
+    pub job_title: Option<String>,
+    pub company_name: Option<String>,
 }
 
 pub fn match_user_action(input: UserInput) -> String {
@@ -71,7 +71,7 @@ pub fn match_user_action(input: UserInput) -> String {
                 show_cvs()
             }
             UserAction::Remove(_remove) => {
-                todo!();
+                remove_cv()
             }
             UserAction::Update(_update) => {
                 todo!();

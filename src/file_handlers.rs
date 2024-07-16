@@ -2,6 +2,7 @@ use log::{info,error};
 use chrono::{DateTime, Local};
 use std::io::Error;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use crate::{config_parse, helpers};
 
@@ -103,4 +104,9 @@ fn change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String 
 
     info!("Changed quote to: {quote:?}");
     cv_file_content.replace(replace_quote.as_str(), quote)
+}
+
+pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
+    fs::remove_dir_all(path_to_remove)?;
+        Ok(())
 }

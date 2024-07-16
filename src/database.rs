@@ -1,9 +1,12 @@
 use diesel::prelude::*;
+use log::{info, error};
 use std::env;
+use std::path::Path;
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
 use rusty_cv_creator::schema::cv;
 use crate::helpers;
+use crate::file_handlers;
 
 extern crate skim;
 use skim::prelude::*;
@@ -86,4 +89,32 @@ pub fn show_cvs() -> String {
     } else {
         panic!("shit");
     }
+}
+
+
+pub fn remove_cv() -> String {
+    use rusty_cv_creator::schema::cv::dsl::*;
+
+    let conn = &mut establish_connection();
+
+    let cv_remove = show_cvs();
+
+    let pattern = format!("%{cv_remove}%");
+
+    let num_deleted = diesel::delete(cv.filter(pdf_cv_path.like(pattern)))
+        .execute(conn)
+        .expect("Error deleting posts");
+
+    println!("Deleted the {num_deleted:}");
+    let dir_of_cv_path = Path::new(&cv_remove).parent().unwrap();
+
+    print!("{dir_of_cv_path:?}");
+
+    if let Ok(()) = file_handlers::remove_cv_dir(dir_of_cv_path) {
+        info!("removed dir_of_cv_path");
+    } else {
+        error!("couldn't remove dir");
+    }
+
+    String::new()
 }
