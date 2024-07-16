@@ -14,5 +14,5 @@ in
     #     sqlite
     #   ];
 
-    DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db";
+    DATABASE_URL="sqlite://~/.config/rusty-cv-creator/applications.db";
 }
