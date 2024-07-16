@@ -3,11 +3,16 @@ let
   pkgs = import nixpkgs { config = {}; overlays = []; };
 in
 
-pkgs.mkShellNoCC {
-  packages = with pkgs; [
-    sqlite
-    texlive.combined.scheme-small
-  ];
+  pkgs.mkShell {
+    packages = with pkgs; [
+      sqlite
+      texlive.combined.scheme-small
+    ];
 
-DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db";
+    # pkgs.mkShellNoCC {
+    #   packages = with pkgs; [
+    #     sqlite
+    #   ];
+
+    DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db";
 }
