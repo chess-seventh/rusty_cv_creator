@@ -1,16 +1,11 @@
 use diesel::prelude::*;
-use log::{info, error};
 use std::env;
-use std::path::Path;
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
 use rusty_cv_creator::schema::cv;
 use crate::helpers;
-use crate::file_handlers;
 
 extern crate skim;
-use skim::prelude::*;
-use std::io::Cursor;
 
 
 pub fn establish_connection() -> SqliteConnection {
@@ -28,7 +23,7 @@ pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, qu
     let conn = &mut establish_connection();
 
     let decoded_cv = helpers::read_destination_cv_file(cv_path);
-    let new_post = NewCv {
+    let new_cv = NewCv {
         job_title,
         company,
         quote,
@@ -38,18 +33,20 @@ pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, qu
     };
 
     diesel::insert_into(cv::table)
-        .values(&new_post)
+        .values(&new_cv)
         .returning(Cv::as_returning())
         .get_result(conn)
         .expect("Error saving new CV")
 }
 
-fn read_cv_from_database() -> Vec<String> {
-    use rusty_cv_creator::schema::cv::dsl::*;
+pub fn read_cv_from_database() -> Vec<String> {
+    use rusty_cv_creator::schema::cv::dsl::cv;
 
     let conn = &mut establish_connection();
+    // TODO filters on proper DB
     let cv_results = cv
         .limit(20)
+        // .filter()
         .select(Cv::as_select())
         .load(conn)
         .expect("Error loading CVs");
@@ -64,57 +61,3 @@ fn read_cv_from_database() -> Vec<String> {
 
 }
 
-pub fn show_cvs() -> String {
-
-    let pdfs = read_cv_from_database();
-
-    let options = SkimOptionsBuilder::default()
-        .height(Some("50%"))
-        .multi(false)
-        .build()
-        .unwrap();
-
-    let input: String = pdfs.into_iter().collect();
-
-    // `SkimItemReader` is a helper to turn any `BufRead` into a stream of `SkimItem`
-    // `SkimItem` was implemented for `AsRef<str>` by default
-    let item_reader = SkimItemReader::default();
-    let items = item_reader.of_bufread(Cursor::new(input));
-
-    // `run_with` would read and show items from the stream
-    let selected_items = Skim::run_with(&options, Some(items)).map_or_else(Vec::new, |out| out.selected_items);
-
-    if selected_items.len() == 1 {
-        selected_items.first().expect("Should have had at least one item").output().to_string()
-    } else {
-        panic!("shit");
-    }
-}
-
-
-pub fn remove_cv() -> String {
-    use rusty_cv_creator::schema::cv::dsl::*;
-
-    let conn = &mut establish_connection();
-
-    let cv_remove = show_cvs();
-
-    let pattern = format!("%{cv_remove}%");
-
-    let num_deleted = diesel::delete(cv.filter(pdf_cv_path.like(pattern)))
-        .execute(conn)
-        .expect("Error deleting posts");
-
-    println!("Deleted the {num_deleted:}");
-    let dir_of_cv_path = Path::new(&cv_remove).parent().unwrap();
-
-    print!("{dir_of_cv_path:?}");
-
-    if let Ok(()) = file_handlers::remove_cv_dir(dir_of_cv_path) {
-        info!("removed dir_of_cv_path");
-    } else {
-        error!("couldn't remove dir");
-    }
-
-    String::new()
-}

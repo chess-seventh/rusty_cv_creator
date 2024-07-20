@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use log::info;
 use log::error;
 use std::fs;
@@ -59,4 +60,15 @@ pub fn view_cv_file(cv_path: &str) {
         Ok(_) => info!("CV compiled successfully"),
         Err(e) => error!("Error compiling CV: {e}")
     }
+}
+
+pub fn parse_date(filter_date: Option<String>) -> NaiveDateTime {
+    // TODO make sure that we parse all possibilities, else return to use the proper date formats
+    // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+    //
+    match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%B") {
+        Ok(d) => d,
+        Err(_) => todo!(),
+    }
+
 }

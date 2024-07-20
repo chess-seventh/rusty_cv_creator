@@ -1,16 +1,17 @@
+use dotenvy::dotenv;
+use clap::Parser;
+
 mod config_parse;
 mod cli_structure;
 mod file_handlers;
 mod helpers;
 mod database;
+mod user_action;
 
-use log::{info, warn};
 use crate::cli_structure::UserInput;
 use crate::config_parse::CONFIG;
 use crate::helpers::view_cv_file;
-use dotenvy::dotenv;
 
-use clap::Parser;
 
 
 fn main() {
@@ -40,14 +41,4 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> String {
     destination_cv_file_full_path
 }
 
-fn run_insert(save_to_db: bool, insert: &cli_structure::InsertCV) -> String {
-    let destination_cv_file_full_path = prepare_cv(&insert.job_title, &insert.company_name, &insert.quote);
-    if save_to_db {
-        let _db_cv = database::save_new_cv_to_database(&insert.job_title, &insert.company_name, &destination_cv_file_full_path, &insert.quote);
-        info!("Saved CV to database");
-    } else {
-        warn!("CV NOT SAVED TO DATABASE!");
-    };
-    destination_cv_file_full_path
-}
 
