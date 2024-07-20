@@ -5,6 +5,7 @@ use skim::prelude::*;
 use std::io::Cursor;
 
 use crate::cli_structure;
+use crate::config_parse::GlobalVars;
 use crate::prepare_cv;
 use crate::database::{read_cv_from_database, establish_connection, save_new_cv_to_database};
 use crate::file_handlers;
@@ -68,8 +69,9 @@ pub fn remove_cv() -> String {
 
 pub fn insert_cv(save_to_db: bool, insert: &cli_structure::InsertCV) -> String {
     let destination_cv_file_full_path = prepare_cv(&insert.job_title, &insert.company_name, &insert.quote);
+    let now = GlobalVars::get_today().format("%e-%b-%Y").to_string();
     if save_to_db {
-        let _db_cv = save_new_cv_to_database(&insert.job_title, &insert.company_name, &destination_cv_file_full_path, &insert.quote);
+        let _db_cv = save_new_cv_to_database(&insert.job_title, &insert.company_name, &destination_cv_file_full_path, &insert.quote, Some(&now));
         info!("Saved CV to database");
     } else {
         warn!("CV NOT SAVED TO DATABASE!");

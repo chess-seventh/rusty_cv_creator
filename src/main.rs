@@ -9,7 +9,6 @@ mod database;
 mod user_action;
 
 use crate::cli_structure::UserInput;
-use crate::config_parse::CONFIG;
 use crate::helpers::view_cv_file;
 
 
@@ -20,8 +19,8 @@ fn main() {
     let user_input = UserInput::parse();
 
     let config_path = user_input.clone().config_ini;
-    let config = config_parse::read_config_file(&config_path);
-    CONFIG.set(config).unwrap();
+    config_parse::set_global_vars(&config_path);
+    // CONFIG.set(config).unwrap();
     helpers::check_if_db_env_is_set_or_set_from_config();
 
     let cv_full_path = cli_structure::match_user_action(user_input);

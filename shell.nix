@@ -7,6 +7,7 @@ in
     packages = with pkgs; [
       sqlite
       texlive.combined.scheme-small
+      diesel-cli
     ];
 
     # pkgs.mkShellNoCC {
@@ -14,5 +15,7 @@ in
     #     sqlite
     #   ];
 
-    DATABASE_URL="sqlite://~/.config/rusty-cv-creator/applications.db";
+    # DATABASE_URL="sqlite://~/.config/rusty-cv-creator/applications.db";
+    DATABASE_URL="/home/seventh/.config/rusty-cv-creator/applications.db";
+
 }

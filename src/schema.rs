@@ -3,6 +3,7 @@
 diesel::table! {
     cv (id) {
         id -> Integer,
+        application_date -> Nullable<Text>,
         job_title -> Text,
         company -> Text,
         quote -> Text,

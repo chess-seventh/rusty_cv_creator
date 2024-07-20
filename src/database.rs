@@ -19,11 +19,12 @@ pub fn establish_connection() -> SqliteConnection {
         .unwrap_or_else(|_| panic!("Error connecting to {database_url}"))
 }
 
-pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, quote: &str) -> Cv {
+pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, quote: &str, application_date: Option<&str>) -> Cv {
     let conn = &mut establish_connection();
 
     let decoded_cv = helpers::read_destination_cv_file(cv_path);
     let new_cv = NewCv {
+        application_date,
         job_title,
         company,
         quote,

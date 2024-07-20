@@ -4,11 +4,33 @@ use std::io::Error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use crate::config_parse::GlobalVars;
 use crate::{config_parse, helpers};
+
+
+pub fn compile_cv(cv_dir: &str, cv_file: &str) {
+    match Command::new("xelatex")
+        .current_dir(cv_dir)
+        .stdout(Stdio::null())
+        .arg(cv_file)
+        .spawn() {
+        Ok(_) => info!("CV compiled successfully"),
+        Err(e) => error!("Error compiling CV: {e}")
+    }
+}
+
+pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path: &str) {
+    let cv_file_content = read_destination_cv_file(cv_file_path);
+    let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote);
+    match write_to_destination_cv_file(cv_file_path, &changed_content) {
+        Ok(()) => info!("CV file updated successfully"),
+        Err(e) => error!("Error updating CV file: {e}")
+    }
+}
 
 pub fn create_directory(job_title: &str, company_name: &str) -> String {
     let destination_folder = helpers::fix_home_directory_path(&config_parse::get_variable_from_config("destination", "cv_path"));
-    let now = chrono::offset::Local::now();
+    let now = GlobalVars::get_today();
 
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("Year directory created successfully: {y:}"),
@@ -22,6 +44,11 @@ pub fn create_directory(job_title: &str, company_name: &str) -> String {
         Err(e) => error!("Error creating directory: {e}")
     }
     full_destination_path
+}
+
+pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
+    fs::remove_dir_all(path_to_remove)?;
+        Ok(())
 }
 
 fn prepare_path_for_new_cv(job_title: &str, company_name: &str, destination_folder: &str, now: DateTime<Local>) -> (String, String) {
@@ -44,26 +71,6 @@ fn prepare_year_dir(destination_folder: &String, now: DateTime<Local>) -> Result
     let year_full_dir = format!("{}/{}", destination_folder, now.format("%Y"));
     fs::create_dir_all(year_full_dir.clone())?;
     Ok(helpers::clean_string_from_quotes(&year_full_dir.clone()))
-}
-
-pub fn compile_cv(cv_dir: &str, cv_file: &str) {
-    match Command::new("xelatex")
-        .current_dir(cv_dir)
-        .stdout(Stdio::null())
-        .arg(cv_file)
-        .spawn() {
-        Ok(_) => info!("CV compiled successfully"),
-        Err(e) => error!("Error compiling CV: {e}")
-    }
-}
-
-pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path: &str) {
-    let cv_file_content = read_destination_cv_file(cv_file_path);
-    let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote);
-    match write_to_destination_cv_file(cv_file_path, &changed_content) {
-        Ok(()) => info!("CV file updated successfully"),
-        Err(e) => error!("Error updating CV file: {e}")
-    }
 }
 
 fn write_to_destination_cv_file(cv_file_path: &str, content: &String) -> std::io::Result<()> {
@@ -106,7 +113,3 @@ fn change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String 
     cv_file_content.replace(replace_quote.as_str(), quote)
 }
 
-pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
-    fs::remove_dir_all(path_to_remove)?;
-        Ok(())
-}

@@ -6,6 +6,7 @@ use crate::schema::cv;
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Cv {
     pub id: i32,
+    pub application_date: Option<String>,
     pub job_title: String,
     pub company: String,
     pub quote: String,
@@ -17,6 +18,7 @@ pub struct Cv {
 #[derive(Insertable)]
 #[diesel(table_name = cv)]
 pub struct NewCv<'a> {
+    pub application_date: Option<&'a str>,
     pub job_title: &'a str,
     pub company: &'a str,
     pub quote: &'a str,
