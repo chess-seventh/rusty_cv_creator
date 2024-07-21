@@ -11,7 +11,6 @@ pub struct Cv {
     pub company: String,
     pub quote: String,
     pub pdf_cv_path: String,
-    pub pdf_cv: Vec<u8>,
     pub generated: bool
 }
 
@@ -23,6 +22,5 @@ pub struct NewCv<'a> {
     pub company: &'a str,
     pub quote: &'a str,
     pub pdf_cv_path: &'a str,
-    pub pdf_cv: &'a [u8],
     pub generated: bool
 }

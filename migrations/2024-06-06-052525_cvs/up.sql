@@ -6,6 +6,5 @@ CREATE TABLE cv (
   company VARCHAR NOT NULL,
   quote VARCHAR NOT NULL,
   pdf_cv_path VARCHAR NOT NULL,
-  pdf_cv BLOB NOT NULL,
   generated BOOLEAN NOT NULL DEFAULT TRUE
 )

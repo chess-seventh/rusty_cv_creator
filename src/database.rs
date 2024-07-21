@@ -22,14 +22,12 @@ pub fn establish_connection() -> SqliteConnection {
 pub fn save_new_cv_to_database(job_title: &str, company: &str, cv_path: &str, quote: &str, application_date: Option<&str>) -> Cv {
     let conn = &mut establish_connection();
 
-    let decoded_cv = helpers::read_destination_cv_file(cv_path);
     let new_cv = NewCv {
         application_date,
         job_title,
         company,
         quote,
         pdf_cv_path: cv_path,
-        pdf_cv: &decoded_cv,
         generated: true
     };
 
@@ -46,7 +44,7 @@ pub fn read_cv_from_database() -> Vec<String> {
     let conn = &mut establish_connection();
     // TODO filters on proper DB
     let cv_results = cv
-        .limit(20)
+        .limit(50)
         // .filter()
         .select(Cv::as_select())
         .load(conn)

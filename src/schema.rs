@@ -8,7 +8,6 @@ diesel::table! {
         company -> Text,
         quote -> Text,
         pdf_cv_path -> Text,
-        pdf_cv -> Binary,
         generated -> Bool,
     }
 }

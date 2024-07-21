@@ -3,8 +3,11 @@ use log::info;
 use log::error;
 use std::fs;
 use std::process::{Command, Stdio};
+
+use skim::prelude::*;
+use std::io::Cursor;
+
 use crate::config_parse;
-use crate::helpers;
 
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {
@@ -40,12 +43,6 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
     }
 }
 
-pub fn read_destination_cv_file(cv_path: &str) -> Vec<u8> {
-    let cv_file_content: Vec<u8> = fs::read(helpers::fix_home_directory_path(cv_path).replace(".tex", ".pdf"))
-        .expect("Could not read the file");
-    cv_file_content
-}
-
 pub fn view_cv_file(cv_path: &str) {
     let file_name = crate::config_parse::get_variable_from_config("cv", "cv_template_file").to_string();
     let cv_dir = cv_path.to_string().replace(&file_name, "");
@@ -62,13 +59,40 @@ pub fn view_cv_file(cv_path: &str) {
     }
 }
 
-pub fn parse_date(filter_date: Option<String>) -> NaiveDateTime {
+pub fn parse_date(filter_date: Option<String>) -> Option<NaiveDateTime> {
     // TODO make sure that we parse all possibilities, else return to use the proper date formats
     // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
     //
+    filter_date.as_ref()?;
+
     match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%B") {
-        Ok(d) => d,
+        Ok(d) => Some(d),
         Err(_) => todo!(),
     }
 
 }
+
+pub fn my_fzf(list_to_show: Vec<String>) -> String {
+
+    let options = SkimOptionsBuilder::default()
+        .height(Some("50%"))
+        .multi(false)
+        .build()
+        .unwrap();
+
+    let input: String = list_to_show.into_iter().collect();
+
+    let item_reader = SkimItemReader::default();
+    let items = item_reader
+        .of_bufread(Cursor::new(input));
+
+    let selected_items = Skim::run_with(&options, Some(items))
+        .map_or_else(Vec::new, |out| out.selected_items);
+
+    if selected_items.len() == 1 {
+        selected_items.first().expect("Should have had at least one item").output().to_string()
+    } else {
+        panic!("shit, no items found");
+    }
+}
+
