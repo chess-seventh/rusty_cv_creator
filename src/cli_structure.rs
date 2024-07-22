@@ -1,6 +1,5 @@
 use chrono::NaiveDateTime;
 use clap::{Args, Parser, Subcommand};
-use crate::helpers::parse_date;
 use crate::user_action::{insert_cv, remove_cv, show_cvs};
 
 #[derive(Parser, Debug, Clone)]
@@ -54,19 +53,6 @@ pub enum UserAction {
 }
 
 #[derive(Args, Debug, Clone)]
-#[command(about = "List all CVs that are in the database", long_about = None)]
-pub struct ListCV {
-}
-
-#[derive(Args, Debug, Clone)]
-#[command(about = "Show a specific CV that is in the database", long_about = None)]
-pub struct ShowCV {
-    pub company_name: Option<String>,
-    pub job_title: Option<String>,
-    pub quote: Option<String>,
-}
-
-#[derive(Args, Debug, Clone)]
 #[command(about = "Generate and insert a new CV", long_about = None)]
 pub struct InsertCV {
     pub company_name: String,
@@ -76,26 +62,19 @@ pub struct InsertCV {
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "Update a field of a CV in the database", long_about = None)]
-pub struct UpdateCV {
-    pub job_title: String,
-    pub company_name: String,
-    pub quote: Option<String>,
-}
+pub struct UpdateCV { }
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "Remove a specific CV from the database and remove the directory", long_about = None)]
-pub struct RemoveCV {
-    pub job_title: Option<String>,
-    pub company_name: Option<String>,
-}
+pub struct RemoveCV { }
 
-#[derive(Debug, Clone)]
-pub struct UserFilters {
-    pub date: Option<NaiveDateTime>,
-    pub name: Option<String>,
-    pub job: Option<String>,
-    pub company: Option<String>,
-}
+#[derive(Args, Debug, Clone)]
+#[command(about = "Show a specific CV that is in the database", long_about = None)]
+pub struct ShowCV { }
+
+#[derive(Args, Debug, Clone)]
+#[command(about = "List all CVs that are in the database", long_about = None)]
+pub struct ListCV { }
 
 pub fn match_user_action(input: UserInput) -> String {
     let filters = match_user_filters(input.clone());
@@ -121,11 +100,50 @@ pub fn match_user_action(input: UserInput) -> String {
 }
 
 pub fn match_user_filters(user_input: UserInput) -> UserFilters {
-    UserFilters {
-        date : parse_date(user_input.filter_date),
-        name : user_input.filter_name,
-        job : user_input.filter_job,
-        company : user_input.filter_company,
-    }
+    let user_filters = UserFilters::default();
+    user_filters.create(user_input)
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct UserFilters {
+    pub date: Option<NaiveDateTime>,
+    pub name: Option<String>,
+    pub job: Option<String>,
+    pub company: Option<String>,
+}
+
+impl UserFilters {
+     pub fn create(&self, user_input: UserInput) -> Self {
+
+        let Some(f_date) = self.parse_date(user_input.filter_date) else {
+            panic!("could not parse the date")
+        };
+
+        UserFilters {
+            date : Some(f_date),
+            name : user_input.filter_name,
+            job : user_input.filter_job,
+            company : user_input.filter_company,
+        }
+    }
+
+    fn parse_date(&self, filter_date: Option<String>) -> Option<NaiveDateTime> {
+        // TODO make sure that we parse all possibilities, else return to use the proper date formats
+        // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
+
+        filter_date.as_ref()?;
+
+        match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B") {
+            Ok(d) => Some(d),
+            Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
+                Ok(d) => Some(d),
+                Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
+                    Ok(d) => Some(d),
+                    Err(_) => None,
+                }
+            }
+        }
+
+    } 
+
+}
