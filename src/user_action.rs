@@ -2,11 +2,10 @@ use log::{info, warn, error};
 use std::path::Path;
 use diesel::prelude::*;
 
-use crate::cli_structure;
-use crate::config_parse::GlobalVars;
+use crate::global_conf::GlobalVars;
 use crate::helpers::my_fzf;
 use crate::prepare_cv;
-use crate::database::{read_cv_from_database, establish_connection, save_new_cv_to_database};
+use crate::database::{read_cv_from_database, establish_connection_sqlite, save_new_cv_to_database};
 use crate::file_handlers;
 
 
@@ -18,7 +17,7 @@ pub fn show_cvs() -> String {
 pub fn remove_cv() {
     use rusty_cv_creator::schema::cv::dsl::{cv, pdf_cv_path};
 
-    let conn = &mut establish_connection();
+    let conn = &mut establish_connection_sqlite();
 
     let cv_remove = show_cvs();
 
@@ -38,11 +37,16 @@ pub fn remove_cv() {
     }
 }
 
-pub fn insert_cv(save_to_db: bool, insert: &cli_structure::InsertCV) -> String {
-    let destination_cv_file_full_path = prepare_cv(&insert.job_title, &insert.company_name, &insert.quote);
-    let now = GlobalVars::get_today().format("%e-%b-%Y").to_string();
+pub fn insert_cv() -> String {
+    let save_to_db = GlobalVars::get_user_save_to_db();
+    let job_title = GlobalVars::get_user_job_title();
+    let company_name = GlobalVars::get_user_company_name();
+    let quote = GlobalVars::get_user_quote();
+    let destination_cv_file_full_path = prepare_cv(&job_title, &company_name, &quote);
+
     if save_to_db {
-        let _db_cv = save_new_cv_to_database(&insert.job_title, &insert.company_name, &destination_cv_file_full_path, &insert.quote, Some(&now));
+        // let _db_cv = save_new_cv_to_database(&job_title, &company_name, &destination_cv_file_full_path, &quote, Some(&now));
+        let _db_cv = save_new_cv_to_database(&destination_cv_file_full_path);
         info!("Saved CV to database");
     } else {
         warn!("CV NOT SAVED TO DATABASE!");

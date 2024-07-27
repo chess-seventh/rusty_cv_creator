@@ -1,6 +1,6 @@
 -- Your SQL goes here
 CREATE TABLE cv (
-  id INTEGER NOT NULL PRIMARY KEY,
+  id SERIAL PRIMARY KEY,
   application_date VARCHAR,
   job_title VARCHAR NOT NULL,
   company VARCHAR NOT NULL,

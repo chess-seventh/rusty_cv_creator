@@ -2,12 +2,12 @@
 
 diesel::table! {
     cv (id) {
-        id -> Integer,
-        application_date -> Nullable<Text>,
-        job_title -> Text,
-        company -> Text,
-        quote -> Text,
-        pdf_cv_path -> Text,
+        id -> Int4,
+        application_date -> Nullable<Varchar>,
+        job_title -> Varchar,
+        company -> Varchar,
+        quote -> Varchar,
+        pdf_cv_path -> Varchar,
         generated -> Bool,
     }
 }
