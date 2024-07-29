@@ -8,6 +8,7 @@ in
       sqlite
       texlive.combined.scheme-small
       diesel-cli
+      postgresql
     ];
 
     # pkgs.mkShellNoCC {
@@ -16,6 +17,8 @@ in
     #   ];
 
     # DATABASE_URL="sqlite://~/.config/rusty-cv-creator/applications.db";
-    DATABASE_URL="/home/seventh/.config/rusty-cv-creator/applications.db";
+    # DATABASE_URL="/home/seventh/.config/rusty-cv-creator/applications.db";
+    DATABASE_URL="postgres://rusty_cv:rusty-cv-01@nixos-01.caracara-palermo.ts.net/db_rusty_cv";
+
 
 }

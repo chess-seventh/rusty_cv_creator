@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use clap::{Args, Parser, Subcommand};
 use crate::user_action::{insert_cv, remove_cv, show_cvs};
+use crate::global_conf::GlobalVars;
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -21,6 +22,11 @@ pub struct UserInput {
     #[arg(short, long)]
     #[arg(default_value_t = String::from("~/.config/rusty-cv-creator/rusty-cv-config.ini"))]
     pub config_ini: String,
+
+    /// Database engine (supports only postgresql and sqlite)
+    #[arg(short, long)]
+    #[arg(default_value_t = String::from("sqlite"))]
+    pub db_engine: String,
 
     /// Filter by date
     #[arg(long, value_parser)]
@@ -76,12 +82,14 @@ pub struct ShowCV { }
 #[command(about = "List all CVs that are in the database", long_about = None)]
 pub struct ListCV { }
 
-pub fn match_user_action(input: UserInput) -> String {
+pub fn match_user_action() -> String {
+    let input = GlobalVars::get_user_input();
     let filters = match_user_filters(input.clone());
+    // let db_engine = input.db_engine;
     println!("{filters:?}");
     match input.action {
-            UserAction::Insert(insert) => {
-                insert_cv(input.save_to_database, &insert)
+            UserAction::Insert(_insert) => {
+                insert_cv()
             }
             UserAction::Show(_show) => {
                 show_cvs()
@@ -100,7 +108,7 @@ pub fn match_user_action(input: UserInput) -> String {
 }
 
 pub fn match_user_filters(user_input: UserInput) -> UserFilters {
-    let user_filters = UserFilters::default();
+    let mut user_filters = UserFilters::default();
     user_filters.create(user_input)
 }
 
@@ -113,36 +121,30 @@ pub struct UserFilters {
 }
 
 impl UserFilters {
-     pub fn create(&self, user_input: UserInput) -> Self {
-
-        let Some(f_date) = self.parse_date(user_input.filter_date) else {
-            panic!("could not parse the date")
-        };
+     pub fn create(&mut self, user_input: UserInput) -> Self {
 
         UserFilters {
-            date : Some(f_date),
+            date : self.parse_date(user_input.filter_date),
             name : user_input.filter_name,
             job : user_input.filter_job,
             company : user_input.filter_company,
         }
     }
 
-    fn parse_date(&self, filter_date: Option<String>) -> Option<NaiveDateTime> {
-        // TODO make sure that we parse all possibilities, else return to use the proper date formats
-        // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
-
+    fn parse_date(&mut self, filter_date: Option<String>) -> Option<NaiveDateTime> {
         filter_date.as_ref()?;
 
-        match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B") {
+        self.date = match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B") {
             Ok(d) => Some(d),
             Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
                 Ok(d) => Some(d),
                 Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
                     Ok(d) => Some(d),
-                    Err(_) => None,
+                    _ => panic!("could not parse the date"),
                 }
             }
-        }
+        };
+        self.date
 
     } 
 

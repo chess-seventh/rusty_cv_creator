@@ -4,7 +4,7 @@ use std::io::Error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use crate::config_parse::GlobalVars;
+use crate::global_conf::GlobalVars;
 use crate::{config_parse, helpers};
 
 

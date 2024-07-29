@@ -7,6 +7,7 @@ use skim::prelude::*;
 use std::io::Cursor;
 
 use crate::config_parse;
+use crate::global_conf::GlobalVars;
 
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {
@@ -35,11 +36,23 @@ pub fn check_file_exists(file_path: &str) -> String {
 }
 
 pub fn check_if_db_env_is_set_or_set_from_config() {
-    let db_path = config_parse::get_db_configurations();
+    let db_engine = GlobalVars::get_db_engine();
 
-    if let Ok(val) = std::env::var("DATABASE_URL") { drop(val); } else {
-        std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
+    if db_engine == "postgres" {
+        println!("Postgres");
+        if let Ok(val) = std::env::var("DATABASE_URL") { drop(val); } else {
+            let db_url = GlobalVars::get_db_url();
+            std::env::set_var("DATABASE_URL", db_url);
+        }
+    } else {
+
+        let db_path = config_parse::get_db_configurations();
+        if let Ok(val) = std::env::var("DATABASE_URL") { drop(val); } else {
+            std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
+        }
     }
+
+
 }
 
 pub fn view_cv_file(cv_path: &str) {
