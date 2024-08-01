@@ -6,7 +6,7 @@ use std::process::{Command, Stdio};
 use skim::prelude::*;
 use std::io::Cursor;
 
-use crate::config_parse;
+use crate::config_parse::{get_variable_from_config, get_db_configurations};
 use crate::global_conf::GlobalVars;
 
 
@@ -46,7 +46,7 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
         }
     } else {
 
-        let db_path = config_parse::get_db_configurations();
+        let db_path = get_db_configurations();
         if let Ok(val) = std::env::var("DATABASE_URL") { drop(val); } else {
             std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
         }
@@ -56,9 +56,9 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
 }
 
 pub fn view_cv_file(cv_path: &str) {
-    let file_name = crate::config_parse::get_variable_from_config("cv", "cv_template_file").to_string();
+    let file_name = get_variable_from_config("cv", "cv_template_file").to_string();
     let cv_dir = cv_path.to_string().replace(&file_name, "");
-    let pdf_viewer = config_parse::get_variable_from_config("optional", "pdf_viewer");
+    let pdf_viewer = get_variable_from_config("optional", "pdf_viewer");
     let pdf_file = cv_path.replace(".tex", ".pdf");
 
     match Command::new(pdf_viewer)

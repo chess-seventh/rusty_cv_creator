@@ -3,8 +3,10 @@ use std::env;
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
 use rusty_cv_creator::schema::cv;
-use crate::helpers;
+
+use crate::helpers::{check_if_db_env_is_set_or_set_from_config, fix_home_directory_path};
 use crate::global_conf::GlobalVars;
+
 extern crate skim;
 
 pub enum _ConnectionType {
@@ -30,10 +32,10 @@ pub fn establish_connection_postgres() -> PgConnection {
 
 pub fn establish_connection_sqlite() -> SqliteConnection {
     let database_url = &env::var("DATABASE_URL").unwrap_or_else(|_| {
-        helpers::check_if_db_env_is_set_or_set_from_config();
+        check_if_db_env_is_set_or_set_from_config();
         env::var("DATABASE_URL").unwrap()
     });
-    let db = helpers::fix_home_directory_path(database_url);
+    let db = fix_home_directory_path(database_url);
     println!("{db:?}");
     SqliteConnection::establish(&db)
         .unwrap_or_else(|_| panic!("Error connecting to {database_url}"))

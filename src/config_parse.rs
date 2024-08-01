@@ -1,7 +1,8 @@
 use log::info;
 use configparser::ini::Ini;
 use std::fs;
-use crate::{cli_structure::UserInput, helpers};
+use crate::cli_structure::UserInput;
+use crate::helpers::{fix_home_directory_path, check_file_exists, clean_string_from_quotes};
 use crate::global_conf::{GlobalVars, CONFIG, USER_INPUT};
 
 
@@ -10,7 +11,7 @@ pub fn set_global_vars(user_input: UserInput) {
     let read_file_path = user_input.clone().config_ini;
     info!("Reading config file here: {read_file_path}");
 
-    let file_path = helpers::fix_home_directory_path(&crate::helpers::check_file_exists(read_file_path.as_str()));
+    let file_path = &check_file_exists(read_file_path.as_str());
 
     let contents = fs::read_to_string(file_path)
         .expect("Should have been able to read the file");
@@ -27,20 +28,20 @@ fn load_config(config_string: String) -> Ini {
 
 pub fn get_variable_from_config(section: &str, variable: &str) -> String {
     let config = GlobalVars::get_config();
-    let value = helpers::fix_home_directory_path(&config.get(section, variable).unwrap().clone());
-    helpers::clean_string_from_quotes(&value)
+    let value = fix_home_directory_path(&config.get(section, variable).unwrap().clone());
+    clean_string_from_quotes(&value)
 }
 
 pub fn get_db_configurations() -> String {
     let config = GlobalVars::get_config();
 
-    let mut db_path = helpers::fix_home_directory_path(
-        &helpers::clean_string_from_quotes(
+    let mut db_path = fix_home_directory_path(
+        &clean_string_from_quotes(
             &config.get("db", "db_path").unwrap().clone()
         )
     );
 
-    let db_file = helpers::clean_string_from_quotes(&config.get("db", "db_file").unwrap());
+    let db_file = clean_string_from_quotes(&config.get("db", "db_file").unwrap());
 
     db_path.push('/');
     db_path.push_str(db_file.as_str());
