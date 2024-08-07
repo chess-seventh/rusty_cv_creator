@@ -32,8 +32,8 @@ pub fn remove_cv() {
     if let Ok(()) = file_handlers::remove_cv_dir(dir_of_cv_path) {
         info!("Removed dir_of_cv_path");
     } else {
-        error!("Couldn't remove dir");
-        panic!("Couldn't remove dir");
+        error!("Couldn't remove dir: {}", dir_of_cv_path.display());
+        panic!("Couldn't remove dir: {}", dir_of_cv_path.display());
     }
 }
 
