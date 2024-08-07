@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use crate::global_conf::GlobalVars;
 use crate::helpers::my_fzf;
 use crate::prepare_cv;
-use crate::database::{read_cv_from_database, establish_connection_sqlite, save_new_cv_to_database};
+use crate::database::{establish_connection_postgres, read_cv_from_database, save_new_cv_to_database};
 use crate::file_handlers;
 
 
@@ -17,7 +17,7 @@ pub fn show_cvs() -> String {
 pub fn remove_cv() {
     use rusty_cv_creator::schema::cv::dsl::{cv, pdf_cv_path};
 
-    let conn = &mut establish_connection_sqlite();
+    let conn = &mut establish_connection_postgres();
 
     let cv_remove = show_cvs();
 
