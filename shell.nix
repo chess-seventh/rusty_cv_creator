@@ -1,16 +1,17 @@
 let
-  moz_overlay = import (builtins.fetchTarball "https://github.com/mozilla/nixpkgs-mozilla/archive/master.tar.gz");
-  nixpkgs = import <nixpkgs> { overlays = [ moz_overlay ]; };
-  ruststable = (nixpkgs.latest.rustChannels.stable.rust.override {
-    extensions = [ "rust-src" "rls-preview" "rust-analysis" "rustfmt-preview" ];
-  });
+  # moz_overlay = import (builtins.fetchTarball "https://github.com/oxalica/rust-overlay/archive/master.tar.gz");
+  nixpkgs = import <nixpkgs> { overlays = [  ]; };
+  # ruststable = (nixpkgs.latest.rustChannels.stable.rust.override {
+    # extensions = [ "rust-src" "rls-preview" "rust-analysis" "rustfmt-preview" ];
+  # });
   pkgs = nixpkgs;  # Assign nixpkgs to pkgs for easier reference
 in
   pkgs.mkShell {
     buildInputs = [
       pkgs.openssl
-      pkgs.rustup
-      ruststable
+      # pkgs.rustup
+      # pkgs.rust-analyzer
+      # ruststable
       pkgs.cmake
       pkgs.zlib
       pkgs.sqlite
