@@ -39,7 +39,6 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
     let db_engine = GlobalVars::get_db_engine();
 
     if db_engine == "postgres" {
-        println!("Postgres");
         if let Ok(val) = std::env::var("DATABASE_URL") { drop(val); } else {
             let db_url = GlobalVars::get_db_url();
             std::env::set_var("DATABASE_URL", db_url);
