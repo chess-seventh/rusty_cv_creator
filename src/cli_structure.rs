@@ -13,14 +13,14 @@ pub struct UserInput {
     #[arg(default_value_t = true)]
     pub save_to_database: bool,
 
-    /// Choice to show the generated CV [default: true]
-    #[arg(short, long)]
-    #[arg(default_value_t = true)]
-    pub view_generated_cv: bool,
-
-    /// Choice to generate the dirs or CV [default: false]
+    /// Choice to show the generated CV [default: false]
     #[arg(short, long)]
     #[arg(default_value_t = false)]
+    pub view_generated_cv: bool,
+
+    /// Choice to generate the dirs or CV [default: true]
+    #[arg(short, long)]
+    #[arg(default_value_t = true)]
     pub generate_dirs: bool,
 
     /// Directory of the configuration ini
