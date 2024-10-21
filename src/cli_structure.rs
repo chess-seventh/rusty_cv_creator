@@ -1,7 +1,7 @@
+use crate::global_conf::GlobalVars;
+use crate::user_action::{insert_cv, remove_cv, show_cvs};
 use chrono::NaiveDateTime;
 use clap::{Args, Parser, Subcommand};
-use crate::user_action::{insert_cv, remove_cv, show_cvs};
-use crate::global_conf::GlobalVars;
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -12,6 +12,11 @@ pub struct UserInput {
     #[arg(short, long)]
     #[arg(default_value_t = true)]
     pub save_to_database: bool,
+
+    /// Choice to show the generated CV [default: true]
+    #[arg(short, long)]
+    #[arg(default_value_t = true)]
+    pub view_generated_cv: bool,
 
     /// Choice to generate the dirs or CV [default: false]
     #[arg(short, long)]
@@ -68,19 +73,19 @@ pub struct InsertCV {
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "Update a field of a CV in the database", long_about = None)]
-pub struct UpdateCV { }
+pub struct UpdateCV {}
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "Remove a specific CV from the database and remove the directory", long_about = None)]
-pub struct RemoveCV { }
+pub struct RemoveCV {}
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "Show a specific CV that is in the database", long_about = None)]
-pub struct ShowCV { }
+pub struct ShowCV {}
 
 #[derive(Args, Debug, Clone)]
 #[command(about = "List all CVs that are in the database", long_about = None)]
-pub struct ListCV { }
+pub struct ListCV {}
 
 pub fn match_user_action() -> String {
     let input = GlobalVars::get_user_input();
@@ -88,22 +93,18 @@ pub fn match_user_action() -> String {
     // let db_engine = input.db_engine;
     println!("{filters:?}");
     match input.action {
-            UserAction::Insert(_insert) => {
-                insert_cv()
-            }
-            UserAction::Show(_show) => {
-                show_cvs()
-            }
-            UserAction::Remove(_remove) => {
-                remove_cv();
-                "removed the selected cv!".to_string()
-            }
-            UserAction::List(_list) => {
-                todo!()
-            }
-            UserAction::Update(_update) => {
-                todo!();
-            }
+        UserAction::Insert(_insert) => insert_cv(),
+        UserAction::Show(_show) => show_cvs(),
+        UserAction::Remove(_remove) => {
+            remove_cv();
+            "removed the selected cv!".to_string()
+        }
+        UserAction::List(_list) => {
+            todo!()
+        }
+        UserAction::Update(_update) => {
+            todo!();
+        }
     }
 }
 
@@ -121,31 +122,33 @@ pub struct UserFilters {
 }
 
 impl UserFilters {
-     pub fn create(&mut self, user_input: UserInput) -> Self {
-
+    pub fn create(&mut self, user_input: UserInput) -> Self {
         UserFilters {
-            date : self.parse_date(user_input.filter_date),
-            name : user_input.filter_name,
-            job : user_input.filter_job,
-            company : user_input.filter_company,
+            date: self.parse_date(user_input.filter_date),
+            name: user_input.filter_name,
+            job: user_input.filter_job,
+            company: user_input.filter_company,
         }
     }
 
     fn parse_date(&mut self, filter_date: Option<String>) -> Option<NaiveDateTime> {
         filter_date.as_ref()?;
 
-        self.date = match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B") {
+        self.date = match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B")
+        {
             Ok(d) => Some(d),
-            Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
-                Ok(d) => Some(d),
-                Err(_) => match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
+            Err(_) => {
+                match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
                     Ok(d) => Some(d),
-                    _ => panic!("could not parse the date"),
+                    Err(_) => {
+                        match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
+                            Ok(d) => Some(d),
+                            _ => panic!("could not parse the date"),
+                        }
+                    }
                 }
             }
         };
         self.date
-
-    } 
-
+    }
 }
