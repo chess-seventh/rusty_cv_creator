@@ -15,7 +15,7 @@ in
       pkgs.cmake
       pkgs.zlib
       pkgs.sqlite
-      pkgs.texlive.combined.scheme-small
+      pkgs.texlive.combined.scheme-full
       pkgs.diesel-cli
       pkgs.postgresql
     ];
