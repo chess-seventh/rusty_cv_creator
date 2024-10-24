@@ -56,7 +56,6 @@ fn build_colors(
 ) -> Vec<PreambleElement> {
     let colors = PreambleElement::UserDefined(r#"\colorlet{awesome}{awesome-red}"#.to_string());
 
-    // TODO: make color dynamic
     let my_red = match color_red {
         Some(color) => PreambleElement::UserDefined(
             format!("\\definecolor{{my-red}}{{HTML}}{{{:}}}", color).to_string(),
