@@ -1,13 +1,23 @@
 use latex::PreambleElement;
 
-pub fn build_preamble() -> Vec<PreambleElement> {
-    let mut packages = build_packages();
-    let mut colors = build_colors();
-    let mut my_infos = build_my_info();
+pub fn build_preamble(
+    my_email: Option<String>,
+    my_name: Option<String>,
+    my_phone: Option<String>,
+    my_country: Option<String>,
+    my_position: String,
+) -> Vec<PreambleElement> {
+    let color_red = None;
+    let color_gray = None;
+    let color_line = None;
 
-    // TODO: make my position dynamic with a param and move to another function
-    let my_position =
-        PreambleElement::UserDefined("\\newcommand\\myposition{BLANKPOSITION}".to_string());
+    let mut packages = build_packages();
+    let mut colors = build_colors(color_red, color_line, color_gray);
+    let mut my_infos = build_my_info(my_email, my_name, my_phone, my_country);
+
+    let my_position = PreambleElement::UserDefined(
+        format!("\\newcommand\\myposition{{{:}}}", my_position).to_string(),
+    );
 
     let mut preambles = vec![my_position];
 
@@ -32,13 +42,11 @@ fn build_packages() -> Vec<PreambleElement> {
 
     let footnote = PreambleElement::UserDefined(r#"\newcommand\blfootnote[1]{\begingroup\renewcommand\thefootnote{}\footnote{#1}\addtocounter{footnote}{-1}\endgroup}"#.to_string());
 
-    let footer = PreambleElement::UserDefined(r#"\makecvfooter{francesco@piva.online}{~~~·~~~\textbf{Francesco Piva}~~~·~~~}{(+41) 79 830 02 70}"#.to_string());
-
     let socials = PreambleElement::UserDefined(
         r#"\renewcommand{\acvHeaderSocialSep}{\quad\textbar\quad}"#.to_string(),
     );
 
-    vec![apple_emojis, geometry, fonts, socials, footnote, footer]
+    vec![apple_emojis, geometry, fonts, socials, footnote]
 }
 
 fn build_colors(
@@ -50,40 +58,73 @@ fn build_colors(
 
     // TODO: make color dynamic
     let my_red = match color_red {
-        Some(color) => {
-            let formatted_red = format!("\\definecolor{{my-red}}{{HTML}}{{{:}}}", color);
-            let my_red = PreambleElement::UserDefined(formatted_red.to_string());
-            my_red
-        }
-        None => {
-            let my_color = "d58787".to_string();
-            let formatted_red = format!("\\definecolor{{my-red}}{{HTML}}{{{:}}}", my_color);
-            let my_red = PreambleElement::UserDefined(formatted_red.to_string());
-            my_red
-        }
+        Some(color) => PreambleElement::UserDefined(
+            format!("\\definecolor{{my-red}}{{HTML}}{{{:}}}", color).to_string(),
+        ),
+        None => PreambleElement::UserDefined(r#""#.to_string()),
     };
 
-    // TODO: make color dynamic
-    let line_color =
-        PreambleElement::UserDefined(r#"\definecolor{line-color}{HTML}{fde2a0}"#.to_string());
+    let line_color = match color_line {
+        Some(color) => PreambleElement::UserDefined(
+            format!("\\definecolor{{line-color}}{{HTML}}{{{:}}}", color).to_string(),
+        ),
+        None => PreambleElement::UserDefined(r#""#.to_string()),
+    };
 
-    // TODO: make color dynamic
-    let light_gray =
-        PreambleElement::UserDefined(r#"\definecolor{light-gray}{HTML}{e6e6e6}"#.to_string());
+    let light_gray = match color_gray {
+        Some(color) => PreambleElement::UserDefined(
+            format!("\\definecolor{{light-gray}}{{HTML}}{{{:}}}", color).to_string(),
+        ),
+        None => {
+            PreambleElement::UserDefined(r#"\definecolor{light-gray}{HTML}{e6e6e6}"#.to_string())
+        }
+    };
 
     let hll = PreambleElement::UserDefined(r#"\newcommand{\hll}[1]{\noindent\colorbox{light-gray}{\parbox{17.5cm}{\textcolor{gray}{#1}}}}"#.to_string());
 
     vec![colors, my_red, line_color, light_gray, hll]
 }
 
-fn build_my_info() -> Vec<PreambleElement> {
+fn build_my_info(
+    my_email: Option<String>,
+    my_name: Option<String>,
+    my_phone: Option<String>,
+    my_country: Option<String>,
+) -> Vec<PreambleElement> {
+    let email = match my_email {
+        Some(mail) => mail,
+        None => "francesco@piva.online".to_string(),
+    };
+
+    let name = match my_name {
+        Some(name) => name,
+        None => "Francesco Piva".to_string(),
+    };
+
+    let phone = match my_phone {
+        Some(number) => number,
+        None => "(+41) 79 830 02 70".to_string(),
+    };
+
+    let country = match my_country {
+        Some(place) => place,
+        None => "Switzerland".to_string(),
+    };
+
     vec![
         PreambleElement::UserDefined(
-            r#"\name{Francesco}{\\textcolor{awesome-red}{Piva}}"#.to_string(),
+            format!(
+                "\\makecvfooter{{{:}}}{{~~~·~~~\\textbf{{{:}}}~~~·~~~}}{{{:}}}",
+                email, name, phone
+            )
+            .to_string(),
         ),
-        PreambleElement::UserDefined(r#"\address{🌍 Switzerland}"#.to_string()),
+        PreambleElement::UserDefined(
+            r#"\name{Francesco}{\\textcolor{awesome-red}{Piva}}"#.to_string(), // TODO: split name & surname
+        ),
+        PreambleElement::UserDefined(format!("\\address{{🌍 {:}}}", country).to_string()),
         PreambleElement::UserDefined(r#"\permis{Swiss, 37 years old}"#.to_string()),
-        PreambleElement::UserDefined(r#"\mobile{(+41) 79 830 02 70}"#.to_string()),
-        PreambleElement::UserDefined(r#"\email{francesco@piva.online}"#.to_string()),
+        PreambleElement::UserDefined(format!("\\mobile{{{:}}}", phone).to_string()),
+        PreambleElement::UserDefined(format!("\\email{{{:}}}", phone).to_string()),
     ]
 }

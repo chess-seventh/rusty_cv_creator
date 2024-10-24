@@ -4,10 +4,16 @@ use latex::{Document, DocumentClass};
 
 use crate::cv::{preambles::cv_preambles::build_preamble, sections::cv_sections::build_sections};
 
-pub fn cv_generate() {
+pub fn cv_generate(
+    my_position: String,
+    my_email: Option<String>,
+    my_name: Option<String>,
+    my_phone: Option<String>,
+    my_country: Option<String>,
+) {
     let mut doc = Document::new(DocumentClass::Other("awesome-cv".to_string()));
 
-    let preambles = build_preamble();
+    let preambles = build_preamble(my_email, my_name, my_phone, my_country, my_position);
 
     for preamble in preambles {
         doc.preamble.push(preamble);

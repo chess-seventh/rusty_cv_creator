@@ -28,7 +28,14 @@ use crate::helpers::{
 };
 
 fn main() {
-    cv_generate()
+    // TODO: Gather this from the CLI input
+    let my_position = "Platform Engineer".to_string();
+    let my_email = None;
+    let my_name = None;
+    let my_phone = None;
+    let my_country = None;
+
+    cv_generate(my_position, my_email, my_name, my_phone, my_country)
 }
 
 #[allow(dead_code)]
