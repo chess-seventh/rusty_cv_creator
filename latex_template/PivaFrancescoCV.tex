@@ -1,0 +1,55 @@
+\documentclass[11pt, a4paper]{awesome-cv}
+\usepackage[apple]{coloremoji}
+\geometry{left=1.5cm, top=0.7cm, right=1.5cm, bottom=0.7cm, footskip=.5cm}
+
+\fontdir[./]
+
+\colorlet{awesome}{awesome-red}
+
+\renewcommand{\acvHeaderSocialSep}{\quad\textbar\quad}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+
+\definecolor{my-red}{HTML}{d58787}
+\definecolor{line-color}{HTML}{fde2a0}
+\definecolor{light-gray}{HTML}{e6e6e6}
+
+\newcommand{\hll}[1]{\noindent\colorbox{light-gray}{\parbox{17.5cm}{\textcolor{gray}{#1}}}}
+\newcommand\myposition{BLANKPOSITION}
+
+%\renewcommand{\footnotesize}{\fontsize{9pt}{11pt}\selectfont}
+
+\name{Francesco}{\textcolor{awesome-red}{Piva}}
+\address{🌍 Switzerland}
+\permis{Swiss, 37 years old}
+\mobile{(+41) 79 830 02 70}
+\email{francesco@piva.online}
+
+\position{\myposition}
+% \position{Platform Engineer Consultant | Freelance DevOps \& Site Reliability Engineer}
+% \quote{BLANKQUOTE}
+
+\makecvfooter{francesco@piva.online}{~~~·~~~\textbf{Francesco Piva}~~~·~~~}{(+41) 79 830 02 70}
+
+\begin{document}
+
+\makecvheader
+\vspace{-5mm}
+\input{cv-sections/aboutme.tex}
+\vspace{-3mm}
+\input{cv-sections/skills.tex}
+% \vspace{-3mm}
+\input{cv-sections/fullexperience.tex}
+\vspace{-4mm}
+\input{cv-sections/education.tex}
+\vspace{-4mm}
+\input{cv-sections/extracurricular.tex}
+\vspace{-5mm}
+\blfootnote{\tiny{\bodyfontlight\upshape\color{gray}{Previous experiences available upon request.}}}
+\end{document}
