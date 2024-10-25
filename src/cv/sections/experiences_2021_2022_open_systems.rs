@@ -47,7 +47,7 @@ fn experience_os_head() -> Element {
         {💻 Site Reliability Engineer} % Job title
         {Remote 📍} % Location
         {Oct. 2021 – Feb. 2022 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % OPEN SYSTEMS
     "#
         .to_string(),
     )

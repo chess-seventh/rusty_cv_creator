@@ -5,8 +5,7 @@ pub fn antony(tasks_selector: Option<&ExperienceType>) -> Vec<Element> {
     LatexCvExperienceEntry::new(
         experience_antony_head(),
         experience_antony_body(tasks_selector).compile_elements()
-    )
-        .compile_elements()
+    ).compile_elements()
 }
 
 fn experience_antony_body(tasks_selector: Option<&ExperienceType>) -> Experience {
@@ -74,7 +73,7 @@ fn experience_antony_head() -> Element {
         {💻 Sofware Developer Jr.} % Job title
         {Geneva, Switzerland 📍} % Location
         {Feb. 2017 – May. 2017 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % ANTONY
     "#
         .to_string(),
     )

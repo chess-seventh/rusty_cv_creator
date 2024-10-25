@@ -3,6 +3,13 @@ use crate::cv::helpers::{Experience, ExperienceType, LatexCvExperienceEntry};
 use latex::Element;
 use crate::cv::helpers::separation_between_sections;
 
+pub fn bestmile(tasks_selector: Option<&ExperienceType>) -> Vec<Element> {
+    LatexCvExperienceEntry::new(
+        experience_bestmile_head(),
+        experience_bestmile_body(tasks_selector).compile_elements(),
+    ).compile_elements()
+}
+
 fn experience_bestmile_body(tasks_selector: Option<&ExperienceType>) -> Experience {
     match tasks_selector {
         Some(ExperienceType::DefaultExperience) => Experience::Bestmile(bestmile_all()),
@@ -11,13 +18,6 @@ fn experience_bestmile_body(tasks_selector: Option<&ExperienceType>) -> Experien
     }
 }
 
-pub fn bestmile(tasks_selector: Option<&ExperienceType>) -> Vec<Element> {
-    LatexCvExperienceEntry::new(
-        experience_bestmile_head(),
-        experience_bestmile_body(tasks_selector).compile_elements(),
-    )
-    .compile_elements()
-}
 fn bestmile_default() -> Vec<Element> {
     vec![
         bestmile_task_01(),
@@ -196,7 +196,7 @@ fn experience_bestmile_head() -> Element {
         {💻 Site Reliability Engineer} % Job title
         {Remote 📍} % Location
         {Jul. 2019 – Oct. 2021 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % BESTMILE
     "#
         .to_string(),
     )

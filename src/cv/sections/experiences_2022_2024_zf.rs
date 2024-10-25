@@ -65,7 +65,7 @@ fn experience_zf_head() -> Element {
         {💻 Senior Platform Engineer} % Job title
         {Remote 📍} % Location
         {Feb. 2022 – Aug. 2024 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % ZF
     "#
         .to_string(),
     )

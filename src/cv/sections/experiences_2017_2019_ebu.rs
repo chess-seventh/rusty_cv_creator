@@ -2,9 +2,10 @@ use crate::cv::helpers::{separation_between_sections, ExperienceType, Experience
 use latex::Element;
 
 pub fn ebu(experience_keyword: Option<&ExperienceType>) -> Vec<Element> {
-    LatexCvExperienceEntry::new(experience_ebu_head(),
-                                experience_ebu_body(experience_keyword).compile_elements())
-        .compile_elements()
+    LatexCvExperienceEntry::new(
+        experience_ebu_head(),
+        experience_ebu_body(experience_keyword).compile_elements()
+    ).compile_elements()
 }
 
 fn experience_ebu_body(experience_keyword: Option<&ExperienceType>) -> Experience {
@@ -49,7 +50,7 @@ fn experience_ebu_head() -> Element {
         {💻 Python Developer} % Job title
         {Geneva Switzerland 📍} % Location
         {Jun. 2017 – May. 2019 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % EBU
     "#
         .to_string(),
     )

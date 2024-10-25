@@ -4,9 +4,10 @@ use crate::cv::helpers::separation_between_sections;
 
 
 pub fn pictet(experience_keyword: Option<&ExperienceType>) -> Vec<Element> {
-    LatexCvExperienceEntry::new(experience_pictet_head(),
-                                experience_pictet_body(experience_keyword).compile_elements())
-        .compile_elements()
+    LatexCvExperienceEntry::new(
+        experience_pictet_head(),
+        experience_pictet_body(experience_keyword).compile_elements()
+    ).compile_elements()
 }
 
 fn experience_pictet_body(experience_keyword: Option<&ExperienceType>) -> Experience {
@@ -77,7 +78,7 @@ fn experience_pictet_head() -> Element {
         {💻 Python Developer} % Job title
         {Geneva Switzerland 📍} % Location
         {May. 2019 – Jul. 2019 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} % PICTET
     "#
         .to_string(),
     )

@@ -6,8 +6,7 @@ pub fn piva_consulting(tasks_selector: Option<&ExperienceType>) -> Vec<Element> 
     LatexCvExperienceEntry::new(
         experience_piva_consulting_head(),
         experience_piva_consulting_body(tasks_selector).compile_elements(),
-    )
-    .compile_elements()
+    ).compile_elements()
 }
 
 fn experience_piva_consulting_body(tasks_selector: Option<&ExperienceType>) -> Experience {
@@ -48,7 +47,7 @@ fn experience_piva_consulting_head() -> Element {
         {💻 Platform Engineer Consultant - Freelance DevOps \& Site Reliability Engineer} % Job title
         {Remote 📍} % Location
         {Mar. 2024 – Present 📆} % Date(s)
-        {\begin{cvitems}
+        {\begin{cvitems} %PIVA CONSULTING
     "#
         .to_string(),
     )
