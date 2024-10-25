@@ -23,7 +23,8 @@ fn piva_all() -> Vec<Element> {
 fn piva_accomplishment_01() -> Element {
     Element::UserDefined(
         r#"
-        \hll{🎯 Bridging the gap between development and operations teams, fostering seamless collaboration and communication.}
+        \item{🎯 Bridging the gap between development and operations teams, fostering seamless
+        collaboration and communication.}
     "#
         .to_string(),
     )
@@ -32,7 +33,9 @@ fn piva_accomplishment_01() -> Element {
 fn piva_accomplishment_02() -> Element {
     Element::UserDefined(
         r#"
-        \hll{🎯 Implementing efficient workflows and advocating for best practices, driving enhanced software delivery processes, resulting in improved system reliability and accelerated deployment cycles.}
+        \item{🎯 Implementing efficient workflows and advocating for best practices, driving
+        enhanced software delivery processes, resulting in improved system reliability and
+        accelerated deployment cycles.}
     "#
         .to_string(),
     )

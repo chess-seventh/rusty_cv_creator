@@ -13,7 +13,6 @@ use crate::cv::sections::experiences_2007_hospitality::experience_hospitality;
 
 use crate::cv::helpers::experience_footer;
 
-// TODO: compile per experience then append to this vector - create a function per experience
 pub fn compile_experiences(experience_keyword: Option<&ExperienceType>) -> Vec<Element> {
     let mut experiences = vec![];
 
@@ -35,7 +34,7 @@ pub fn build_experiences(experience_keyword: Option<&ExperienceType>) -> Vec<Ele
     building_exp.append(&mut bestmile(experience_keyword));
     building_exp.append(&mut pictet(experience_keyword));
     building_exp.append(&mut ebu(experience_keyword));
-    building_exp.append(&mut antony());
+    building_exp.append(&mut antony(experience_keyword));
 
     if let Some(ExperienceType::FullHospitality) = experience_keyword {
         building_exp.append(&mut experience_hospitality());

@@ -85,12 +85,13 @@ pub enum Experience {
     Zf(Vec<Element>),
     Piva(Vec<Element>),
     Pictet(Vec<Element>),
+    Antony(Vec<Element>),
 }
 
 impl Experience {
     pub fn compile_elements(&self) -> Vec<Element> {
         match self {
-            Experience::Ebu(elements) | Experience::Bestmile(elements) | Experience::OpenSystems(elements) | Experience::Zf(elements) | Experience::Piva(elements) | Experience::Pictet(elements) => elements.clone(),
+            Experience::Antony(elements) | Experience::Ebu(elements) | Experience::Bestmile(elements) | Experience::OpenSystems(elements) | Experience::Zf(elements) | Experience::Piva(elements) | Experience::Pictet(elements) => elements.clone(),
         }
     }
 }
