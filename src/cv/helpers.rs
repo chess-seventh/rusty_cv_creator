@@ -27,43 +27,29 @@ impl LatexCvExperienceEntry {
 
 pub fn experience_header() -> Element {
     Element::UserDefined(
-        r#"
-\cvsection{👔 Career Summary}{
-    \begin{cventries}
-    "#
-        .to_string(),
+        r#"\cvsection{👔 Career Summary}{
+    \begin{cventries}"#.to_string(),
     )
 }
 
 pub fn experience_footer() -> Element {
     Element::UserDefined(
-        r#"
-    \end{cventries}
-}
-    "#
-        .to_string(),
+        r#"\end{cventries}
+}"#.to_string(),
     )
 }
 
 pub fn experience_item_foot() -> Element {
     Element::UserDefined(
-        r#"
-            \end{cvitems}
-        }
-        }
-
-    "#
-        .to_string(),
+        r#"\end{cvitems}
+        }"#.to_string(),
     )
 }
 
 pub fn separation_between_sections() -> Element {
     Element::UserDefined(
-        r#"
-                \\
-                \newline
-    "#
-        .to_string(),
+        r#"\\
+            \newline"#.to_string(),
     )
 }
 // #[derive(Debug, Clone)]
