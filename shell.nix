@@ -9,7 +9,7 @@ in
   pkgs.mkShell {
     buildInputs = [
       pkgs.openssl
-      # pkgs.rustup
+      pkgs.rustup
       # pkgs.rust-analyzer
       # ruststable
       pkgs.cmake
