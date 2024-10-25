@@ -111,6 +111,6 @@ fn build_my_info(
         PreambleElement::UserDefined(format!("\\address{{🌍 {country:}}}").to_string()),
         PreambleElement::UserDefined(r#"\permis{Swiss, 37 years old}"#.to_string()),
         PreambleElement::UserDefined(format!("\\mobile{{{phone:}}}").to_string()),
-        PreambleElement::UserDefined(format!("\\email{{{phone:}}}").to_string()),
+        PreambleElement::UserDefined(format!("\\email{{{email:}}}").to_string()),
     ]
 }
