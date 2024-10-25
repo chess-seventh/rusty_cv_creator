@@ -5,7 +5,7 @@ use latex::{Document, DocumentClass};
 use crate::cv::{preambles::cv_preambles::build_preamble, sections::cv_sections::build_sections};
 
 pub fn cv_generate(
-    my_position: String,
+    my_position: &str,
     my_email: Option<String>,
     my_name: Option<String>,
     my_phone: Option<String>,

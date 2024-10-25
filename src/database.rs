@@ -17,7 +17,7 @@ pub enum _ConnectionType {
 fn _define_connection_type(worker_type: &str)-> _ConnectionType {
     match worker_type {
         "postgres" => _ConnectionType::Postgres(establish_connection_postgres()),
-        "sqlite" => _ConnectionType::Sqlite(establish_connection_sqlite()),
+        "sqlite" => _ConnectionType::Sqlite(_establish_connection_sqlite()),
         _ => panic!("worker type not found")
     }
 }
@@ -30,7 +30,7 @@ pub fn establish_connection_postgres() -> PgConnection {
 }
 
 
-pub fn establish_connection_sqlite() -> SqliteConnection {
+pub fn _establish_connection_sqlite() -> SqliteConnection {
     let database_url = &env::var("DATABASE_URL").unwrap_or_else(|_| {
         check_if_db_env_is_set_or_set_from_config();
         env::var("DATABASE_URL").unwrap()

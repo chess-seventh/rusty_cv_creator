@@ -35,7 +35,7 @@ fn main() {
     let my_phone = None;
     let my_country = None;
 
-    cv_generate(my_position, my_email, my_name, my_phone, my_country)
+    cv_generate(&my_position, my_email, my_name, my_phone, my_country);
 }
 
 #[allow(dead_code)]

@@ -1,6 +1,35 @@
 use latex::Element;
 
-pub fn skills() -> Element {
+pub fn skills(selection: &str) -> Vec<Element> {
+    match selection {
+        "main" => vec![main_skills()],
+        "details" => {
+            vec![
+                skills_devops(),
+                skills_python(),
+                skills_networking(),
+                skills_scripting(),
+                skills_tools(),
+                skills_operating_systems(),
+                skills_hardware(),
+                skills_microcontrollers(),
+            ]
+        }
+        "management" => {
+            vec![
+                skills_devops(),
+                skills_python(),
+                skills_networking(),
+                skills_management(),
+                skills_tools(),
+                skills_learnings(),
+            ]
+        }
+        _ => panic!("Invalid selection"),
+    }
+}
+
+fn main_skills() -> Element {
     Element::UserDefined(
         r#"
 \cvsection{📋 Skills}{

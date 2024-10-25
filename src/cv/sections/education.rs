@@ -1,7 +1,18 @@
 use latex::Element;
 
-pub fn education() -> Element {
-    Element::UserDefined(
+pub fn education(education_selector: Option<&str>) -> Vec<Element> {
+    match education_selector {
+        Some("full") => vec![
+            education_default(),
+            education_various(),
+        ],
+        Some(&_) | None => vec![education_default()],
+    }
+
+}
+
+fn education_default() -> Element {
+Element::UserDefined(
         r#"
 \cvsection{🎓 Education}{
     \begin{cvhonors}

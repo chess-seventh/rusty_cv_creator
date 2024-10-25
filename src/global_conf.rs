@@ -19,7 +19,7 @@ impl GlobalVars {
     }
 
     pub fn get_today() -> DateTime<Local> {
-        *TODAY.get_or_init(chrono::offset::Local::now)
+        *TODAY.get_or_init(Local::now)
     }
 
     pub fn get_today_str() -> String {

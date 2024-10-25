@@ -134,14 +134,14 @@ impl UserFilters {
     fn parse_date(&mut self, filter_date: Option<String>) -> Option<NaiveDateTime> {
         filter_date.as_ref()?;
 
-        self.date = match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B")
+        self.date = match NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%B")
         {
             Ok(d) => Some(d),
             Err(_) => {
-                match chrono::NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
+                match NaiveDateTime::parse_from_str(&filter_date.clone().unwrap(), "%b") {
                     Ok(d) => Some(d),
                     Err(_) => {
-                        match chrono::NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
+                        match NaiveDateTime::parse_from_str(&filter_date.unwrap(), "%m") {
                             Ok(d) => Some(d),
                             _ => panic!("could not parse the date"),
                         }

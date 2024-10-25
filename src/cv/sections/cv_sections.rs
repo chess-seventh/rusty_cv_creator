@@ -1,7 +1,7 @@
 use latex::Element;
-
+use crate::cv::helpers::ExperienceType;
 use crate::cv::sections::{
-    about_me::about_me, education::education, experiences::experience,
+    about_me::about_me, education::education, experiences::compile_experiences,
     extracurricular::extracurricular, skills::skills,
 };
 
@@ -10,8 +10,8 @@ pub fn build_sections() -> Vec<Element> {
 
     let mut about_me = build_about_me();
     let mut skills = build_skills();
-    let mut experience = build_experience();
-    let mut education = build_education();
+    let mut experience = build_experience(None);
+    let mut education = build_education(None);
     let mut extra_curricular = build_extracurricular();
 
     sections.append(&mut about_me);
@@ -28,15 +28,15 @@ fn build_about_me() -> Vec<Element> {
 }
 
 fn build_skills() -> Vec<Element> {
-    vec![skills()]
+    skills("main")
 }
 
-fn build_experience() -> Vec<Element> {
-    vec![experience()]
+fn build_experience(experience_keyword: Option<&ExperienceType>) -> Vec<Element> {
+    compile_experiences(experience_keyword)
 }
 
-fn build_education() -> Vec<Element> {
-    vec![education()]
+fn build_education(education_selector: Option<&str>) -> Vec<Element> {
+    education(education_selector)
 }
 
 fn build_extracurricular() -> Vec<Element> {
