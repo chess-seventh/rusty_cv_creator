@@ -26,14 +26,14 @@ fn antony_all() -> Vec<Element> {
 
 fn antony_task_01() -> Element {
     Element::UserDefined(
-        r#"\item {Developed and deployed a comprehensive web application, including backend,
+        r#"                \item {Developed and deployed a comprehensive web application, including backend,
                 frontend, and mobile apps for Android, iOS, and Windows}"#.to_string(),
     )
 }
 
 fn antony_task_02() -> Element {
     Element::UserDefined(
-        r#"\item {Utilized \textbf{Scala} frameworks (\textbf{Play\! Framework} and
+        r#"                \item {Utilized \textbf{Scala} frameworks (\textbf{Play\! Framework} and
                 \textbf{Slick ORM}) for backend development, implemented a simple \textbf{akka}
                 Actor Model, and \textbf{PostgreSQL} as Database. All components were containerized
                 using custom \textbf{docker} images.}"#.to_string(),
@@ -42,25 +42,26 @@ fn antony_task_02() -> Element {
 
 fn antony_task_03() -> Element {
     Element::UserDefined(
-        r#"\item {Created the frontend with \textbf{Angular2 JS} and \textbf{Typescript},
+        r#"                \item {Created the frontend with \textbf{Angular2 JS} and \textbf{Typescript},
                 employing the Observer Pattern for efficient state management.}"#.to_string(),
     )
 }
 
 fn antony_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"\item {🎯 Created an end-to-end application for an event with admin roles, user
+        r#"                \item {🎯 Created an end-to-end application for an event with admin roles, user
                 modules and asynchronous backend.}"#.to_string(),
     )
 }
 
 fn experience_antony_head() -> Element {
     Element::UserDefined(
-        r#"\cventry{🏢 Ducommun Dit Boudry Software Consulting} % Organization
+        r#"
+        \cventry{🏢 Ducommun Dit Boudry Software Consulting} % Organization
         {💻 Sofware Developer Jr.} % Job title
         {Geneva, Switzerland 📍} % Location
         {Feb. 2017 – May. 2017 📆} % Date(s)
-        {\begin{cvitems} % ANTONY"#.to_string(),
+        {\begin{cvitems}"#.to_string(),
     )
 }
 

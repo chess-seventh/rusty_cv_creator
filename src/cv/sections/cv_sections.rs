@@ -14,11 +14,20 @@ pub fn build_sections() -> Vec<Element> {
     let mut education = build_education(None);
     let mut extra_curricular = build_extracurricular();
 
+    sections.push(Element::UserDefined(
+        r#"\makecvheader
+        \vspace{-5mm}"#.to_string()));
     sections.append(&mut about_me);
+    sections.push(Element::UserDefined(r#"\vspace{-3mm}"#.to_string()));
     sections.append(&mut skills);
     sections.append(&mut experience);
+    sections.push(Element::UserDefined(r#"\vspace{-4mm}"#.to_string()));
+    
     sections.append(&mut education);
+    sections.push(Element::UserDefined(r#"\vspace{-4mm}"#.to_string()));
+    
     sections.append(&mut extra_curricular);
+    sections.push(Element::UserDefined(r#"\vspace{-5mm}"#.to_string()));
 
     sections
 }

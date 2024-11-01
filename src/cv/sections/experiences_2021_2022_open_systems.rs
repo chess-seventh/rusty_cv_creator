@@ -42,7 +42,8 @@ fn os_experiences_mini() -> Vec<Element> {
 
 fn experience_os_head() -> Element {
     Element::UserDefined(
-        r#"\cventry{🏢 Open Systems} % Organization
+        r#"
+        \cventry{🏢 Open Systems} % Organization
         {💻 Site Reliability Engineer} % Job title
         {Remote 📍} % Location
         {Oct. 2021 – Feb. 2022 📆} % Date(s)
@@ -52,7 +53,7 @@ fn experience_os_head() -> Element {
 
 fn os_task_01() -> Element {
     Element::UserDefined(
-        r#"\item {Created a project integrating with a custom ticketing system database, successfully
+        r#"                \item {Created a project integrating with a custom ticketing system database, successfully
         \textbf{reducing false positive alerts} and enhancing the precision of incident response
         mechanisms.}"#.to_string(),
     )
@@ -60,7 +61,7 @@ fn os_task_01() -> Element {
 
 fn os_task_02() -> Element {
     Element::UserDefined(
-        r#"\item {\textbf{Engineered Helm templates} to ensure consistent and reproducible deployments
+        r#"                \item {\textbf{Engineered Helm templates} to ensure consistent and reproducible deployments
         of applications within Kubernetes clusters, thereby improving the reliability and
         efficiency of deployment processes.}"#.to_string(),
     )
@@ -68,7 +69,7 @@ fn os_task_02() -> Element {
 
 fn os_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Implemented a proactive monitoring system that significantly reduced production
+        r#"                \hll{🎯 Implemented a proactive monitoring system that significantly reduced production
         incidents and \textbf{improved mean time to resolution (MTTR)}, increasing system
         reliability and customer satisfaction.}"#.to_string(),
     )
@@ -76,7 +77,7 @@ fn os_accomplishment_01() -> Element {
 
 fn os_accomplishment_02() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Achieved significantly reduced \textbf{false positive alerts} and streamlined
+        r#"                \hll{🎯 Achieved significantly reduced \textbf{false positive alerts} and streamlined
         application deployment in Kubernetes, enhancing system reliability and operational
         efficiency through targeted improvements.}"#.to_string(),
     )

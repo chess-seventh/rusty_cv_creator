@@ -41,7 +41,7 @@ fn pictet_experiences_mini() -> Vec<Element> {
 
 fn pictet_task_01() -> Element {
     Element::UserDefined(
-        r#"\item {Developed and implemented an \textbf{Object-Relational Mapping} system for the Neo4J
+        r#"                \item {Developed and implemented an \textbf{Object-Relational Mapping} system for the Neo4J
         database within the project scope, utilizing the latest \textbf{Python} libraries to
         enhance data access and manipulation efficiency.}"#.to_string(),
     )
@@ -49,7 +49,7 @@ fn pictet_task_01() -> Element {
 
 fn pictet_task_02() -> Element {
     Element::UserDefined(
-        r#"\item {Refactored critical components of legacy code, focusing on optimizing performance
+        r#"                \item {Refactored critical components of legacy code, focusing on optimizing performance
         and responsiveness. Implemented \textbf{Python} best practices to modernize the codebase,
         resulting in more maintainable and efficient software.}"#.to_string(),
     )
@@ -57,14 +57,15 @@ fn pictet_task_02() -> Element {
 
 fn pictet_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Enhancing backend reactiveness significantly supported product owners in their
+        r#"                \hll{🎯 Enhancing backend reactiveness significantly supported product owners in their
         decision-making processes, leading to more informed and timely business decisions.}"#.to_string(),
     )
 }
 
 fn experience_pictet_head() -> Element {
     Element::UserDefined(
-        r#"\cventry{🏢 Pictet Private Banking} % Organization
+        r#"
+        \cventry{🏢 Pictet Private Banking} % Organization
         {💻 Python Developer} % Job title
         {Geneva Switzerland 📍} % Location
         {May. 2019 – Jul. 2019 📆} % Date(s)

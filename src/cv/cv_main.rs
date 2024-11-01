@@ -11,7 +11,9 @@ pub fn cv_generate(
     my_phone: Option<String>,
     my_country: Option<String>,
 ) {
-    let mut doc = Document::new(DocumentClass::Other("awesome-cv".to_string()));
+    let mut doc = Document::new(
+        DocumentClass::Other("awesome-cv".to_string()),
+    );
 
     let preambles = build_preamble(my_email, my_name, my_phone, my_country, my_position);
 

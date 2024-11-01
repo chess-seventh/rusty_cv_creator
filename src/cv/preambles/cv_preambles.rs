@@ -106,7 +106,7 @@ fn build_my_info(
             .to_string(),
         ),
         PreambleElement::UserDefined(
-            r#"\name{Francesco}{\\textcolor{awesome-red}{Piva}}"#.to_string(), // TODO: split name & surname
+            r#"\name{Francesco}{\textcolor{awesome-red}{Piva}}"#.to_string(), // TODO: split name & surname
         ),
         PreambleElement::UserDefined(format!("\\address{{🌍 {country:}}}").to_string()),
         PreambleElement::UserDefined(r#"\permis{Swiss, 37 years old}"#.to_string()),

@@ -45,7 +45,8 @@ fn ebu_experiences_mini() -> Vec<Element> {
 
 fn experience_ebu_head() -> Element {
     Element::UserDefined(
-        r#"\cventry{🏢 European Broadcasting Union} % Organization
+        r#"
+        \cventry{🏢 European Broadcasting Union} % Organization
         {💻 Python Developer} % Job title
         {Geneva Switzerland 📍} % Location
         {Jun. 2017 – May. 2019 📆} % Date(s)
@@ -56,14 +57,14 @@ fn experience_ebu_head() -> Element {
 
 fn ebu_task_01() -> Element {
     Element::UserDefined(
-        r#"\item {Developed the backend application for the \textbf{European Championships
+        r#"                \item {Developed the backend application for the \textbf{European Championships
                 2018}, enabling live ingestion and streaming of sports data events to partners.}"#.to_string(),
     )
 }
 
 fn ebu_task_02() -> Element {
         Element::UserDefined(
-        r#"\item {Led a production pilot using \textbf{RDF4J} Semantic Database for live
+        r#"                \item {Led a production pilot using \textbf{RDF4J} Semantic Database for live
                 sports streams, creating a Python-based \textbf{REST API} with \textbf{flask} and
                 an asynchronous backend with \textbf{RabbitMQ}, \textbf{celery}, and \textbf{lxml}
                 for \textbf{XML} to \textbf{RDF} conversion.}"#.to_string(),
@@ -72,7 +73,7 @@ fn ebu_task_02() -> Element {
 
 fn ebu_task_03() -> Element {
     Element::UserDefined(
-        r#"\item {Containerized the project using \textbf{docker} and \textbf{docker-compose},
+        r#"                \item {Containerized the project using \textbf{docker} and \textbf{docker-compose},
                 and deployed it on a \textbf{docker-swarm} cluster, ensuring scalability and
                 efficient operations.}"#.to_string(),
     )
@@ -80,7 +81,7 @@ fn ebu_task_03() -> Element {
 
 fn ebu_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Production pilot during European Championships 2018 (Glasgow and Berlin),
+        r#"                \hll{🎯 Production pilot during European Championships 2018 (Glasgow and Berlin),
                 ingest of Live Sports Data.}"#.to_string(),
     )
 }

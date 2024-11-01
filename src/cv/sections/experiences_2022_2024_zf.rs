@@ -60,7 +60,8 @@ fn zf_experiences_default() -> Vec<Element> {
 
 fn experience_zf_head() -> Element {
     Element::UserDefined(
-        r#"\cventry{🏢 ZF Group} % Organization
+        r#"
+        \cventry{🏢 ZF Group} % Organization
         {💻 Senior Platform Engineer} % Job title
         {Remote 📍} % Location
         {Feb. 2022 – Aug. 2024 📆} % Date(s)
@@ -70,7 +71,7 @@ fn experience_zf_head() -> Element {
 
 fn zf_task_01() -> Element {
     Element::UserDefined(
-        r#"\item {Deploys \textbf{centralised ArgoCD} across all AWS EKS accounts,
+        r#"                \item {Deploys \textbf{centralised ArgoCD} across all AWS EKS accounts,
                 standardising the \textbf{GitOps} approach and managing over 50 services per
                 cluster, effectively handling approximately 1300 applications.}"#.to_string(),
     )
@@ -79,7 +80,7 @@ fn zf_task_01() -> Element {
 // Optional
 fn zf_task_02() -> Element {
     Element::UserDefined(
-        r#"\item {Implements the \textbf{Mend Renovate} bot for Cloud Platform Engineering
+        r#"                \item {Implements the \textbf{Mend Renovate} bot for Cloud Platform Engineering
                 teams, ensuring applications, libraries, and modules are \textbf{updated to the
                 latest stable versions}, thereby maintaining software stability and security.}"#.to_string(),
     )
@@ -87,7 +88,7 @@ fn zf_task_02() -> Element {
 
 fn zf_task_03() -> Element {
     Element::UserDefined(
-        r#"\item {Develops a \textbf{Rust application} to enable smooth connectivity for
+        r#"                \item {Develops a \textbf{Rust application} to enable smooth connectivity for
                 developers to private VPCs, EKS clusters, and endpoints, with supporting
                 infrastructure deployed using \textbf{AWS CDK in Python}.}"#.to_string(),
     )
@@ -95,7 +96,7 @@ fn zf_task_03() -> Element {
 
 fn zf_task_04() -> Element {
     Element::UserDefined(
-        r#"\item {Enhances the developer platform by creating and contributing to the
+        r#"                \item {Enhances the developer platform by creating and contributing to the
                 \textbf{central API} for Cloud Platform Engineering’s \textbf{Internal Developer
                 Platform} and creating a command line tool, utilising \textbf{TDD methodology} to
                 achieve a 99\% test code coverage.}"#.to_string(),
@@ -104,7 +105,7 @@ fn zf_task_04() -> Element {
 
 fn zf_task_05() -> Element {
     Element::UserDefined(
-        r#"\item{Centralises \textbf{metrics aggregation} and Grafana dashboards
+        r#"                \item{Centralises \textbf{metrics aggregation} and Grafana dashboards
                 \textbf{across 20 AWS EKS} clusters by rolling out \textbf{Thanos} for all
                 \textbf{Kube-Prometheus-Stacks}, significantly enhancing the platforms’
                 \textbf{observability} with monitoring and logging coverage.}"#.to_string(),
@@ -114,7 +115,7 @@ fn zf_task_05() -> Element {
 // Optional
 fn zf_task_06() -> Element {
     Element::UserDefined(
-        r#"\item {Revises internal \textbf{documentation} using the \textbf{Divio
+        r#"                \item {Revises internal \textbf{documentation} using the \textbf{Divio
                 Documentation framework}, improving the usability and technical clarity of internal
                 tools, thereby \textbf{improving the onboarding process} for new developers.}"#.to_string(),
     )
@@ -122,7 +123,7 @@ fn zf_task_06() -> Element {
 
 fn zf_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Designed and rolled-out a \textbf{centralised metrics aggregator}, enabling
+        r#"                \hll{🎯 Designed and rolled-out a \textbf{centralised metrics aggregator}, enabling
                 real-time incident tracking and performance issue analysis, greatly improving
                 \textbf{platform observability}, stability and operational efficiency.}"#.to_string(),
     )
@@ -130,7 +131,7 @@ fn zf_accomplishment_01() -> Element {
 
 fn zf_accomplishment_02() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Optimised \textbf{GitOps workflows}, automating manual tasks and
+        r#"                \hll{🎯 Optimised \textbf{GitOps workflows}, automating manual tasks and
                 \textbf{reducing team chore time by 80\%}, enhancing deployment accuracy and team
                 productivity through continuous integration checks.}"#.to_string(),
     )
@@ -138,7 +139,7 @@ fn zf_accomplishment_02() -> Element {
 
 fn zf_accomplishment_03() -> Element {
     Element::UserDefined(
-        r#"\hll{🎯 Created, and enhanced central API capabilities, \textbf{cutting down} the
+        r#"                \hll{🎯 Created, and enhanced central API capabilities, \textbf{cutting down} the
                 time needed for AWS ECR repository creation \textbf{by 90\%, eliminating human
                 errors} and improving \textbf{automation efficiency}.}"#.to_string(),
     )

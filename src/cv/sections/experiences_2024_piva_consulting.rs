@@ -21,22 +21,16 @@ fn piva_all() -> Vec<Element> {
 
 fn piva_accomplishment_01() -> Element {
     Element::UserDefined(
-        r#"
-        \item{🎯 Bridging the gap between development and operations teams, fostering seamless
-        collaboration and communication.}
-    "#
-        .to_string(),
+        r#"                \item{🎯 Bridging the gap between development and operations teams, fostering seamless
+        collaboration and communication.}"#.to_string(),
     )
 }
 
 fn piva_accomplishment_02() -> Element {
     Element::UserDefined(
-        r#"
-        \item{🎯 Implementing efficient workflows and advocating for best practices, driving
+        r#"                \item{🎯 Implementing efficient workflows and advocating for best practices, driving
         enhanced software delivery processes, resulting in improved system reliability and
-        accelerated deployment cycles.}
-    "#
-        .to_string(),
+        accelerated deployment cycles.}"#.to_string(),
     )
 }
 
@@ -47,9 +41,7 @@ fn experience_piva_consulting_head() -> Element {
         {💻 Platform Engineer Consultant - Freelance DevOps \& Site Reliability Engineer} % Job title
         {Remote 📍} % Location
         {Mar. 2024 – Present 📆} % Date(s)
-        {\begin{cvitems} %PIVA CONSULTING
-    "#
-        .to_string(),
+        {\begin{cvitems}"#.to_string(),
     )
 }
 
