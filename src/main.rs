@@ -1,5 +1,9 @@
+use crate::global_conf::GlobalVars;
 use clap::Parser;
 use dotenvy::dotenv;
+use log::{error, info};
+use std::path::Path;
+use std::process::{Command, Stdio};
 
 mod cli_structure;
 mod config_parse;
@@ -47,6 +51,48 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> String {
 
     make_cv_changes_based_on_input(job_title, quote, &destination_cv_file_full_path);
     compile_cv(&created_cv_dir, &cv_template_file);
+
+    // Remove directory and keep only the pdf file
+
+    let path_created_dir = Path::new(&created_cv_dir);
+    let pdf_file_name = destination_cv_file_full_path.replace(".tex", ".pdf");
+
+    let application_date = GlobalVars::get_today_str();
+
+    let destination_cv_pdf_copy = format!("/home/seventh/Documents/Wiki/🧠 P.A.R.A./2. 🌐 Areas/3. 👔 Pro/Dossier_Pro/Applications/{application_date}-{job_title}-{company_name}.pdf");
+
+    match Command::new("cp")
+        .arg(pdf_file_name)
+        .arg(destination_cv_pdf_copy)
+        .current_dir(created_cv_dir.clone())
+        .stdout(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => {
+            info!("✅ Removed Directory: {created_cv_dir}");
+        }
+        Err(e) => {
+            error!("Could not remove the directory: {created_cv_dir}, with error: {e}");
+            panic!("Could not remove the directory: {created_cv_dir}, with error: {e}");
+        }
+    }
+
+    file_handlers::remove_cv_dir(path_created_dir).unwrap();
+
+    match Command::new("rm")
+        .arg("-rdf")
+        .current_dir(created_cv_dir.clone())
+        .stdout(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => {
+            info!("✅ Removed Directory: {created_cv_dir}");
+        }
+        Err(e) => {
+            error!("Could not remove the directory: {created_cv_dir}, with error: {e}");
+            panic!("Could not remove the directory: {created_cv_dir}, with error: {e}");
+        }
+    }
 
     destination_cv_file_full_path
 }

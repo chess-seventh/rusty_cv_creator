@@ -23,7 +23,7 @@ in
     shellHook = ''
       export OPENSSL_DIR="${pkgs.openssl.dev}"
       export OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib"
-      export DATABASE_URL="postgres://rusty_cv:rusty-cv-01@nixos-01.caracara-palermo.ts.net/db_rusty_cv";
+      export DATABASE_URL="postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
     '';
   }
 
