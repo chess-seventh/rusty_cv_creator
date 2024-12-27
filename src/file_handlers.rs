@@ -1,11 +1,11 @@
-use log::{info,error};
+use log::{error, info};
 use chrono::{DateTime, Local};
 use std::io::Error;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use crate::global_conf::GlobalVars;
-use crate::helpers::{fix_home_directory_path, clean_string_from_quotes};
+use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
 use crate::config_parse::get_variable_from_config;
 
 
@@ -154,3 +154,41 @@ fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String
     cv_file_content.replace(replace_quote.as_str(), quote)
 }
 
+pub fn remove_created_dir_from_pro(job_title: &str, company_name: &str, created_cv_dir: &String, destination_cv_file_full_path: &str) {
+    // Remove directory and keep only the pdf file
+    let path_created_dir = Path::new(&created_cv_dir);
+    let application_date = GlobalVars::get_today_str_yyyy_mm_dd();
+    let application_year = GlobalVars::get_year_str();
+
+    let pdf_file_name = destination_cv_file_full_path.replace(".tex", ".pdf");
+    let mut remove_dir_of_cv_path = Path::new(&created_cv_dir).parent().unwrap().as_os_str().to_str().unwrap().to_owned();
+    remove_dir_of_cv_path.push_str(format!("/{application_date}-{job_title}-{company_name}.pdf").as_str());
+
+
+    // TODO: make sure that the Path for Obsidian is fetched from config file
+    //
+    let destination_cv_pdf_copy = format!("/home/seventh/Documents/Wiki/🧠 P.A.R.A./2. 🌐 Areas/3. 👔 Pro/Dossier_Pro/Applications/{application_year}/{application_date}-{job_title}-{company_name}.pdf");
+
+    copy_to_destination(created_cv_dir, pdf_file_name.clone(), destination_cv_pdf_copy.clone());
+    copy_to_destination(created_cv_dir, pdf_file_name, remove_dir_of_cv_path);
+
+    remove_cv_dir(path_created_dir).unwrap();
+}
+
+fn copy_to_destination(created_cv_dir: &String, pdf_file_name: String, destination_cv_pdf_copy: String) {
+    match Command::new("cp")
+        .arg(pdf_file_name)
+        .arg(destination_cv_pdf_copy)
+        .current_dir(created_cv_dir.clone())
+        .stdout(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => {
+            info!("✅ copy Directory: {created_cv_dir}");
+        }
+        Err(e) => {
+            error!("Could not copy the directory: {created_cv_dir}, with error: {e}");
+            panic!("Could not copy the directory: {created_cv_dir}, with error: {e}");
+        }
+    }
+}

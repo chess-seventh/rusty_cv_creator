@@ -27,47 +27,57 @@ impl GlobalVars {
         today.format("%e-%b-%Y").to_string()
     }
 
+    pub fn get_today_str_yyyy_mm_dd() -> String {
+        let today = GlobalVars::get_today();
+        today.format("%Y-%m-%d").to_string()
+    }
+
+    pub fn get_year_str() -> String {
+        let today = GlobalVars::get_today();
+        today.format("%Y").to_string()
+    }
+
     pub fn get_user_input() -> UserInput {
         USER_INPUT.get().expect("UserInput not initialized").clone()
     }
 
-    pub fn get_user_action() -> UserAction {
+    pub fn get_user_input_action() -> UserAction {
         let user_input = GlobalVars::get_user_input();
         user_input.action
     }
 
     pub fn get_user_job_title() -> String {
-        match GlobalVars::get_user_action() {
+        match GlobalVars::get_user_input_action() {
             UserAction::Insert(insert) => insert.job_title,
             _ => panic!("Could not get the job title")
         }
     }
 
-    pub fn get_user_company_name() -> String {
-        match GlobalVars::get_user_action() {
+    pub fn get_user_input_company_name() -> String {
+        match GlobalVars::get_user_input_action() {
             UserAction::Insert(insert) => insert.company_name,
             _ => panic!("Could not get the company name")
         }
     }
 
-    pub fn get_user_quote() -> String {
-        match GlobalVars::get_user_action() {
+    pub fn get_user_input_quote() -> String {
+        match GlobalVars::get_user_input_action() {
             UserAction::Insert(insert) => insert.quote,
             _ => panic!("Could not get the quote")
         }
     }
 
-    pub fn get_user_save_to_db() -> bool {
+    pub fn get_user_input_save_to_db() -> bool {
         let user_input = GlobalVars::get_user_input();
-        user_input.save_to_database
+        user_input.save_to_database.unwrap_or(true)
     }
 
-    pub fn get_db_engine() -> String {
+    pub fn get_user_input_db_engine() -> String {
         let config = GlobalVars::get_config();
         config.get("db", "db_engine").expect("Could not get the database engine")
     }
 
-    pub fn get_db_url() -> String {
+    pub fn get_user_input_db_url() -> String {
         let config = GlobalVars::get_config();
         config.get("db", "db_pg_host").expect("Could not get the database engine")
     }

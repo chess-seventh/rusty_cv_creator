@@ -1,16 +1,16 @@
 [package]
 name = "rusty_cv_creator"
-version = "0.5.4"
+version = "0.5.7"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = "0.4.38"
-clap = { version = "4.5.4", features = ["derive"] }
+chrono = "0.4.39"
+clap = { version = "4.5.23", features = ["derive"] }
 configparser = "3.0.4"
 copy_dir = "0.1.3"
-diesel = { version = "2.2.0", features = [
+diesel = { version = "2.2.6", features = [
   "sqlite",
   "postgres",
   "returning_clauses_for_sqlite_3_35",
@@ -19,5 +19,5 @@ dirs = "5.0.1"
 dotenvy = "0.15.7"
 env_logger = "0.11.5"
 log = "0.4.22"
-once_cell = "1.19.0"
+once_cell = "1.20.2"
 skim = "0.15.5"

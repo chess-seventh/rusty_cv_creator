@@ -17,6 +17,7 @@ pub fn set_global_vars(user_input: UserInput) {
         .expect("Should have been able to read the file");
 
     CONFIG.set(load_config(contents)).unwrap();
+    // println!("User_Input is: {user_input:?}");
     USER_INPUT.set(user_input).unwrap();
 }
 

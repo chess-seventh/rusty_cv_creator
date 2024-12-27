@@ -3,7 +3,8 @@ use std::env;
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
 use rusty_cv_creator::schema::cv;
-
+use log::info;
+use crate::cli_structure::FilterArgs;
 use crate::helpers::{check_if_db_env_is_set_or_set_from_config, fix_home_directory_path};
 use crate::global_conf::GlobalVars;
 
@@ -17,20 +18,20 @@ pub enum _ConnectionType {
 fn _define_connection_type(worker_type: &str)-> _ConnectionType {
     match worker_type {
         "postgres" => _ConnectionType::Postgres(establish_connection_postgres()),
-        "sqlite" => _ConnectionType::Sqlite(establish_connection_sqlite()),
+        "sqlite" => _ConnectionType::Sqlite(_establish_connection_sqlite()),
         _ => panic!("worker type not found")
     }
 }
 
 pub fn establish_connection_postgres() -> PgConnection {
-    let db_url = GlobalVars::get_db_url();
+    let db_url = GlobalVars::get_user_input_db_url();
 
     PgConnection::establish(&db_url)
         .unwrap_or_else(|_| panic!("Error connecting to {db_url}"))
 }
 
 
-pub fn establish_connection_sqlite() -> SqliteConnection {
+pub fn _establish_connection_sqlite() -> SqliteConnection {
     let database_url = &env::var("DATABASE_URL").unwrap_or_else(|_| {
         check_if_db_env_is_set_or_set_from_config();
         env::var("DATABASE_URL").unwrap()
@@ -59,11 +60,11 @@ fn check_if_entry_exists(g_job_title: &str, g_company: &str, g_quote: &str) -> O
 
     match selection {
         Ok(Some(selection)) => {
-            println!("CV with id: {} has a job_title: {}", selection.id, selection.job_title);
+            info!("CV with id: {} has a job_title: {}", selection.id, selection.job_title);
             Some(selection.id)
         },
         Ok(None) => {
-            println!("Unable to find CV");
+            info!("Unable to find CV");
             None
         },
         _ => panic!("An error occurred while fetching CV"),
@@ -76,15 +77,15 @@ pub fn save_new_cv_to_database(cv_path: &str) -> Cv {
     // let conn = &mut define_connection_type("sqlite").unwrap();
 
     let job_title = GlobalVars::get_user_job_title();
-    let company= GlobalVars::get_user_company_name();
-    let quote = GlobalVars::get_user_quote();
+    let company= GlobalVars::get_user_input_company_name();
+    let quote = GlobalVars::get_user_input_quote();
 
     let application_date = GlobalVars::get_today_str();
 
     let conn = &mut establish_connection_postgres();
 
     if let Some(id) = check_if_entry_exists(&job_title, &company, &quote) {
-        println!("Entry already exists with id: {id}");
+        info!("Entry already exists with id: {id}");
 
         return cv::table
             .find(id)
@@ -108,12 +109,13 @@ pub fn save_new_cv_to_database(cv_path: &str) -> Cv {
         .expect("Error saving new CV")
 }
 
-pub fn read_cv_from_database() -> Vec<String> {
+pub fn read_cv_from_database(filters: &FilterArgs) -> Vec<String> {
     use rusty_cv_creator::schema::cv::dsl::cv;
 
     let conn = &mut establish_connection_postgres();
 
     // TODO filters on proper DB
+    println!("Filter to apply to DB: {filters:?}");
     let cv_results = cv
         .limit(50)
         // .filter()
