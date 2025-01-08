@@ -82,7 +82,9 @@ jobs:
           path: artifacts
 
       - name: ls artifacts
-        run: ls -R ./artifacts
+        run: |
+          mkdir artifacts/
+          ls -R ./artifacts
 
       - name: Prepare native artifacts
         run: |
