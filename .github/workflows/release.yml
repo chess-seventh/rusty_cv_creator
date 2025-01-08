@@ -31,10 +31,7 @@ jobs:
     name: Release
     if: needs.get-next-version.outputs.new-release-published == 'true'
     needs:
-      - build-cli
-      - build-node-api
       - get-next-version
-      - test
 
     steps:
       - name: Checkout
