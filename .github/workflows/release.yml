@@ -89,8 +89,6 @@ jobs:
       - name: Prepare native artifacts
         run: |
           mkdir napi/
-          mv artifacts/bindings-aarch64-apple-darwin/semantic-release-cargo.darwin-arm64.node napi/
-          mv artifacts/bindings-x86_64-apple-darwin/semantic-release-cargo.darwin-x64.node napi/
           mv artifacts/bindings-x86_64-unknown-linux-gnu/semantic-release-cargo.linux-x64-gnu.node napi/
 
       - name: ls napi
@@ -99,13 +97,7 @@ jobs:
       - name: Prepare GitHub Release artifacts
         run: |
           mkdir dist/
-          mv artifacts/aarch64-apple-darwin dist/
-          mv artifacts/aarch64-unknown-linux-gnu dist/
           mv artifacts/aarch64-unknown-linux-musl dist/
-          mv artifacts/i686-unknown-linux-gnu dist/
-          mv artifacts/i686-unknown-linux-musl dist/
-          mv artifacts/x86_64-apple-darwin dist/
-          mv artifacts/x86_64-unknown-linux-gnu dist/
           mv artifacts/x86_64-unknown-linux-musl dist/
 
       - name: Combine checksums
