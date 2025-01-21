@@ -1,13 +1,12 @@
-use log::{error, info};
-use chrono::{DateTime, Local};
-use std::io::Error;
-use std::fs;
-use std::path::Path;
-use std::process::{Command, Stdio};
+use crate::config_parse::get_variable_from_config;
 use crate::global_conf::GlobalVars;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
-use crate::config_parse::get_variable_from_config;
-
+use chrono::{DateTime, Local};
+use log::{error, info};
+use std::fs;
+use std::io::Error;
+use std::path::Path;
+use std::process::{Command, Stdio};
 
 fn check_dir_exists(dir: &str) -> bool {
     Path::new(dir).try_exists().expect("Dir does not exist")
@@ -22,28 +21,32 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     info!("CV_DIR: {cv_dir}");
     info!("CV_FILE: {cv_file}");
 
-    if check_dir_exists(cv_dir) { info!("✅ Directory exists") } else {
-            error!("Directory does not exist");
-            panic!("Directory does not exist");
+    if check_dir_exists(cv_dir) {
+        info!("✅ Directory exists")
+    } else {
+        error!("Directory does not exist");
+        panic!("Directory does not exist");
     };
 
-    if check_file_exists(cv_dir, cv_file) { info!("✅ File exists") } else {
-            error!("File does not exist");
-            panic!("File does not exist");
+    if check_file_exists(cv_dir, cv_file) {
+        info!("✅ File exists")
+    } else {
+        error!("File does not exist");
+        panic!("File does not exist");
     };
 
-    match Command::new("xelatex")
+    let cmd_output = Command::new("xelatex")
         .arg(cv_file)
         .current_dir(cv_dir)
         .stdout(Stdio::null())
-        .spawn() {
-        Ok(_) => { 
-            info!("✅ CV compiled successfully");
-        },
-        Err(e) => {
-            error!("XELATEX Error compiling CV: {e}");
-            panic!("XELATEX Error compiling CV: {e}");
-        }
+        .status()
+        .expect("Failed to run XELATEX");
+
+    if cmd_output.success() {
+        info!("✅ CV compiled successfully");
+    } else {
+        error!("XELATEX Error compiling CV");
+        panic!("XELATEX Error compiling CV");
     }
 }
 
@@ -60,15 +63,17 @@ pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path
 }
 
 pub fn create_directory(job_title: &str, company_name: &str) -> String {
-    let destination_folder = fix_home_directory_path(&get_variable_from_config("destination", "cv_path"));
+    let destination_folder =
+        fix_home_directory_path(&get_variable_from_config("destination", "cv_path"));
     let now = GlobalVars::get_today();
 
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
-        Err(e) => panic!("Error creating year directory: {e}")
+        Err(e) => panic!("Error creating year directory: {e}"),
     }
 
-    let (cv_template_path, full_destination_path) = prepare_path_for_new_cv(job_title, company_name, &destination_folder, now);
+    let (cv_template_path, full_destination_path) =
+        prepare_path_for_new_cv(job_title, company_name, &destination_folder, now);
 
     match copy_dir::copy_dir(cv_template_path, full_destination_path.clone()) {
         Ok(_) => info!("✅ Directory created & copied successfully"),
@@ -85,15 +90,22 @@ pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-fn prepare_path_for_new_cv(job_title: &str, company_name: &str, destination_folder: &str, now: DateTime<Local>) -> (String, String) {
-    let cv_template_path: String = fix_home_directory_path(&get_variable_from_config("cv", "cv_template_path"));
+fn prepare_path_for_new_cv(
+    job_title: &str,
+    company_name: &str,
+    destination_folder: &str,
+    now: DateTime<Local>,
+) -> (String, String) {
+    let cv_template_path: String =
+        fix_home_directory_path(&get_variable_from_config("cv", "cv_template_path"));
 
     let formatted_job_title = job_title.replace(' ', "-");
     let formatted_company_name = company_name.replace(' ', "-");
 
-
     let date_dir = now.format("%Y/%Y-%m-%d").to_string();
-    let full_destination_path = fix_home_directory_path(&format!("{destination_folder}/{date_dir}_{formatted_company_name}_{formatted_job_title}"));
+    let full_destination_path = fix_home_directory_path(&format!(
+        "{destination_folder}/{date_dir}_{formatted_company_name}_{formatted_job_title}"
+    ));
 
     info!("✅ Creating directory: {full_destination_path}");
     info!("✅ Copying from: {}", cv_template_path.clone());
@@ -116,8 +128,7 @@ fn write_to_destination_cv_file(cv_file_path: &str, content: &String) -> std::io
 fn read_destination_cv_file(destination_cv_file: &str) -> String {
     let fix_destination_cv_file = fix_home_directory_path(destination_cv_file);
     info!("✅ Reading CV file: {fix_destination_cv_file}");
-    fs::read_to_string(fix_destination_cv_file)
-        .expect("Should have been able to read the file")
+    fs::read_to_string(fix_destination_cv_file).expect("Should have been able to read the file")
 }
 
 fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, _quote: &str) -> String {
@@ -136,7 +147,6 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
     assert!((new != cv_file_content), "Didn't change shit");
 
     new
-
 }
 
 fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
@@ -144,7 +154,8 @@ fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String
     if quote.is_empty() {
         info!("✅ Removing quote");
 
-        return cv_file_content.lines()
+        return cv_file_content
+            .lines()
             .filter(|&line| !line.contains(&replace_quote))
             .collect::<Vec<_>>()
             .join("\n");
@@ -154,28 +165,47 @@ fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String
     cv_file_content.replace(replace_quote.as_str(), quote)
 }
 
-pub fn remove_created_dir_from_pro(job_title: &str, company_name: &str, created_cv_dir: &String, destination_cv_file_full_path: &str) {
+pub fn remove_created_dir_from_pro(
+    job_title: &str,
+    company_name: &str,
+    created_cv_dir: &String,
+    destination_cv_file_full_path: &str,
+) {
     // Remove directory and keep only the pdf file
     let path_created_dir = Path::new(&created_cv_dir);
     let application_date = GlobalVars::get_today_str_yyyy_mm_dd();
     let application_year = GlobalVars::get_year_str();
 
     let pdf_file_name = destination_cv_file_full_path.replace(".tex", ".pdf");
-    let mut remove_dir_of_cv_path = Path::new(&created_cv_dir).parent().unwrap().as_os_str().to_str().unwrap().to_owned();
-    remove_dir_of_cv_path.push_str(format!("/{application_date}-{job_title}-{company_name}.pdf").as_str());
-
+    let mut remove_dir_of_cv_path = Path::new(&created_cv_dir)
+        .parent()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_owned();
+    remove_dir_of_cv_path
+        .push_str(format!("/{application_date}-{job_title}-{company_name}.pdf").as_str());
 
     // TODO: make sure that the Path for Obsidian is fetched from config file
     //
     let destination_cv_pdf_copy = format!("/home/seventh/Documents/Wiki/🧠 P.A.R.A./2. 🌐 Areas/3. 👔 Pro/Dossier_Pro/Applications/{application_year}/{application_date}-{job_title}-{company_name}.pdf");
 
-    copy_to_destination(created_cv_dir, pdf_file_name.clone(), destination_cv_pdf_copy.clone());
+    copy_to_destination(
+        created_cv_dir,
+        pdf_file_name.clone(),
+        destination_cv_pdf_copy.clone(),
+    );
     copy_to_destination(created_cv_dir, pdf_file_name, remove_dir_of_cv_path);
 
     remove_cv_dir(path_created_dir).unwrap();
 }
 
-fn copy_to_destination(created_cv_dir: &String, pdf_file_name: String, destination_cv_pdf_copy: String) {
+fn copy_to_destination(
+    created_cv_dir: &String,
+    pdf_file_name: String,
+    destination_cv_pdf_copy: String,
+) {
     match Command::new("cp")
         .arg(pdf_file_name)
         .arg(destination_cv_pdf_copy)
@@ -192,3 +222,4 @@ fn copy_to_destination(created_cv_dir: &String, pdf_file_name: String, destinati
         }
     }
 }
+
