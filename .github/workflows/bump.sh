@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 1. Get the most recent tag (fall back to v0.0.0 if none exists)
-LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
 echo "Last tag: ${LAST_TAG}"
 
