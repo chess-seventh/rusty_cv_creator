@@ -90,7 +90,7 @@ jobs:
             cross: false
 
     steps:
-      - name: Checkout
+      - name: Checkout git
         uses: actions/checkout@v4
 
       - name: Install build inputs
