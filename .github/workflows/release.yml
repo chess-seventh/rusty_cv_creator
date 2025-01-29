@@ -30,8 +30,8 @@ jobs:
       - name: Determine bump level
         id: semver
         run: |
-          chmod +x .github/scripts/semver_bump.sh
-          BUMP_TYPE=$(.github/scripts/semver_bump.sh)
+          chmod +x .github/workflows/bump.sh
+          BUMP_TYPE=$(.github/workflows/bump.sh)
           echo "Bump type: $BUMP_TYPE"
           echo "::set-output name=bump_type::$BUMP_TYPE"
 
