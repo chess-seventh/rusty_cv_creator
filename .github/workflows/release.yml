@@ -1,69 +1,26 @@
----
-name: Auto Semantic Release
+name: Release Please
 
 on:
   push:
     branches:
-      - master
+      - master # or your primary branch
 
 jobs:
-  release:
+  release-please:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Install cargo-bump and dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          cargo install cargo-bump
-
-      - name: Determine bump level
-        id: semver
-        run: |
-          chmod +x .github/workflows/bump.sh
-          BUMP_TYPE=$(.github/workflows/bump.sh)
-          echo "Bump type: $BUMP_TYPE"
-          echo "::set-output name=bump_type::$BUMP_TYPE"
-
-      - name: Bump version
-        id: cargo_bump
-        run: |
-          cargo bump ${{ steps.semver.outputs.bump_type }}
-
-          new_version=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
-          echo "New version: $new_version"
-          echo "::set-output name=new_version::$new_version"
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add Cargo.toml Cargo.lock
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: bump version to ${{ steps.cargo_bump.outputs.new_version }}"
-          else
-            echo "No changes to commit."
-          fi
-
-      - name: Push commit and tag
-        run: |
-          git push origin HEAD
-
-          TAG="v${{ steps.cargo_bump.outputs.new_version }}"
-          git tag "$TAG"
-          git push origin "$TAG"
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
+      - name: Release Please
+        uses: google-github-actions/release-please-action@v3
         with:
-          tag_name: "v${{ steps.cargo_bump.outputs.new_version }}"
-          release_name: "Release v${{ steps.cargo_bump.outputs.new_version }}"
-          body: "Automated semantic release"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # "rust" means it knows how to handle Cargo.toml
+          release-type: rust
+
+          # The name of your package (as in Cargo.toml [package] name).
+          # If you have just one crate in the repo, this is typically fine to set or omit.
+          package-name: rusty_cv_creator
+
+          # Provide GitHub token to create PRs, tags, releases, etc.
+          token: ${{ secrets.GITHUB_TOKEN }}
