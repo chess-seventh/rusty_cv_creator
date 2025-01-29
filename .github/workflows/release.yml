@@ -18,7 +18,7 @@ concurrency:
   group: ${{ github.workflow }}
 
 env:
-  APP_NAME: semantic-release-cargo
+  APP_NAME: rusty_cv_creator
   DEBUG: napi:*
   RUST_BACKTRACE: 1
 
@@ -122,7 +122,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ steps.rust-toolchain.outputs.cachekey }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install semantic-release-cargo
+      - name: Install rusty_cv_creator
         uses: taiki-e/install-action@v2
         with:
           tool: semantic-release-cargo@2
@@ -140,15 +140,15 @@ jobs:
         run: echo "CARGO=cross" >> "$GITHUB_ENV"
 
       - name: Compile release binary
-        run: ${{ env.CARGO }} build --bin semantic-release-cargo --release --target ${{ matrix.build.target }} --verbose
+        run: ${{ env.CARGO }} build --bin rusty_cv_creator --release --target ${{ matrix.build.target }} --verbose
 
       - name: Create release archive
         run: |
           mkdir dist
-          cp target/${{ matrix.build.target }}/release/semantic-release-cargo dist/semantic-release-cargo-${{ matrix.build.target }}
+          cp target/${{ matrix.build.target }}/release/rusty_cv_creator dist/rusty_cv_creator-${{ matrix.build.target }}
 
       - name: Create binary checksum
-        run: shasum --algorithm 256 --binary semantic-release-cargo-${{ matrix.build.target }} | tee semantic-release-cargo-${{ matrix.build.target }}-SHA256SUM.txt
+        run: shasum --algorithm 256 --binary rusty_cv_creator-${{ matrix.build.target }} | tee rusty_cv_creator-${{ matrix.build.target }}-SHA256SUM.txt
         working-directory: ./dist
 
       - name: Upload release artifacts
@@ -156,8 +156,8 @@ jobs:
         with:
           name: ${{ matrix.build.target }}
           path: |
-            dist/semantic-release-cargo-${{ matrix.build.target }}
-            dist/semantic-release-cargo-${{ matrix.build.target }}-SHA256SUM.txt
+            dist/rusty_cv_creator-${{ matrix.build.target }}
+            dist/rusty_cv_creator-${{ matrix.build.target }}-SHA256SUM.txt
           if-no-files-found: error
           retention-days: 1
 
@@ -314,9 +314,9 @@ jobs:
       - name: Prepare native artifacts
         run: |
           mkdir napi/
-          mv artifacts/bindings-aarch64-apple-darwin/semantic-release-cargo.darwin-arm64.node napi/
-          mv artifacts/bindings-x86_64-apple-darwin/semantic-release-cargo.darwin-x64.node napi/
-          mv artifacts/bindings-x86_64-unknown-linux-gnu/semantic-release-cargo.linux-x64-gnu.node napi/
+          mv artifacts/bindings-aarch64-apple-darwin/rusty_cv_creator.darwin-arm64.node napi/
+          mv artifacts/bindings-x86_64-apple-darwin/rusty_cv_creator.darwin-x64.node napi/
+          mv artifacts/bindings-x86_64-unknown-linux-gnu/rusty_cv_creator.linux-x64-gnu.node napi/
 
       - name: ls napi
         run: ls -R ./napi
@@ -334,12 +334,12 @@ jobs:
           mv artifacts/x86_64-unknown-linux-musl dist/
 
       - name: Combine checksums
-        run: cat dist/**/semantic-release-cargo-*-SHA256SUM.txt | tee dist/SHA256SUMS.txt
+        run: cat dist/**/rusty_cv_creator-*-SHA256SUM.txt | tee dist/SHA256SUMS.txt
 
-      - name: Prepare semantic-release-cargo for local use
+      - name: Prepare rusty_cv_creator for local use
         run: |
-          cp dist/x86_64-unknown-linux-musl/semantic-release-cargo-x86_64-unknown-linux-musl ./semantic-release-cargo
-          chmod +x ./semantic-release-cargo
+          cp dist/x86_64-unknown-linux-musl/rusty_cv_creator-x86_64-unknown-linux-musl ./rusty_cv_creator
+          chmod +x ./rusty_cv_creator
 
       - name: Invoke semantic-release
         env:
