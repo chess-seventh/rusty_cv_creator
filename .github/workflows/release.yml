@@ -95,7 +95,7 @@ jobs:
 
       - name: Install build inputs
         if: runner.os == 'Linux' && !matrix.build.cross
-        run: sudo apt install musl-tools
+        run: sudo apt install musl-tools sqlite3 pq
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
