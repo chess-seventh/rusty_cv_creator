@@ -1,46 +1,89 @@
 ---
-name: Release
+name: Auto Semantic Release
 
 on:
   push:
     branches:
-      - master
-      - next
-      - next-major
-      - beta
-      - alpha
-      - "[0-9]+.[0-9]+.x"
-      - "[0-9]+.x"
-
-# Only allow one release workflow to execute at a time, since each release
-# workflow uses shared resources (git tags, package registries)
-concurrency:
-  group: ${{ github.workflow }}
-
-env:
-  APP_NAME: rusty_cv_creator
-  DEBUG: napi:*
-  RUST_BACKTRACE: 1
+      - master # or your default branch
 
 jobs:
-  get-next-version:
-    uses: semantic-release-action/next-release-version/.github/workflows/next-release-version.yml@v4
-
   release:
     runs-on: ubuntu-latest
-    name: Release
+
+    permissions:
+      contents: write # Allows pushing tags and creating releases
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v4
+      # 1. Check out the code
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      # 2. Install dependencies for parsing
+      #    cargo-bump (to update Cargo.toml) + jq (to parse JSON) + script dependencies
+      - name: Install cargo-bump and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          cargo install cargo-bump
+
+      # 3. Determine version bump (major|minor|patch)
+      - name: Determine bump level
+        id: semver
+        run: |
+          chmod +x .github/scripts/semver_bump.sh
+          BUMP_TYPE=$(.github/scripts/semver_bump.sh)
+          echo "Bump type: $BUMP_TYPE"
+          echo "::set-output name=bump_type::$BUMP_TYPE"
+
+      # 4. Check if there is any need to bump
+      #    If there were no commits with feat/fix/BREAKING, the script returns "patch" by default.
+      #    But if NOTHING changed, we might not want to do anything.
+      #    For demonstration, we proceed anyway.
+
+      # 5. Bump version in Cargo.toml (and Cargo.lock)
+      - name: Bump version
+        id: cargo_bump
+        run: |
+          cargo bump ${{ steps.semver.outputs.bump_type }}
+
+          # Get new version from cargo metadata
+          new_version=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].version')
+          echo "New version: $new_version"
+          echo "::set-output name=new_version::$new_version"
+
+      # 6. Configure git and commit
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add Cargo.toml Cargo.lock
+          # Only commit if there are changes
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: bump version to ${{ steps.cargo_bump.outputs.new_version }}"
+          else
+            echo "No changes to commit."
+          fi
+
+      # 7. Push commit and create a new tag
+      - name: Push commit and tag
+        run: |
+          # Push the commit to the current branch
+          git push origin HEAD
+
+          # Create and push the tag
+          TAG="v${{ steps.cargo_bump.outputs.new_version }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      # 8. Create GitHub Release
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
         with:
-          # You can specify specifying version range for the extra plugins if you prefer.
-          extra_plugins: |
-            @semantic-release/changelog@6.0.0
-            @semantic-release/git
+          tag_name: "v${{ steps.cargo_bump.outputs.new_version }}"
+          release_name: "Release v${{ steps.cargo_bump.outputs.new_version }}"
+          body: |
+            Changes since last release:
+            - Automated semantic version bump based on commit messages.
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
