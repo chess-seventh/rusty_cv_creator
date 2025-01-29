@@ -70,9 +70,6 @@ jobs:
       matrix:
         build:
           # alphabatized by target
-          - os: macOS-latest
-            target: aarch64-apple-darwin
-            cross: true
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             cross: true
@@ -85,9 +82,6 @@ jobs:
           - os: ubuntu-latest
             target: i686-unknown-linux-musl
             cross: true
-          - os: macOS-latest
-            target: x86_64-apple-darwin
-            cross: false
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             cross: false
@@ -173,21 +167,6 @@ jobs:
       fail-fast: false
       matrix:
         build:
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            script: |
-              sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
-              export CC=$(xcrun -f clang)
-              export CXX=$(xcrun -f clang++)
-              SYSROOT=$(xcrun --sdk macosx --show-sdk-path)
-              export CFLAGS="-isysroot $SYSROOT -isystem $SYSROOT"
-              ./node_modules/.bin/napi build --platform --release --strip --js false --features napi-rs --cargo-flags=--lib --target aarch64-apple-darwin
-              strip -x *.node
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            script: |
-              ./node_modules/.bin/napi build --platform --release --strip --js false --features napi-rs --cargo-flags=--lib --target x86_64-apple-darwin
-              strip -x *.node
           # Use the oldest Ubuntu runner to bring in the oldest glibc version.
           # This ensures the Node.js native module is compatible with as many
           # runtime targets as possible.
@@ -314,8 +293,6 @@ jobs:
       - name: Prepare native artifacts
         run: |
           mkdir napi/
-          mv artifacts/bindings-aarch64-apple-darwin/rusty_cv_creator.darwin-arm64.node napi/
-          mv artifacts/bindings-x86_64-apple-darwin/rusty_cv_creator.darwin-x64.node napi/
           mv artifacts/bindings-x86_64-unknown-linux-gnu/rusty_cv_creator.linux-x64-gnu.node napi/
 
       - name: ls napi
@@ -324,12 +301,10 @@ jobs:
       - name: Prepare GitHub Release artifacts
         run: |
           mkdir dist/
-          mv artifacts/aarch64-apple-darwin dist/
           mv artifacts/aarch64-unknown-linux-gnu dist/
           mv artifacts/aarch64-unknown-linux-musl dist/
           mv artifacts/i686-unknown-linux-gnu dist/
           mv artifacts/i686-unknown-linux-musl dist/
-          mv artifacts/x86_64-apple-darwin dist/
           mv artifacts/x86_64-unknown-linux-gnu dist/
           mv artifacts/x86_64-unknown-linux-musl dist/
 
