@@ -5,18 +5,12 @@ set -euo pipefail
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
 if [ -z "$LAST_TAG" ]; then
-  # echo "No existing tags found. We'll treat all commits as new since the start of the repo."
   # Gather all commits in the repo
   COMMITS=$(git log --pretty=format:"%s%n%b" | tr '\n' ' ')
 else
-  # echo "Last tag: ${LAST_TAG}"
   # Gather all commits since LAST_TAG
   COMMITS=$(git log "${LAST_TAG}"..HEAD --pretty=format:"%s%n%b" | tr '\n' ' ')
 fi
-
-# echo "Commits analyzed:"
-# echo "${COMMITS}"
-# echo
 
 # Initialize bump levels
 BUMP_MAJOR=0
