@@ -901,7 +901,7 @@ checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
 
 [[package]]
 name = "rusty_cv_creator"
-version = "0.5.7"
+version = "0.7.0"
 dependencies = [
  "chrono",
  "clap",
