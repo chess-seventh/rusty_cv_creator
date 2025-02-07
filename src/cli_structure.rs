@@ -1,4 +1,4 @@
-use crate::global_conf::GlobalVars;
+use crate::global_conf::GLOBAL_VAR;
 use crate::user_action::{insert_cv, remove_cv};
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand};
@@ -30,7 +30,7 @@ pub struct UserInput {
 
     /// Database engine (supports only postgresql and sqlite)
     #[arg(short, long, default_value_t = String::from("sqlite"))]
-    pub db_engine: String,
+    pub engine: String,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -63,7 +63,7 @@ pub struct FilterArgs {
 }
 
 pub fn match_user_action() -> String {
-    let input = GlobalVars::get_user_input();
+    let input = GLOBAL_VAR.get().unwrap().get_user_input();
     match input.action {
         UserAction::Insert(_insert) => insert_cv(),
         // UserAction::Show(_show) => show_cvs(&filters),

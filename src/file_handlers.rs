@@ -1,5 +1,5 @@
 use crate::config_parse::get_variable_from_config;
-use crate::global_conf::GlobalVars;
+use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
 use chrono::{DateTime, Local};
 use log::{error, info};
@@ -22,14 +22,14 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     info!("CV_FILE: {cv_file}");
 
     if check_dir_exists(cv_dir) {
-        info!("✅ Directory exists")
+        info!("✅ Directory exists");
     } else {
         error!("Directory does not exist");
         panic!("Directory does not exist");
     };
 
     if check_file_exists(cv_dir, cv_file) {
-        info!("✅ File exists")
+        info!("✅ File exists");
     } else {
         error!("File does not exist");
         panic!("File does not exist");
@@ -38,7 +38,7 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     let cmd_output = Command::new("xelatex")
         .arg(cv_file)
         .current_dir(cv_dir)
-        .stdout(Stdio::null())
+        // .stdout(Stdio::null())
         .status()
         .expect("Failed to run XELATEX");
 
@@ -62,10 +62,11 @@ pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path
     }
 }
 
+// TODO: function should return Result
 pub fn create_directory(job_title: &str, company_name: &str) -> String {
     let destination_folder =
         fix_home_directory_path(&get_variable_from_config("destination", "cv_path"));
-    let now = GlobalVars::get_today();
+    let now = GLOBAL_VAR.get().unwrap().get_today();
 
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
@@ -90,11 +91,12 @@ pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+// TODO: function should return Result
 fn prepare_path_for_new_cv(
     job_title: &str,
     company_name: &str,
     destination_folder: &str,
-    now: DateTime<Local>,
+    now: &DateTime<Local>,
 ) -> (String, String) {
     let cv_template_path: String =
         fix_home_directory_path(&get_variable_from_config("cv", "cv_template_path"));
@@ -113,7 +115,7 @@ fn prepare_path_for_new_cv(
     (cv_template_path, full_destination_path)
 }
 
-fn prepare_year_dir(destination_folder: &String, now: DateTime<Local>) -> Result<String, Error> {
+fn prepare_year_dir(destination_folder: &String, now: &DateTime<Local>) -> Result<String, Error> {
     let year_full_dir = format!("{}/{}", destination_folder, now.format("%Y"));
     fs::create_dir_all(year_full_dir.clone())?;
     Ok(clean_string_from_quotes(&year_full_dir.clone()))
@@ -165,6 +167,7 @@ fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String
     cv_file_content.replace(replace_quote.as_str(), quote)
 }
 
+// TODO: function should return Result
 pub fn remove_created_dir_from_pro(
     job_title: &str,
     company_name: &str,
@@ -173,8 +176,8 @@ pub fn remove_created_dir_from_pro(
 ) {
     // Remove directory and keep only the pdf file
     let path_created_dir = Path::new(&created_cv_dir);
-    let application_date = GlobalVars::get_today_str_yyyy_mm_dd();
-    let application_year = GlobalVars::get_year_str();
+    let application_date = GLOBAL_VAR.get().unwrap().get_today_str_yyyy_mm_dd();
+    let application_year = GLOBAL_VAR.get().unwrap().get_year_str();
 
     let pdf_file_name = destination_cv_file_full_path.replace(".tex", ".pdf");
     let mut remove_dir_of_cv_path = Path::new(&created_cv_dir)
@@ -201,6 +204,7 @@ pub fn remove_created_dir_from_pro(
     remove_cv_dir(path_created_dir).unwrap();
 }
 
+// TODO: function should return Result
 fn copy_to_destination(
     created_cv_dir: &String,
     pdf_file_name: String,
@@ -223,3 +227,37 @@ fn copy_to_destination(
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_directory_validity() {
+        let result = check_dir_exists("/home/seventh/");
+        assert!(result);
+    }
+
+    #[test]
+    fn test_directory_is_invalid() {
+        let result = check_dir_exists("/home/seventh/doesnotexist/");
+        assert!(!result);
+    }
+
+    #[test]
+    fn test_file_validity() {
+        let result = check_file_exists(
+            "/home/seventh/.config/rusty-cv-creator/",
+            "rusty-cv-config.ini",
+        );
+        assert!(result);
+    }
+
+    #[test]
+    fn test_file_validity_is_invalid() {
+        let result = check_file_exists(
+            "/home/seventh/.config/rusty-cv-creator/",
+            "doesnotexist.ini",
+        );
+        assert!(!result);
+    }
+}

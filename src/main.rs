@@ -21,7 +21,7 @@ fn main() {
 
     let user_input = UserInput::parse();
 
-    set_global_vars(user_input.clone());
+    set_global_vars(&user_input.clone());
     check_if_db_env_is_set_or_set_from_config();
 
     let cv_full_path = match_user_action();
@@ -46,8 +46,12 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> String {
     make_cv_changes_based_on_input(job_title, quote, &destination_cv_file_full_path);
     compile_cv(&created_cv_dir, &cv_template_file);
 
-    file_handlers::remove_created_dir_from_pro(job_title, company_name, &created_cv_dir, &destination_cv_file_full_path);
+    file_handlers::remove_created_dir_from_pro(
+        job_title,
+        company_name,
+        &created_cv_dir,
+        &destination_cv_file_full_path,
+    );
 
     destination_cv_file_full_path
 }
-
