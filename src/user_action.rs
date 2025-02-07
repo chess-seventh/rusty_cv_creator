@@ -1,13 +1,14 @@
-use log::{info, warn, error};
-use std::path::Path;
-use diesel::prelude::*;
 use crate::cli_structure::FilterArgs;
-use crate::global_conf::GlobalVars;
+use crate::database::{
+    establish_connection_postgres, read_cv_from_database, save_new_cv_to_database,
+};
+use crate::file_handlers;
+use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::my_fzf;
 use crate::prepare_cv;
-use crate::database::{establish_connection_postgres, read_cv_from_database, save_new_cv_to_database};
-use crate::file_handlers;
-
+use diesel::prelude::*;
+use log::{error, info, warn};
+use std::path::Path;
 
 pub fn show_cvs(filters: &FilterArgs) -> String {
     // TODO: apply filters
@@ -40,10 +41,10 @@ pub fn remove_cv(filters: &FilterArgs) {
 }
 
 pub fn insert_cv() -> String {
-    let save_to_db = GlobalVars::get_user_input_save_to_db();
-    let job_title = GlobalVars::get_user_job_title();
-    let company_name = GlobalVars::get_user_input_company_name();
-    let quote = GlobalVars::get_user_input_quote();
+    let save_to_db = GLOBAL_VAR.get().unwrap().get_user_input_save_to_db();
+    let job_title = GLOBAL_VAR.get().unwrap().get_user_job_title();
+    let company_name = GLOBAL_VAR.get().unwrap().get_user_input_company_name();
+    let quote = GLOBAL_VAR.get().unwrap().get_user_input_quote();
     let destination_cv_file_full_path = prepare_cv(&job_title, &company_name, &quote);
 
     if save_to_db {
@@ -67,4 +68,3 @@ pub fn insert_cv() -> String {
 // pub fn list_cvs(_filter_date: NaiveDateTime, _filter_word: String) {
 //     println!("Running list_cvs!");
 // }
-
