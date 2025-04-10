@@ -77,3 +77,119 @@ pub fn get_db_configurations() -> String {
     db_path.push_str(db_file.as_str());
     db_path
 }
+// ---------------------------------------------------------------------------
+// The following tests use dummy implementations of `UserInput` and `GlobalVars`
+// to allow testing without external dependencies. In your actual code, use the
+// real implementations from `cli_structure` and `global_conf`.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Local;
+    use configparser::ini::Ini;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    // Dummy UserInput for testing purposes.
+    #[derive(Clone, Default)]
+    struct DummyUserInput {
+        pub config_ini: String,
+        // Other fields as needed.
+    }
+    impl From<DummyUserInput> for UserInput {
+        fn from(input: DummyUserInput) -> Self {
+            // In real code, fill in all the fields appropriately.
+            UserInput {
+                config_ini: input.config_ini,
+                ..Default::default()
+            }
+        }
+    }
+    type UserInput = DummyUserInput;
+
+    // Dummy GlobalVars for testing purposes.
+    #[derive(Default, Clone)]
+    pub struct TestGlobalVars {
+        config: Ini,
+    }
+    impl TestGlobalVars {
+        pub fn new() -> Self {
+            Self { config: Ini::new() }
+        }
+        pub fn set_all(
+            &mut self,
+            config: Ini,
+            _today: chrono::DateTime<Local>,
+            _user_input: UserInput,
+        ) {
+            self.config = config;
+        }
+        pub fn get_config(&self) -> &Ini {
+            &self.config
+        }
+    }
+    // For testing, we alias GlobalVars to our dummy implementation.
+    type GlobalVars = TestGlobalVars;
+
+    #[test]
+    fn test_load_config_success() {
+        let config_str = r#"
+            [section]
+            key = "value"
+        "#;
+        let ini = load_config(config_str).expect("Failed to load config");
+        let value = ini.get("section", "key").expect("Key not found");
+        // Assuming that `clean_string_from_quotes` strips the quotes.
+        assert_eq!(clean_string_from_quotes(&value), "value");
+    }
+
+    #[test]
+    fn test_get_variable_from_config_success() {
+        let mut ini = Ini::new();
+        ini.set("test", "var", Some("/home/user".to_string()));
+        let mut global_vars = GlobalVars::new();
+        global_vars.set_all(ini, Local::now(), UserInput::default());
+
+        let var =
+            get_variable_from_config(&global_vars, "test", "var").expect("Failed to get variable");
+        // Assuming that the helper functions return the input unchanged in tests.
+        assert_eq!(var, "/home/user");
+    }
+
+    #[test]
+    fn test_get_db_configurations_success() {
+        let mut ini = Ini::new();
+        ini.set("db", "db_path", Some("/home/user".to_string()));
+        ini.set("db", "db_file", Some("database.sqlite".to_string()));
+        let mut global_vars = GlobalVars::new();
+        global_vars.set_all(ini, Local::now(), UserInput::default());
+
+        let db_config =
+            get_db_configurations(&global_vars).expect("Failed to get db configurations");
+        // Expected: "/home/user/database.sqlite"
+        assert_eq!(db_config, "/home/user/database.sqlite");
+    }
+
+    #[test]
+    fn test_load_global_vars_success() {
+        // Create a temporary configuration file.
+        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
+        let config_content = r#"
+            [section]
+            key = "value"
+        "#;
+        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
+        let file_path = temp_file.path().to_str().unwrap().to_string();
+
+        let user_input = UserInput {
+            config_ini: file_path,
+            ..Default::default()
+        };
+
+        // For testing we assume `check_file_exists` returns the given path.
+        let global_vars = load_global_vars(&user_input).expect("Failed to load global vars");
+        let value = get_variable_from_config(&global_vars, "section", "key")
+            .expect("Failed to get variable");
+        assert_eq!(value, "value");
+    }
+}

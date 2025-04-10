@@ -96,6 +96,7 @@ pub struct UserFilters {
     pub date: Option<String>,
 }
 
+// TODO: this function should parse the user input when filtering or listing cv.
 fn _parse_date(input: &str) -> Result<String, String> {
     let formats = [
         "%Y",       // Year
