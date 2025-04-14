@@ -65,8 +65,11 @@ pub struct FilterArgs {
 pub fn match_user_action() -> String {
     let input = GLOBAL_VAR.get().unwrap().get_user_input();
     match input.action {
-        UserAction::Insert(_insert) => insert_cv(),
-        // UserAction::Show(_show) => show_cvs(&filters),
+        UserAction::Insert(_insert) => match insert_cv() {
+            Ok(s) => s,
+            Err(e) => panic!("{e:?}"),
+        },
+
         UserAction::Remove(filters) => {
             remove_cv(&filters);
             let out = format!("filter args for LIST: {filters:?}");

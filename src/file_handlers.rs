@@ -63,27 +63,43 @@ pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path
 }
 
 // TODO: function should return Result
-pub fn create_directory(job_title: &str, company_name: &str) -> String {
-    let destination_folder =
-        fix_home_directory_path(&get_variable_from_config("destination", "cv_path"));
+pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, String> {
+    let var = match get_variable_from_config("destination", "cv_path") {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Could not get cv_path variable: {e:?}");
+            return Err("Could not get cv_path variable: {e:?}".to_string());
+        }
+    };
+
+    let destination_folder = fix_home_directory_path(&var);
     let now = GLOBAL_VAR.get().unwrap().get_today();
 
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
-        Err(e) => panic!("Error creating year directory: {e}"),
+        Err(e) => {
+            error!("Error creating year directory: {e}");
+            return Err("Error creating year directory: {e}".to_string());
+        }
     }
 
     let (cv_template_path, full_destination_path) =
-        prepare_path_for_new_cv(job_title, company_name, &destination_folder, now);
+        match prepare_path_for_new_cv(job_title, company_name, &destination_folder, now) {
+            Ok(s) => s,
+            Err(e) => {
+                error!("{e:?}");
+                return Err("{e:?}".to_string());
+            }
+        };
 
     match copy_dir::copy_dir(cv_template_path, full_destination_path.clone()) {
         Ok(_) => info!("✅ Directory created & copied successfully"),
         Err(e) => {
             error!("Error copying directory: {e}");
-            panic!("Error copying directory: {e}");
+            return Err("Error copying directory: {e}".to_string());
         }
     }
-    full_destination_path
+    Ok(full_destination_path)
 }
 
 pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
@@ -91,15 +107,21 @@ pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-// TODO: function should return Result
 fn prepare_path_for_new_cv(
     job_title: &str,
     company_name: &str,
     destination_folder: &str,
     now: &DateTime<Local>,
-) -> (String, String) {
-    let cv_template_path: String =
-        fix_home_directory_path(&get_variable_from_config("cv", "cv_template_path"));
+) -> Result<(String, String), String> {
+    let var = match get_variable_from_config("cv", "cv_template_path") {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Could not get cv_template_path variable {e:?}");
+            return Err("Could not get cv_template_path variable {e:?}".to_string());
+        }
+    };
+
+    let cv_template_path: String = fix_home_directory_path(&var);
 
     let formatted_job_title = job_title.replace(' ', "-");
     let formatted_company_name = company_name.replace(' ', "-");
@@ -112,7 +134,7 @@ fn prepare_path_for_new_cv(
     info!("✅ Creating directory: {full_destination_path}");
     info!("✅ Copying from: {}", cv_template_path.clone());
 
-    (cv_template_path, full_destination_path)
+    Ok((cv_template_path, full_destination_path))
 }
 
 fn prepare_year_dir(destination_folder: &String, now: &DateTime<Local>) -> Result<String, Error> {
@@ -140,7 +162,13 @@ fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, _quot
 }
 
 fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> String {
-    let replace_position = get_variable_from_config("to_replace", "position_line_to_change");
+    let replace_position = match get_variable_from_config("to_replace", "position_line_to_change") {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Could not get the position_line_to_change variable {e:?}");
+            panic!("Could not get the position_line_to_change variable {e:?}");
+        }
+    };
 
     info!("✅ Changed position from: {replace_position} to: {job_title}");
 
@@ -152,7 +180,14 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
 }
 
 fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
-    let replace_quote = get_variable_from_config("to_replace", "quote_line_to_change");
+    let replace_quote = match get_variable_from_config("to_replace", "quote_line_to_change") {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Could not get the quote_line_to_change variable: {e:?}");
+            panic!("Could not get the quote_line_to_change variable: {e:?}");
+        }
+    };
+
     if quote.is_empty() {
         info!("✅ Removing quote");
 

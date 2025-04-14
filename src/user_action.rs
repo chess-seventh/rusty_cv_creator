@@ -1,7 +1,5 @@
 use crate::cli_structure::FilterArgs;
-use crate::database::{
-    establish_connection_postgres, read_cv_from_database, save_new_cv_to_database,
-};
+use crate::database::{establish_connection_postgres, read_cv_from_db, save_new_cv_to_db};
 use crate::file_handlers;
 use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::my_fzf;
@@ -13,7 +11,7 @@ use std::path::Path;
 pub fn show_cvs(filters: &FilterArgs) -> String {
     // TODO: apply filters
     println!("TODO: apply these filters: {filters:?}");
-    let pdfs = read_cv_from_database(filters);
+    let pdfs = read_cv_from_db(filters);
     my_fzf(pdfs)
 }
 
@@ -40,21 +38,39 @@ pub fn remove_cv(filters: &FilterArgs) {
     }
 }
 
-pub fn insert_cv() -> String {
-    let save_to_db = GLOBAL_VAR.get().unwrap().get_user_input_save_to_db();
-    let job_title = GLOBAL_VAR.get().unwrap().get_user_job_title();
-    let company_name = GLOBAL_VAR.get().unwrap().get_user_input_company_name();
-    let quote = GLOBAL_VAR.get().unwrap().get_user_input_quote();
-    let destination_cv_file_full_path = prepare_cv(&job_title, &company_name, &quote);
+pub fn insert_cv() -> Result<String, String> {
+    let global_var = if let Some(v) = GLOBAL_VAR.get() {
+        info!("Could get GLOBAL_VAR");
+        v
+    } else {
+        error!("Could not get GLOBAL_VAR, something is wrong");
+        return Err("Could not get GLOBAL_VAR, something is wrong".to_string());
+    };
+
+    let save_to_db = global_var.get_user_input_save_to_db();
+
+    let job_title = global_var.get_user_job_title();
+
+    let company_name = global_var.get_user_input_company_name();
+
+    let quote = global_var.get_user_input_quote();
+
+    let destination_cv_file_full_path = match prepare_cv(&job_title, &company_name, &quote) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Could not get the destination_cv_file_full_path: {e:?}");
+            return Err("Could not get the destination_cv_file_full_path: {e:?}".to_string());
+        }
+    };
 
     if save_to_db {
-        let _db_cv = save_new_cv_to_database(&destination_cv_file_full_path);
+        let _db_cv = save_new_cv_to_db(&destination_cv_file_full_path);
         info!("Saved CV to database");
     } else {
         warn!("CV NOT SAVED TO DATABASE!");
     }
 
-    destination_cv_file_full_path
+    Ok(destination_cv_file_full_path)
 }
 
 // pub fn list_cvs_by_date(_filter_date: NaiveDateTime) {
