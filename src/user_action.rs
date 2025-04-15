@@ -9,7 +9,8 @@ use log::{error, info, warn};
 use std::path::Path;
 
 pub fn show_cvs(filters: &FilterArgs) -> String {
-    // TODO: apply filters
+    // TODO:
+    // apply filters
     println!("TODO: apply these filters: {filters:?}");
     let pdfs = read_cv_from_db(filters);
     my_fzf(pdfs)

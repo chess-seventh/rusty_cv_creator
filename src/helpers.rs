@@ -1,5 +1,4 @@
-use log::error;
-use log::info;
+use log::{error, info};
 use std::fs;
 use std::process::{Command, Stdio};
 
@@ -25,7 +24,8 @@ pub fn fix_home_directory_path(file_path: &str) -> String {
 pub fn check_file_exists(file_path: &str) -> Result<String, &str> {
     let fixed_file_path = fix_home_directory_path(file_path);
 
-    // TODO if db file does not exist, create it
+    // TODO
+    // if db file does not exist, create it
     // if fs::metadata(file_path).is_err() {
     //     panic!("File {} does not exist", file_path)
     // };
