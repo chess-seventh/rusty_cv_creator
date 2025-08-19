@@ -175,12 +175,6 @@
   };
 
   enterShell = ''
-    export CARGO_HOME="$DEVENV_ROOT/backend/.cargo"
-    export CARGO_TARGET_DIR="$CARGO_HOME/bin"
-
-    # Link the rust stdlib sources to a defined path to ease IDEs integration
-    ln -sfT "$RUST_SRC_PATH" "$DEVENV_ROOT/backend/.rust-src"
-
     echo
     echo 💡 Helper scripts to ease development process:
     echo
