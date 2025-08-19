@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.2.0...v1.3.0) (2025-08-19)
+
+
+### Features
+
+* Update .env for new DB server and API key ([9e28fd5](https://github.com/chess-seventh/rusty_cv_creator/commit/9e28fd5c064df601d1b9ce6fb63a9117d6c1c1fa))
+
 ## [1.2.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.1.0...v1.2.0) (2025-08-19)
 
 
