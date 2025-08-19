@@ -3,6 +3,9 @@ use core::panic;
 use clap::Parser;
 use dotenvy::dotenv;
 use log::{error, info};
+use std::io::{self, ErrorKind};
+use std::process::Command;
+
 mod cli_structure;
 mod config_parse;
 mod database;
@@ -21,6 +24,12 @@ use crate::helpers::{
 fn main() {
     env_logger::init();
     dotenv().ok();
+
+    match is_tailscale_connected() {
+        Ok(true) => println!("Device is connected to Tailscale!"),
+        Ok(false) => println!("Device is NOT connected to Tailscale."),
+        Err(e) => eprintln!("Error: {:?}", e),
+    }
 
     let user_input = UserInput::parse();
 
@@ -86,4 +95,27 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> Result<String
     );
 
     Ok(destination_cv_file_full_path)
+}
+
+/// Checks if the device is connected to Tailscale.
+/// Returns true if up, false if not, or Err if unable to check.
+fn is_tailscale_connected() -> io::Result<bool> {
+    let output = Command::new("sudo").arg("tailscale").arg("status").output();
+
+    match output {
+        Ok(out) => {
+            if out.status.success() {
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                // Tailscale outputs "Logged out." if disconnected,
+                // and network details if connected
+                Ok(!stdout.contains("Logged out."))
+            } else {
+                Err(io::Error::new(
+                    ErrorKind::Other,
+                    "tailscale status command failed",
+                ))
+            }
+        }
+        Err(e) => Err(e),
+    }
 }
