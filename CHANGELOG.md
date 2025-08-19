@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.0.0...v1.1.0) (2025-07-26)
+
+
+### Features
+
+* add error handling for most functions ([7e708bf](https://github.com/chess-seventh/rusty_cv_creator/commit/7e708bf74cc3520eaf13d46dbd096071e0924bc8))
+* continue adding error handling ([a8ab4c4](https://github.com/chess-seventh/rusty_cv_creator/commit/a8ab4c415f4aaa74d12c61e64b6b7508451aea1e))
+* **crate:** anyhow for errors ([983b3d0](https://github.com/chess-seventh/rusty_cv_creator/commit/983b3d0c42fb19a631399abd80a310aa93a82de1))
+
 ## [1.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v0.7.0...v1.0.0) (2025-02-07)
 
 
