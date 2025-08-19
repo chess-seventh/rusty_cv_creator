@@ -22,18 +22,18 @@
     jq
     curl
     gnused
-    nodejs
-    gcc
-    openssl
     # pkgs.rustup
     # pkgs.rust-analyzer
     # ruststable
-    cmake
     zlib
     sqlite
     texlive.combined.scheme-small
     diesel-cli
     postgresql
+
+    # cmake
+    # gcc
+    # openssl
   ];
 
   # https://devenv.sh/languages/
