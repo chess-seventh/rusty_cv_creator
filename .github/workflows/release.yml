@@ -20,7 +20,7 @@ jobs:
 
           # The name of your package (as in Cargo.toml [package] name).
           # If you have just one crate in the repo, this is typically fine to set or omit.
-          package-name: rusty_cv_creator
+          # package-name: rusty_cv_creator
 
           # Provide GitHub token to create PRs, tags, releases, etc.
           token: ${{ secrets.GITHUB_TOKEN }}
