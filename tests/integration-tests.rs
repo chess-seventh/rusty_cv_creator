@@ -14,17 +14,17 @@ use rusty_cv_creator::*;
 
 mod integration_helpers {
     use super::*;
-    
+
     pub struct TestEnvironment {
         pub temp_dir: TempDir,
         pub config_file: String,
         pub db_path: String,
     }
-    
+
     impl TestEnvironment {
         pub fn setup() -> Self {
             let temp_dir = TempDir::new().expect("Failed to create temp dir");
-            
+
             // Create config file
             let config_content = format!(r#"
 [destination]
