@@ -2,7 +2,7 @@ use crate::cli_structure::FilterArgs;
 use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::{check_if_db_env_is_set_or_set_from_config, fix_home_directory_path};
 use diesel::prelude::*;
-use log::info;
+use log::{error, info};
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
 use rusty_cv_creator::schema::cv;
@@ -15,6 +15,7 @@ pub enum _ConnectionType {
     Sqlite(SqliteConnection),
 }
 
+#[allow(clippy::used_underscore_items)]
 fn _define_connection_type(worker_type: &str) -> _ConnectionType {
     match worker_type {
         "postgres" => _ConnectionType::Postgres(establish_connection_postgres()),
@@ -31,9 +32,13 @@ pub fn establish_connection_postgres() -> PgConnection {
 
 pub fn _establish_connection_sqlite() -> SqliteConnection {
     let database_url = &env::var("DATABASE_URL").unwrap_or_else(|_| {
-        check_if_db_env_is_set_or_set_from_config();
+        match check_if_db_env_is_set_or_set_from_config() {
+            Ok(_v) => info!("Fetched the DATABASE_URL env variable"),
+            Err(v) => panic!("{}", v),
+        };
         env::var("DATABASE_URL").unwrap()
     });
+
     let db = fix_home_directory_path(database_url);
     println!("{db:?}");
     SqliteConnection::establish(&db)
@@ -71,22 +76,30 @@ fn check_if_entry_exists(g_job_title: &str, g_company: &str, g_quote: &str) -> O
     }
 }
 
-pub fn save_new_cv_to_database(cv_path: &str) -> Cv {
+pub fn save_new_cv_to_db(cv_path: &str) -> Result<Cv, &str> {
     // let db_engine = GlobalVars::get_db_engine();
     // let conn = &mut define_connection_type("sqlite").unwrap();
 
-    let job_title = GLOBAL_VAR.get().unwrap().get_user_job_title();
-    let company = GLOBAL_VAR.get().unwrap().get_user_input_company_name();
-    let quote = GLOBAL_VAR.get().unwrap().get_user_input_quote();
+    let global_var = if let Some(v) = GLOBAL_VAR.get() {
+        info!("Could get GLOBAL_VAR");
+        v
+    } else {
+        error!("Could not get GLOBAL_VAR, something is wrong");
+        return Err("Could not get GLOBAL_VAR, something is wrong");
+    };
 
-    let application_date = GLOBAL_VAR.get().unwrap().get_today_str();
+    let job_title = global_var.get_user_job_title();
+    let company = global_var.get_user_input_company_name();
+    let quote = global_var.get_user_input_quote();
+
+    let application_date = global_var.get_today_str();
 
     let conn = &mut establish_connection_postgres();
 
     if let Some(id) = check_if_entry_exists(&job_title, &company, &quote) {
         info!("Entry already exists with id: {id}");
 
-        return cv::table.find(id).first(conn).expect("Error loading CV");
+        return Ok(cv::table.find(id).first(conn).expect("Error loading CV"));
     }
 
     let new_cv = NewCv {
@@ -98,14 +111,14 @@ pub fn save_new_cv_to_database(cv_path: &str) -> Cv {
         generated: true,
     };
 
-    diesel::insert_into(cv::table)
+    Ok(diesel::insert_into(cv::table)
         .values(&new_cv)
         .returning(Cv::as_returning())
         .get_result(conn)
-        .expect("Error saving new CV")
+        .expect("Error saving new CV"))
 }
 
-pub fn read_cv_from_database(filters: &FilterArgs) -> Vec<String> {
+pub fn read_cv_from_db(filters: &FilterArgs) -> Vec<String> {
     use rusty_cv_creator::schema::cv::dsl::cv;
 
     let conn = &mut establish_connection_postgres();

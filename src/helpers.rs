@@ -1,5 +1,4 @@
-use log::error;
-use log::info;
+use log::{error, info};
 use std::fs;
 use std::process::{Command, Stdio};
 
@@ -22,45 +21,68 @@ pub fn fix_home_directory_path(file_path: &str) -> String {
     }
 }
 
-pub fn check_file_exists(file_path: &str) -> String {
+pub fn check_file_exists(file_path: &str) -> Result<String, &str> {
     let fixed_file_path = fix_home_directory_path(file_path);
 
-    // TODO if db file does not exist, create it
+    // TODO
+    // if db file does not exist, create it
     // if fs::metadata(file_path).is_err() {
     //     panic!("File {} does not exist", file_path)
     // };
 
-    assert!(
-        fs::metadata(fixed_file_path.clone()).is_ok(),
-        "File {file_path} does not exist"
-    );
-    fixed_file_path
+    if fs::metadata(fixed_file_path.clone()).is_ok() {
+        Ok(fixed_file_path)
+    } else {
+        println!("Could not check if file exists");
+        Err("File does not exist!")
+    }
 }
 
-pub fn check_if_db_env_is_set_or_set_from_config() {
-    let engine = GLOBAL_VAR.get().unwrap().get_user_input_db_engine();
+pub fn check_if_db_env_is_set_or_set_from_config() -> Result<bool, String> {
+    let engine = match GLOBAL_VAR.get() {
+        Some(eng) => eng.get_user_input_db_engine(),
+        None => return Err("Could not get the DATABASE_URL env variable !".to_string()),
+    };
 
     if engine == "postgres" {
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
+            Ok(true)
         } else {
             let db_url = GLOBAL_VAR.get().unwrap().get_user_input_db_url();
             std::env::set_var("DATABASE_URL", db_url);
+            Ok(true)
         }
     } else {
         let db_path = get_db_configurations();
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
+            Ok(true)
         } else {
             std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
+            Ok(true)
         }
     }
 }
 
-pub fn view_cv_file(cv_path: &str) {
-    let file_name = get_variable_from_config("cv", "cv_template_file").to_string();
+pub fn view_cv_file(cv_path: &str) -> Result<bool, &str> {
+    let file_name = match get_variable_from_config("cv", "cv_template_file") {
+        Ok(s) => s.to_string(),
+        Err(e) => {
+            error!("Could not get the cv_template_file variable: {e:?}");
+            return Err("Could not get the cv_template_file variable: {e:?}");
+        }
+    };
+
     let cv_dir = cv_path.to_string().replace(&file_name, "");
-    let pdf_viewer = get_variable_from_config("optional", "pdf_viewer");
+
+    let pdf_viewer = match get_variable_from_config("optional", "pdf_viewer") {
+        Ok(s) => s,
+        Err(e) => {
+            panic!("Could not the pdf_viewer variable: {e:?}")
+        }
+    };
+
     let pdf_file = cv_path.replace(".tex", ".pdf");
 
     match Command::new(pdf_viewer)
@@ -69,8 +91,14 @@ pub fn view_cv_file(cv_path: &str) {
         .arg(pdf_file)
         .spawn()
     {
-        Ok(_) => info!("CV compiled successfully"),
-        Err(e) => error!("Error compiling CV: {e}"),
+        Ok(_) => {
+            info!("CV compiled successfully");
+            Ok(true)
+        }
+        Err(e) => {
+            error!("Error compiling CV: {e}");
+            Err("Error compiling CV: {e}")
+        }
     }
 }
 
