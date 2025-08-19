@@ -26,14 +26,14 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     } else {
         error!("Directory does not exist");
         panic!("Directory does not exist");
-    };
+    }
 
     if check_file_exists(cv_dir, cv_file) {
         info!("✅ File exists");
     } else {
         error!("File does not exist");
         panic!("File does not exist");
-    };
+    }
 
     let cmd_output = Command::new("xelatex")
         .arg(cv_file)

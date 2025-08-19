@@ -26,7 +26,7 @@ pub fn set_global_vars(user_input: &UserInput) -> Result<&str, &str> {
             error!("Something went wrong when trying to set the GLOBAL_VAR: {e:?}");
             return Err("Something went wrong when trying to set the GLOBAL_VAR: {e:?}");
         }
-    };
+    }
 
     let global_vars = if let Some(v) = GLOBAL_VAR.get() {
         info!("Could get GLOBAL_VAR");

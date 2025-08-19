@@ -35,7 +35,7 @@ pub fn _establish_connection_sqlite() -> SqliteConnection {
         match check_if_db_env_is_set_or_set_from_config() {
             Ok(_v) => info!("Fetched the DATABASE_URL env variable"),
             Err(v) => panic!("{}", v),
-        };
+        }
         env::var("DATABASE_URL").unwrap()
     });
 

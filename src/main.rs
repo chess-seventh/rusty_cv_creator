@@ -3,7 +3,7 @@ use core::panic;
 use clap::Parser;
 use dotenvy::dotenv;
 use log::{error, info};
-use std::io::{self, ErrorKind};
+use std::io::{self};
 use std::process::Command;
 
 mod cli_structure;
@@ -28,7 +28,7 @@ fn main() {
     match is_tailscale_connected() {
         Ok(true) => println!("Device is connected to Tailscale!"),
         Ok(false) => println!("Device is NOT connected to Tailscale."),
-        Err(e) => eprintln!("Error: {:?}", e),
+        Err(e) => eprintln!("Error: {e:?}"),
     }
 
     let user_input = UserInput::parse();
@@ -36,12 +36,12 @@ fn main() {
     match set_global_vars(&user_input.clone()) {
         Ok(o) => info!("all good: {o}"),
         Err(e) => panic!("could not set global vars {e}"),
-    };
+    }
 
     match check_if_db_env_is_set_or_set_from_config() {
         Ok(_v) => info!("Fetched the DATABASE_URL env variable"),
         Err(v) => panic!("{}", v),
-    };
+    }
 
     let cv_full_path = match_user_action();
 
@@ -110,10 +110,7 @@ fn is_tailscale_connected() -> io::Result<bool> {
                 // and network details if connected
                 Ok(!stdout.contains("Logged out."))
             } else {
-                Err(io::Error::new(
-                    ErrorKind::Other,
-                    "tailscale status command failed",
-                ))
+                Err(io::Error::other("tailscale status command failed"))
             }
         }
         Err(e) => Err(e),
