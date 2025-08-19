@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.1.0...v1.2.0) (2025-08-19)
+
+
+### Features
+
+* add gitignore file for devenv approach ([fef6db6](https://github.com/chess-seventh/rusty_cv_creator/commit/fef6db6e91a6fa39dc0ca651e5c7d5c170032bd7))
+
 ## [1.1.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.0.0...v1.1.0) (2025-08-19)
 
 
