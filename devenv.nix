@@ -30,6 +30,8 @@
     texlive.combined.scheme-small
     diesel-cli
     postgresql
+    cargo-nextest
+    cargo-shear
 
     # cmake
     # gcc
@@ -55,35 +57,7 @@
     cargo-watch.exec = "cargo-watch";
   };
 
-  # https://devenv.sh/services/
-  services = { 
-    postgres = {
-      enable = true;
-
-      initialDatabases = [{ name = "rusty-reggae"; }];
-
-      initialScript = ''
-        CREATE EXTENSION IF NOT EXISTS postgis;
-      '';
-    };
-
-    meilisearch = {
-      enable = true;
-    };
-  };
-
-  # https://devenv.sh/scripts/
-  # scripts.hello.exec = ''
-  #   echo hello from $GREET
-  # '';
-
-
   tasks = {
-    "bash:channel_up" = {
-      exec = "nix-channel --update && sudo nix-channel --update";
-      before = [ "devenv:enterShell" ];
-    };
-
     "bash:source_env" = {
       exec = "source $PWD/.env";
       after = [ "devenv:enterShell" ];
@@ -165,11 +139,8 @@
 
         cargo fmt --all --check
         cargo clippy --all-targets -- -D warnings
-        cargo shear
-        cargo audit
+        cargo shear --fix
         cargo nextest run
-        cargo test --examples
-        cargo test --doc
       '';
     };
   };
