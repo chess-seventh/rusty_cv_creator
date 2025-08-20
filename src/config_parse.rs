@@ -219,7 +219,7 @@ key2 = "value2"
                 let expanded = fix_home_directory_path(&value);
                 Ok(clean_string_from_quotes(&expanded))
             }
-            None => Err(format!("Key {}.{} not found", section, variable)),
+            None => Err(format!("Key {section}.{variable} not found")),
         }
     }
 
@@ -234,7 +234,7 @@ key2 = "value2"
             None => return Err("db_file not found".to_string()),
         };
 
-        Ok(format!("{}/{}", db_path, db_file))
+        Ok(format!("{db_path}/{db_file}"))
     }
 
     #[test]
@@ -268,7 +268,7 @@ path_with_tilde = "~/test/path"
         let result = mock_get_variable_from_config(&config, "test", "path_with_tilde");
         assert!(result.is_ok());
         let result_path = result.unwrap();
-        assert!(!result_path.contains("~"));
+        assert!(!result_path.contains('~'));
         assert!(result_path.contains("/test/path"));
     }
 
@@ -338,7 +338,7 @@ db_file = "test.db"
         let result = mock_get_db_configurations(&config);
         assert!(result.is_ok());
         let db_config = result.unwrap();
-        assert!(!db_config.contains("~"));
+        assert!(!db_config.contains('~'));
         assert!(db_config.contains("/test/db/test.db"));
     }
 
@@ -355,7 +355,7 @@ db_file = "test.db"
         assert!(result.is_ok());
         let db_config = result.unwrap();
         assert_eq!(db_config, "/home/test/db/test.db");
-        assert!(!db_config.contains("\""));
+        assert!(!db_config.contains('"'));
     }
 
     // Test file operations without GLOBAL_VAR dependency
@@ -363,7 +363,7 @@ db_file = "test.db"
     fn test_config_file_reading() {
         let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
         let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
+        write!(temp_file, "{config_content}").expect("Failed to write to temp file");
         let file_path = temp_file.path().to_str().unwrap();
 
         // Test file existence check
@@ -390,7 +390,7 @@ db_file = "test.db"
         // Create test config file
         let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
         let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
+        write!(temp_file, "{config_content}").expect("Failed to write to temp file");
         let file_path = temp_file.path().to_str().unwrap();
 
         // Test the full flow: file check -> read -> parse -> extract values
@@ -426,7 +426,7 @@ absolute_path = "/absolute/path"
         let home_result = mock_get_variable_from_config(&config, "paths", "home_path");
         assert!(home_result.is_ok());
         let home_path = home_result.unwrap();
-        assert!(!home_path.contains("~"));
+        assert!(!home_path.contains('~'));
         assert!(home_path.contains("documents"));
 
         let abs_result = mock_get_variable_from_config(&config, "paths", "absolute_path");
@@ -473,14 +473,15 @@ mixed = "Test 测试 🚀"
 
     // Performance test for config loading
     #[test]
+    #[allow(clippy::format_push_string)]
     fn test_large_config_performance() {
         let mut large_config = String::new();
 
         // Generate a large config with many sections and keys
         for section in 0..50 {
-            large_config.push_str(&format!("[section_{}]\n", section));
+            large_config.push_str(&format!("[section_{section}]\n"));
             for key in 0..20 {
-                large_config.push_str(&format!("key_{} = \"value_{}_{}\"\n", key, section, key));
+                large_config.push_str(&format!("key_{key} = \"value_{section}_{key}\"\n"));
             }
             large_config.push('\n');
         }

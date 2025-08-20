@@ -127,7 +127,7 @@ mod tests {
             generated: true,
         };
 
-        let debug_str = format!("{:?}", cv);
+        let debug_str = format!("{cv:?}");
         assert!(debug_str.contains("id: 1"));
         assert!(debug_str.contains("Engineer"));
         assert!(debug_str.contains("Company"));
@@ -237,8 +237,9 @@ mod tests {
     }
 
     // Test compatibility with diesel traits
-    #[allow(clippy::assertions_on_constants)]
     #[test]
+    #[allow(clippy::assertions_on_constants)]
+    #[allow(unused_variables)]
     fn test_diesel_traits_compilation() {
         // This test ensures that the derive macros compile correctly
         // The actual functionality would require database setup to test
@@ -254,7 +255,7 @@ mod tests {
             generated: false,
         };
 
-        let _new_cv = NewCv {
+        let new_cv = NewCv {
             application_date: None,
             job_title: "Test",
             company: "Test Co",

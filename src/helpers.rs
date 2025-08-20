@@ -178,7 +178,7 @@ mod tests {
         let home_str = home_dir.to_str().unwrap();
         let input = "~/test/path";
         let result = fix_home_directory_path(input);
-        assert_eq!(result, format!("{}/test/path", home_str));
+        assert_eq!(result, format!("{home_str}/test/path"));
     }
 
     #[test]
@@ -194,7 +194,7 @@ mod tests {
         let home_str = home_dir.to_str().unwrap();
         let input = "~/test/~/path";
         let result = fix_home_directory_path(input);
-        assert_eq!(result, format!("{}/test/{}/path", home_str, home_str));
+        assert_eq!(result, format!("{home_str}/test/{home_str}/path"));
     }
 
     #[test]

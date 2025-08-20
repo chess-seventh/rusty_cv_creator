@@ -98,7 +98,8 @@ pub struct UserFilters {
 
 // TODO: this function should parse the user input when filtering or listing cv.
 // TODO Fix this should return ParseError when things do not work.
-fn _parse_date(input: &str) -> Result<String, String> {
+#[allow(dead_code)]
+fn parse_date(input: &str) -> Result<String, String> {
     let formats = [
         "%Y",       // Year
         "%Y-%m",    // Year-Month
@@ -284,85 +285,55 @@ mod tests {
         assert_eq!(filters.date, Some("2023".to_string()));
     }
 
-    // Tests for the _parse_date function
-    // #[test]
-    // fn test_parse_date_year_only() {
-    //     let result = _parse_date("2023");
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.unwrap(), "2023-01-01");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_year_month() {
-    //     let result = _parse_date("2023-08");
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.unwrap(), "2023-08-01");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_full_date() {
-    //     let result = _parse_date("2023-08-19");
-    //     assert!(result.is_ok());
-    //     assert_eq!(result.unwrap(), "2023-08-19");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_full_month_name() {
-    //     let result = _parse_date("August");
-    //     assert!(result.is_ok());
-    //     // The exact output depends on chrono's implementation, but it should be valid
-    //     assert!(result.clone().unwrap().contains("Aug") || result.unwrap().contains("08"));
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_abbreviated_month() {
-    //     let result = _parse_date("Aug");
-    //     assert!(result.is_ok());
-    //     // The exact output depends on chrono's implementation
-    //     assert!(result.clone().unwrap().contains("Aug") || result.unwrap().contains("08"));
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_invalid_format() {
-    //     let result = _parse_date("invalid-date");
-    //     assert!(result.is_err());
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: invalid-date");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_empty_string() {
-    //     let result = _parse_date("");
-    //     assert!(result.is_err());
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: ");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_invalid_year() {
-    //     let result = _parse_date("99999");
-    //     assert!(result.is_err());
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: 99999");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_invalid_month() {
-    //     let result = _parse_date("2023-13");
-    //     assert!(result.is_err());
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: 2023-13");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_invalid_day() {
-    //     let result = _parse_date("2023-02-30");
-    //     assert!(result.is_err());
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: 2023-02-30");
-    // }
-    //
-    // #[test]
-    // fn test_parse_date_case_sensitivity() {
-    //     let result = _parse_date("AUGUST");
-    //     assert!(result.is_err()); // chrono is case-sensitive
-    //     assert_eq!(result.unwrap_err(), "Failed to parse date: AUGUST");
-    // }
+    // Tests for the parse_date function
+    #[test]
+    fn test_parse_date_full_date() {
+        let result = parse_date("2023-08-19");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "2023-08-19");
+    }
+
+    #[test]
+    fn test_parse_date_invalid_format() {
+        let result = parse_date("invalid-date");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to parse date: invalid-date");
+    }
+
+    #[test]
+    fn test_parse_date_empty_string() {
+        let result = parse_date("");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to parse date: ");
+    }
+
+    #[test]
+    fn test_parse_date_invalid_year() {
+        let result = parse_date("99999");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to parse date: 99999");
+    }
+
+    #[test]
+    fn test_parse_date_invalid_month() {
+        let result = parse_date("2023-13");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to parse date: 2023-13");
+    }
+
+    #[test]
+    fn test_parse_date_invalid_day() {
+        let result = parse_date("2023-02-30");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Failed to parse date: 2023-02-30");
+    }
+
+    #[test]
+    fn test_parse_date_case_sensitivity() {
+        let result = parse_date("AUGUST");
+        assert!(result.is_err()); // chrono is case-sensitive
+        assert_eq!(result.unwrap_err(), "Failed to parse date: AUGUST");
+    }
 
     // Test Debug trait implementations
     #[test]
@@ -372,7 +343,7 @@ mod tests {
             job_title: "Dev".to_string(),
             quote: "Quote".to_string(),
         };
-        let debug_str = format!("{:?}", insert_args);
+        let debug_str = format!("{insert_args:?}");
         assert!(debug_str.contains("Test"));
         assert!(debug_str.contains("Dev"));
         assert!(debug_str.contains("Quote"));
@@ -382,7 +353,7 @@ mod tests {
             company: None,
             date: None,
         };
-        let debug_str = format!("{:?}", filter_args);
+        let debug_str = format!("{filter_args:?}");
         assert!(debug_str.contains("Dev"));
 
         let user_filters = UserFilters {
@@ -390,7 +361,7 @@ mod tests {
             company: None,
             date: None,
         };
-        let debug_str = format!("{:?}", user_filters);
+        let debug_str = format!("{user_filters:?}");
         assert!(debug_str.contains("Engineer"));
     }
 

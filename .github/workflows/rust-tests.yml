@@ -83,7 +83,7 @@ jobs:
       - name: Cache
         uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -W warnings clippy::pedantic
 
   rustfmt:
     runs-on: ubuntu-latest

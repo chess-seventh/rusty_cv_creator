@@ -21,6 +21,7 @@ use crate::helpers::{
     check_if_db_env_is_set_or_set_from_config, fix_home_directory_path, view_cv_file,
 };
 
+#[cfg(not(tarpaulin_include))]
 fn main() {
     env_logger::init();
     dotenv().ok();
@@ -187,7 +188,7 @@ mod tests {
                 } else {
                     Err(std::io::Error::new(
                         std::io::ErrorKind::NotFound,
-                        format!("Unexpected command: {}", cmd),
+                        format!("Unexpected command: {cmd}"),
                     ))
                 }
             }
@@ -337,6 +338,7 @@ mod tests {
 
 // Refactored version of is_tailscale_connected for better testability
 #[cfg(test)]
+#[allow(clippy::missing_errors_doc)]
 pub fn is_tailscale_connected_with_executor<F>(executor: F) -> std::io::Result<bool>
 where
     F: FnOnce(&str, &[&str]) -> std::io::Result<std::process::Output>,

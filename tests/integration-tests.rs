@@ -58,14 +58,14 @@ pdf_viewer = "echo"
             let template_dir = temp_dir.path().join("template");
             fs::create_dir_all(&template_dir).expect("Failed to create template dir");
 
-            let template_content = r#"
+            let template_content = r"
 \documentclass{article}
 \begin{document}
 \section{CV}
 Position: POSITION_PLACEHOLDER
 Quote: QUOTE_PLACEHOLDER
 \end{document}
-"#;
+";
             let template_file = template_dir.join("cv.tex");
             fs::write(&template_file, template_content).expect("Failed to write template");
 
@@ -75,7 +75,7 @@ Quote: QUOTE_PLACEHOLDER
             let db_path = db_dir.join("test.db").to_string_lossy().to_string();
 
             // Set up environment
-            env::set_var("DATABASE_URL", format!("sqlite://{}", db_path));
+            env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
 
             TestEnvironment {
                 temp_dir,
@@ -349,7 +349,7 @@ mod concurrent_access_tests {
             let counter_clone = Arc::clone(&counter);
 
             let handle = thread::spawn(move || {
-                let content = format!("Thread {} was here\n", i);
+                let content = format!("Thread {i} was here\n");
 
                 // Simulate some work
                 thread::sleep(std::time::Duration::from_millis(10));
@@ -385,11 +385,8 @@ mod performance_tests {
         let start = Instant::now();
 
         for i in 0..100 {
-            let file_path = test_env
-                .temp_dir
-                .path()
-                .join(format!("perf_test_{}.txt", i));
-            fs::write(&file_path, format!("Content {}", i)).expect("Failed to write");
+            let file_path = test_env.temp_dir.path().join(format!("perf_test_{i}.txt"));
+            fs::write(&file_path, format!("Content {i}")).expect("Failed to write");
         }
 
         let duration = start.elapsed();

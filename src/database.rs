@@ -17,7 +17,8 @@ pub enum _ConnectionType {
 }
 
 #[allow(clippy::used_underscore_items)]
-fn _define_connection_type(worker_type: &str) -> _ConnectionType {
+#[allow(dead_code)]
+fn define_connection_type(worker_type: &str) -> _ConnectionType {
     match worker_type {
         "postgres" => _ConnectionType::Postgres(establish_connection_postgres()),
         "sqlite" => _ConnectionType::Sqlite(_establish_connection_sqlite()),
@@ -191,13 +192,14 @@ mod tests {
     }
 
     #[test]
+    #[allow(unused_variables)]
     fn test_connection_type_enum() {
         // Test that the enum variants exist and can be matched
         // Note: We can't easily test the actual connections without database setup
 
         // This is a compile-time test that the enum variants exist
-        let _postgres_variant = |conn: PgConnection| _ConnectionType::Postgres(conn);
-        let _sqlite_variant = |conn: SqliteConnection| _ConnectionType::Sqlite(conn);
+        let postgres_variant = |conn: PgConnection| _ConnectionType::Postgres(conn);
+        let sqlite_variant = |conn: SqliteConnection| _ConnectionType::Sqlite(conn);
     }
 
     #[test]
@@ -261,6 +263,8 @@ mod tests {
                 None
             }
 
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::cast_possible_wrap)]
             pub fn insert_cv(
                 &mut self,
                 job_title: &str,
@@ -352,7 +356,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "worker type not found")]
     fn test_define_connection_type_invalid() {
-        _define_connection_type("invalid");
+        define_connection_type("invalid");
     }
 
     // Environment variable tests

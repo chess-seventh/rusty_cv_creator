@@ -139,10 +139,15 @@ pdf_viewer = "echo"
         // This must be the first #[serial] test in your suite (or run in a context
         // where GLOBAL_VAR is not set), since no reset is possible.
         // Conventionally you’d put it in its own binary test.
+
         // GLOBAL_VAR.get().map(|_| panic!("Could not get GLOBAL_VAR"));
-        if GLOBAL_VAR.get().is_some() {
-            panic!("Could not get GLOBAL_VAR")
-        }
+
+        // if GLOBAL_VAR.get().is_some() {
+        //     panic!("Could not get GLOBAL_VAR")
+        // }
+
+        assert!(GLOBAL_VAR.get().is_none(), "Could not get GLOBAL_VAR");
+
         let _ = get_variable_from_config("section", "key").unwrap();
     }
 
@@ -224,7 +229,7 @@ pdf_viewer = "echo"
         // Setup GLOBAL_VAR with test configuration
         let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
         let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
+        write!(temp_file, "{config_content}").expect("Failed to write to temp file");
         let file_path = temp_file.path().to_str().unwrap();
 
         let user_input = create_test_user_input_with_config(file_path);
@@ -260,12 +265,12 @@ pdf_viewer = "echo"
     }
 
     #[test]
-    #[should_panic]
+    #[should_panic(expected = "assertion failed: save_to_db")]
     fn test_insert_cv_save_to_db_false() {
         // Setup GLOBAL_VAR with save_to_database = false
         let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
         let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
+        write!(temp_file, "{config_content}").expect("Failed to write to temp file");
         let file_path = temp_file.path().to_str().unwrap();
 
         let mut user_input = create_test_user_input_with_config(file_path);
@@ -347,7 +352,10 @@ pdf_viewer = "echo"
                 self.cvs.len() != original_len
             }
 
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::cast_possible_wrap)]
             pub fn insert_cv(&mut self, job_title: &str, company: &str, pdf_path: &str) -> i32 {
+                // let new_id = i32::try_from(self.cvs.len()) + 1;
                 let new_id = self.cvs.len() as i32 + 1;
                 self.cvs.push(MockCv {
                     _id: new_id,
@@ -432,10 +440,12 @@ pdf_viewer = "echo"
         }
 
         // Mock for my_fzf function to avoid interactive input
+        #[allow(clippy::needless_pass_by_value)]
         pub fn mock_my_fzf(list: Vec<String>) -> String {
-            if list.is_empty() {
-                panic!("shit, no items found");
-            }
+            assert!(!list.is_empty(), "shit, no items found");
+            // if list.is_empty() {
+            //     panic!("shit, no items found");
+            // }
             list[0].clone() // Return first item
         }
 
@@ -463,7 +473,7 @@ pdf_viewer = "echo"
             date: Some("2023-08-19".to_string()),
         };
 
-        let debug_str = format!("{:?}", filters);
+        let debug_str = format!("{filters:?}");
         assert!(debug_str.contains("Engineer"));
         assert!(debug_str.contains("ACME"));
         assert!(debug_str.contains("2023-08-19"));
@@ -488,14 +498,14 @@ pdf_viewer = "echo"
     #[test]
     fn test_filter_args_with_empty_strings() {
         let filters = FilterArgs {
-            job: Some("".to_string()),
-            company: Some("".to_string()),
-            date: Some("".to_string()),
+            job: Some(String::new()),
+            company: Some(String::new()),
+            date: Some(String::new()),
         };
 
-        assert_eq!(filters.job, Some("".to_string()));
-        assert_eq!(filters.company, Some("".to_string()));
-        assert_eq!(filters.date, Some("".to_string()));
+        assert_eq!(filters.job, Some(String::new()));
+        assert_eq!(filters.company, Some(String::new()));
+        assert_eq!(filters.date, Some(String::new()));
     }
 
     #[test]
@@ -582,7 +592,7 @@ pdf_viewer = "echo"
                 date: Some("2023-08-19".to_string()),
             };
 
-            let debug_str = format!("{:?}", filters);
+            let debug_str = format!("{filters:?}");
             // Property: debug string should contain all non-None values
             assert!(debug_str.contains("Test Job"));
             assert!(debug_str.contains("Test Company"));
