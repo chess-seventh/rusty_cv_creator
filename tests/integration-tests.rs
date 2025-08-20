@@ -16,7 +16,7 @@ mod integration_helpers {
     pub struct TestEnvironment {
         pub temp_dir: TempDir,
         pub config_file: String,
-        pub db_path: String,
+        pub _db_path: String,
     }
 
     impl TestEnvironment {
@@ -80,7 +80,7 @@ Quote: QUOTE_PLACEHOLDER
             TestEnvironment {
                 temp_dir,
                 config_file: config_path.to_string_lossy().to_string(),
-                db_path,
+                _db_path: db_path,
             }
         }
     }
@@ -170,7 +170,7 @@ mod file_system_integration_tests {
 
 #[cfg(test)]
 mod command_execution_tests {
-    
+
     use std::process::Command;
 
     #[test]
@@ -247,7 +247,6 @@ mod environment_variable_tests {
 
 #[cfg(test)]
 mod text_processing_tests {
-    
 
     #[test]
     fn test_string_replacement() {
@@ -324,8 +323,6 @@ mod error_handling_tests {
 
     #[test]
     fn test_invalid_utf8_handling() {
-        
-
         // Test handling of invalid UTF-8 sequences
         let invalid_bytes = vec![0xFF, 0xFE, 0xFD];
         let lossy_string = String::from_utf8_lossy(&invalid_bytes);
@@ -442,7 +439,6 @@ mod cleanup_tests {
 
 // Property-based integration tests (if using proptest)
 #[cfg(test)]
-#[cfg(feature = "proptest")]
 mod property_integration_tests {
     use super::*;
     use proptest::prelude::*;
@@ -471,37 +467,5 @@ mod property_integration_tests {
             assert!(result.contains(&replacement));
             assert!(!result.contains(&template));
         }
-    }
-}
-
-// Benchmark tests (if using criterion)
-#[cfg(test)]
-#[cfg(feature = "bench")]
-mod benchmark_tests {
-    use super::*;
-
-    #[bench]
-    fn bench_file_creation(b: &mut test::Bencher) {
-        let test_env = integration_helpers::TestEnvironment::setup();
-        let mut counter = 0;
-
-        b.iter(|| {
-            let file_path = test_env
-                .temp_dir
-                .path()
-                .join(format!("bench_{}.txt", counter));
-            fs::write(&file_path, "benchmark content").expect("Failed to write");
-            counter += 1;
-        });
-    }
-
-    #[bench]
-    fn bench_string_operations(b: &mut test::Bencher) {
-        let template = "PLACEHOLDER text with PLACEHOLDER values";
-
-        b.iter(|| {
-            let result = template.replace("PLACEHOLDER", "REPLACEMENT");
-            test::black_box(result);
-        });
     }
 }

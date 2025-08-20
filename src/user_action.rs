@@ -284,7 +284,7 @@ pdf_viewer = "echo"
         }
 
         pub struct MockCv {
-            pub id: i32,
+            pub _id: i32,
             pub job_title: String,
             pub company: String,
             pub pdf_path: String,
@@ -295,13 +295,13 @@ pdf_viewer = "echo"
                 Self {
                     cvs: vec![
                         MockCv {
-                            id: 1,
+                            _id: 1,
                             job_title: "Software Engineer".to_string(),
                             company: "ACME Corp".to_string(),
                             pdf_path: "/tmp/cv1.pdf".to_string(),
                         },
                         MockCv {
-                            id: 2,
+                            _id: 2,
                             job_title: "Senior Developer".to_string(),
                             company: "Tech Inc".to_string(),
                             pdf_path: "/tmp/cv2.pdf".to_string(),
@@ -347,7 +347,7 @@ pdf_viewer = "echo"
             pub fn insert_cv(&mut self, job_title: &str, company: &str, pdf_path: &str) -> i32 {
                 let new_id = self.cvs.len() as i32 + 1;
                 self.cvs.push(MockCv {
-                    id: new_id,
+                    _id: new_id,
                     job_title: job_title.to_string(),
                     company: company.to_string(),
                     pdf_path: pdf_path.to_string(),

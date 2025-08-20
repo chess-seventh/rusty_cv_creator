@@ -10,6 +10,7 @@ use std::env;
 
 extern crate skim;
 
+#[allow(dead_code)]
 pub enum _ConnectionType {
     Postgres(PgConnection),
     Sqlite(SqliteConnection),
@@ -322,8 +323,8 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
             pub company: String,
             pub quote: String,
             pub pdf_cv_path: String,
-            pub application_date: Option<String>,
-            pub generated: bool,
+            pub _application_date: Option<String>,
+            pub _generated: bool,
         }
 
         impl MockCvDatabase {
@@ -336,8 +337,8 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
                             company: "ACME Corp".to_string(),
                             quote: "Great opportunity".to_string(),
                             pdf_cv_path: "/tmp/cv1.pdf".to_string(),
-                            application_date: Some("2023-08-19".to_string()),
-                            generated: true,
+                            _application_date: Some("2023-08-19".to_string()),
+                            _generated: true,
                         },
                         MockCvRecord {
                             id: 2,
@@ -345,8 +346,8 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
                             company: "Tech Inc".to_string(),
                             quote: "Exciting challenge".to_string(),
                             pdf_cv_path: "/tmp/cv2.pdf".to_string(),
-                            application_date: Some("2023-08-18".to_string()),
-                            generated: true,
+                            _application_date: Some("2023-08-18".to_string()),
+                            _generated: true,
                         },
                     ],
                 }
@@ -375,8 +376,8 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
                     company: company.to_string(),
                     quote: quote.to_string(),
                     pdf_cv_path: pdf_path.to_string(),
-                    application_date: Some("2023-08-19".to_string()),
-                    generated: true,
+                    _application_date: Some("2023-08-19".to_string()),
+                    _generated: true,
                 });
                 new_id
             }
