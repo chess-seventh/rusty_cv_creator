@@ -376,29 +376,6 @@ mod tests {
         assert!(result);
     }
 
-    //     #[test]
-    //     #[ignore] // Requires xelatex command
-    //     fn test_compile_cv_success() {
-    //         // This test requires xelatex to be installed and a valid LaTeX file
-    //         // In a real test, you'd mock the Command execution
-    //
-    //         let temp_dir = create_test_dir_structure();
-    //         let dir_path = temp_dir.path().to_str().unwrap();
-    //
-    //         // Create a minimal LaTeX file
-    //         let cv_content = r#"
-    // \documentclass{article}
-    // \begin{document}
-    // Hello World
-    // \end{document}
-    // "#;
-    //         let cv_file = temp_dir.path().join("test.tex");
-    //         fs::write(&cv_file, cv_content).expect("Failed to write LaTeX file");
-    //
-    //         // This would panic in real execution without xelatex
-    //         // compile_cv(dir_path, "test.tex");
-    //     }
-
     #[test]
     #[should_panic(expected = "Directory does not exist")]
     fn test_compile_cv_invalid_dir() {
@@ -638,10 +615,10 @@ QUOTE_PLACEHOLDER
         #[test]
         fn test_mock_command() {
             let mock = MockCommand::new(true, "Success");
-            assert_eq!(mock.execute(), true);
+            assert!(mock.execute());
 
             let mock_fail = MockCommand::new(false, "Failed");
-            assert_eq!(mock_fail.execute(), false);
+            assert!(!mock_fail.execute());
         }
     }
 

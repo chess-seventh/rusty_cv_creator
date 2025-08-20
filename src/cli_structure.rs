@@ -423,38 +423,4 @@ mod tests {
         assert_eq!(user_filters.company, cloned.company);
         assert_eq!(user_filters.date, cloned.date);
     }
-
-    // Note: Testing match_user_action() requires GLOBAL_VAR to be set and mocking
-    // the user_action module functions. This is better done as an integration test.
-
-    // Integration test placeholder for match_user_action
-    #[test]
-    #[ignore] // Ignore by default as it requires full setup
-    fn test_match_user_action_integration() {
-        // This test would require:
-        // 1. Setting up GLOBAL_VAR with test data
-        // 2. Mocking insert_cv and remove_cv functions
-        // 3. Testing each UserAction variant
-
-        // Example structure:
-        // setup_test_global_var();
-        // let result = match_user_action();
-        // assert!(!result.is_empty());
-    }
-
-    // Helper functions for testing clap integration (these would be integration tests)
-    #[cfg(test)]
-    mod integration_helpers {
-        // use super::*;
-        // use clap::Parser;
-
-        #[test]
-        #[ignore] // Ignore as it requires command line args
-        fn test_clap_integration() {
-            // Example of how you might test clap integration
-            // let args = vec!["test", "insert", "ACME", "Developer", "Great opportunity"];
-            // let user_input = UserInput::try_parse_from(args);
-            // assert!(user_input.is_ok());
-        }
-    }
 }

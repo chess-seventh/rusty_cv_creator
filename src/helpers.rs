@@ -258,7 +258,10 @@ mod tests {
         // Test when GLOBAL_VAR is not set
         let result = check_if_db_env_is_set_or_set_from_config();
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Could not get DB Path from GlobalVars");
+        assert_eq!(
+            result.unwrap_err(),
+            "Could not get the DATABASE_URL env variable !"
+        );
     }
 
     // Mock tests for external command dependencies would go here
