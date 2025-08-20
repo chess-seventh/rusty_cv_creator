@@ -307,20 +307,6 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
     //     assert!(result.is_err());
     // }
 
-    #[test]
-    #[ignore] // Requires database connection
-    fn test_read_cv_from_db() {
-        let filters = FilterArgs {
-            job: None,
-            company: None,
-            date: None,
-        };
-
-        // This test requires database connection and test data
-        // let results = read_cv_from_db(&filters);
-        // assert!(!results.is_empty());
-    }
-
     // Mock implementations for testing without database
     #[cfg(test)]
     mod mock_database {
@@ -449,7 +435,7 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
 
         #[test]
         fn test_mock_database_duplicate_check() {
-            let mut db = MockCvDatabase::new();
+            let db = MockCvDatabase::new();
 
             // Try to insert duplicate
             let existing = db.find_entry("Software Engineer", "ACME Corp", "Great opportunity");
@@ -465,7 +451,6 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
     #[cfg(test)]
     mod integration_helpers {
         use super::*;
-        use diesel::connection::SimpleConnection;
 
         pub fn setup_test_database() -> String {
             let db_url = "sqlite::memory:";

@@ -101,50 +101,8 @@ pub fn get_db_configurations() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli_structure::{InsertArgs, UserAction};
-    use serial_test::serial;
     use std::io::Write;
-    use std::sync::Mutex;
     use tempfile::NamedTempFile;
-
-    // Mock implementation that doesn't use the real GLOBAL_VAR
-    struct MockGlobalState {
-        config: Option<Ini>,
-    }
-
-    impl MockGlobalState {
-        fn new() -> Self {
-            Self { config: None }
-        }
-
-        fn set_config(&mut self, config: Ini) {
-            self.config = Some(config);
-        }
-
-        fn get_config(&self) -> Option<&Ini> {
-            self.config.as_ref()
-        }
-    }
-
-    // Thread-safe mock global state for testing
-    lazy_static::lazy_static! {
-        static ref MOCK_GLOBAL_STATE: Mutex<MockGlobalState> = Mutex::new(MockGlobalState::new());
-    }
-
-    fn create_test_user_input_with_config(config_path: &str) -> UserInput {
-        UserInput {
-            action: UserAction::Insert(InsertArgs {
-                company_name: "Test Company".to_string(),
-                job_title: "Software Engineer".to_string(),
-                quote: "Test quote".to_string(),
-            }),
-            save_to_database: Some(true),
-            view_generated_cv: Some(false),
-            dry_run: Some(false),
-            config_ini: config_path.to_string(),
-            engine: "sqlite".to_string(),
-        }
-    }
 
     fn create_test_config_content() -> String {
         r#"
