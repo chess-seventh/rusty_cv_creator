@@ -386,7 +386,7 @@ mod testable_version_tests {
         let executor = mock_executor_success("100.64.0.1 hostname");
         let result = is_tailscale_connected_with_executor(executor);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
     }
 
     #[test]
@@ -394,7 +394,7 @@ mod testable_version_tests {
         let executor = mock_executor_success("Logged out.");
         let result = is_tailscale_connected_with_executor(executor);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     #[test]

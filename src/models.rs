@@ -53,7 +53,7 @@ mod tests {
             cv.pdf_cv_path,
             "/home/user/cvs/2023-08-19-acme-software-engineer.pdf"
         );
-        assert_eq!(cv.generated, true);
+        assert!(cv.generated);
     }
 
     #[test]
@@ -74,7 +74,7 @@ mod tests {
         assert_eq!(cv.company, "Tech Inc");
         assert_eq!(cv.quote, "Exciting challenge");
         assert_eq!(cv.pdf_cv_path, "/tmp/cv.pdf");
-        assert_eq!(cv.generated, false);
+        assert!(!cv.generated);
     }
 
     #[test]
@@ -93,7 +93,7 @@ mod tests {
         assert_eq!(new_cv.company, "StartupCo");
         assert_eq!(new_cv.quote, "Innovation-focused role");
         assert_eq!(new_cv.pdf_cv_path, "/tmp/new_cv.pdf");
-        assert_eq!(new_cv.generated, true);
+        assert!(new_cv.generated);
     }
 
     #[test]
@@ -112,7 +112,7 @@ mod tests {
         assert_eq!(new_cv.company, "AI Corp");
         assert_eq!(new_cv.quote, "Machine learning expertise");
         assert_eq!(new_cv.pdf_cv_path, "/home/user/data_scientist_cv.pdf");
-        assert_eq!(new_cv.generated, false);
+        assert!(!new_cv.generated);
     }
 
     #[test]
@@ -207,7 +207,7 @@ mod tests {
         assert_eq!(new_cv.company, "");
         assert_eq!(new_cv.quote, "");
         assert_eq!(new_cv.pdf_cv_path, "");
-        assert_eq!(new_cv.generated, false);
+        assert!(!new_cv.generated);
     }
 
     #[test]
@@ -237,6 +237,7 @@ mod tests {
     }
 
     // Test compatibility with diesel traits
+    #[allow(clippy::assertions_on_constants)]
     #[test]
     fn test_diesel_traits_compilation() {
         // This test ensures that the derive macros compile correctly

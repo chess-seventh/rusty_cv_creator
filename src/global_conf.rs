@@ -388,7 +388,7 @@ mod tests {
         global_vars.set_all(config, today, user_input);
 
         let save_to_db = global_vars.get_user_input_save_to_db();
-        assert_eq!(save_to_db, true);
+        assert!(save_to_db);
     }
 
     #[test]
@@ -402,7 +402,7 @@ mod tests {
         global_vars.set_all(config, today, user_input);
 
         let save_to_db = global_vars.get_user_input_save_to_db();
-        assert_eq!(save_to_db, false);
+        assert!(!save_to_db);
     }
 
     #[test]
@@ -416,7 +416,7 @@ mod tests {
         global_vars.set_all(config, today, user_input);
 
         let save_to_db = global_vars.get_user_input_save_to_db();
-        assert_eq!(save_to_db, true); // Default is true
+        assert!(save_to_db); // Default is true
     }
 
     #[test]

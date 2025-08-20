@@ -174,7 +174,7 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
 
     let new = cv_file_content.replace(replace_position.as_str(), job_title);
 
-    assert!((new != cv_file_content), "Didn't change shit");
+    assert!(new != cv_file_content, "Didn't change shit");
 
     new
 }
@@ -290,17 +290,18 @@ mod tests {
 
     #[test]
     fn test_directory_validity() {
-        let result = check_dir_exists("/home/seventh/");
+        let result = check_dir_exists("/home/");
         assert!(result);
     }
 
     #[test]
     fn test_directory_is_invalid() {
-        let result = check_dir_exists("/home/seventh/doesnotexist/");
+        let result = check_dir_exists("/home/doesnotexist/");
         assert!(!result);
     }
 
     #[test]
+    #[ignore = "Used for local testing"]
     fn test_file_validity() {
         let result = check_file_exists(
             "/home/seventh/.config/rusty-cv-creator/",
@@ -310,11 +311,9 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Used for local testing"]
     fn test_file_validity_is_invalid() {
-        let result = check_file_exists(
-            "/home/seventh/.config/rusty-cv-creator/",
-            "doesnotexist.ini",
-        );
+        let result = check_file_exists("/home/root/.config/rusty-cv-creator/", "doesnotexist.ini");
         assert!(!result);
     }
 

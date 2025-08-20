@@ -1,5 +1,7 @@
 # Rusty CV Creator
 
+[![codecov](https://codecov.io/github/chess-seventh/rusty_cv_creator/graph/badge.svg?token=3NRKL0NWUR)](https://codecov.io/github/chess-seventh/rusty_cv_creator)
+
 ## Dependencies
 
 `.env`
