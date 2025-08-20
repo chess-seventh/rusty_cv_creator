@@ -64,8 +64,10 @@ jobs:
           cargo llvm-cov report --doctests --lcov --output-path lcov.info
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
-        with:
+        env:
           token: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: lcov.info
 
   clippy:
     runs-on: ubuntu-latest

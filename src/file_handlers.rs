@@ -174,7 +174,7 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
 
     let new = cv_file_content.replace(replace_position.as_str(), job_title);
 
-    assert!((new != cv_file_content), "Didn't change shit");
+    assert!(new != cv_file_content, "Didn't change shit");
 
     new
 }
