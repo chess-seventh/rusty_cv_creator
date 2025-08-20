@@ -148,37 +148,10 @@ mod tests {
     use crate::cli_structure::UserInput;
     use crate::cli_structure::{FilterArgs, InsertArgs, UserAction};
     use crate::config_parse::set_global_vars;
-    // use crate::global_conf::{GlobalVars, GLOBAL_VAR};
     use serial_test::serial;
     use std::env;
     use std::io::Write;
     use tempfile::NamedTempFile;
-
-    fn create_test_config_content() -> String {
-        r#"
-[db]
-db_path = "/tmp/test_db"
-db_file = "test.db"
-engine = "sqlite"
-db_pg_host = "postgresql://test:test@localhost:5432/test_db"
-"#
-        .to_string()
-    }
-
-    fn create_test_user_input_with_config(config_path: &str) -> UserInput {
-        UserInput {
-            action: UserAction::Insert(InsertArgs {
-                company_name: "Test Company".to_string(),
-                job_title: "Software Engineer".to_string(),
-                quote: "Test quote".to_string(),
-            }),
-            save_to_database: Some(true),
-            view_generated_cv: Some(false),
-            dry_run: Some(false),
-            config_ini: config_path.to_string(),
-            engine: "sqlite".to_string(),
-        }
-    }
 
     // Helper function to reset GLOBAL_VAR for testing
     fn make_user_input(tmp: &NamedTempFile) -> UserInput {
@@ -229,84 +202,10 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
 
     #[test]
     #[serial]
-    #[ignore] // Requires PostgreSQL setup
-    fn test_establish_connection_postgres() {
-        // Setup GLOBAL_VAR with PostgreSQL config
-        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
-        let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
-        let file_path = temp_file.path().to_str().unwrap();
-
-        let user_input = create_test_user_input_with_config(file_path);
-        let _ = set_global_vars(&user_input);
-
-        // This test requires actual PostgreSQL running
-        // In practice, you'd use a test database or mock
-        // let connection = establish_connection_postgres();
-        // assert!(connection is valid);
+    fn test_save_new_cv_to_db_no_global_var() {
+        let result = save_new_cv_to_db("/tmp/test_cv.pdf");
+        assert!(result.is_err());
     }
-
-    #[test]
-    #[serial]
-    #[ignore] // Requires database setup
-    fn test_establish_connection_sqlite() {
-        // Setup environment variable for SQLite
-        env::set_var("DATABASE_URL", "sqlite:///tmp/test.db");
-
-        // Setup GLOBAL_VAR with SQLite config
-        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
-        let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
-        let file_path = temp_file.path().to_str().unwrap();
-
-        let user_input = create_test_user_input_with_config(file_path);
-        let _ = set_global_vars(&user_input);
-
-        // This test requires actual SQLite database file
-        // let connection = _establish_connection_sqlite();
-        // assert!(connection is valid);
-    }
-
-    #[test]
-    #[ignore] // Requires database connection
-    fn test_check_if_entry_exists_found() {
-        // This test requires a database with test data
-        // let result = check_if_entry_exists("Software Engineer", "ACME Corp", "Great opportunity");
-        // assert!(result.is_some());
-    }
-
-    #[test]
-    #[ignore] // Requires database connection
-    fn test_check_if_entry_exists_not_found() {
-        // let result = check_if_entry_exists("Nonexistent Job", "Nonexistent Company", "Nonexistent Quote");
-        // assert!(result.is_none());
-    }
-
-    #[test]
-    #[serial]
-    #[ignore] // Requires database setup
-    fn test_save_new_cv_to_db_success() {
-        // Setup GLOBAL_VAR
-        let mut temp_file = NamedTempFile::new().expect("Failed to create temp file");
-        let config_content = create_test_config_content();
-        write!(temp_file, "{}", config_content).expect("Failed to write to temp file");
-        let file_path = temp_file.path().to_str().unwrap();
-
-        let user_input = create_test_user_input_with_config(file_path);
-        let _ = set_global_vars(&user_input);
-
-        // This test requires database connection and migrations
-        // let result = save_new_cv_to_db("/tmp/test_cv.pdf");
-        // assert!(result.is_ok());
-    }
-
-    // #[test]
-    // #[serial]
-    // // #[should_panic]
-    // fn test_save_new_cv_to_db_no_global_var() {
-    //     let result = save_new_cv_to_db("/tmp/test_cv.pdf");
-    //     assert!(result.is_err());
-    // }
 
     // Mock implementations for testing without database
     #[cfg(test)]
@@ -450,49 +349,6 @@ db_pg_host = "postgresql://test:test@localhost:5432/test_db"
 
     // Integration test helpers
     #[cfg(test)]
-    mod integration_helpers {
-        use super::*;
-
-        pub fn setup_test_database() -> String {
-            let db_url = "sqlite::memory:";
-            env::set_var("DATABASE_URL", db_url);
-
-            // In a real test, you'd run migrations here
-            // diesel::connection::establish(db_url).unwrap();
-            // diesel_migrations::run_pending_migrations(...);
-
-            db_url.to_string()
-        }
-
-        #[test]
-        #[ignore] // Requires diesel setup
-        fn test_database_setup() {
-            let db_url = setup_test_database();
-            assert!(db_url.contains("sqlite"));
-        }
-    }
-
-    // Test for _define_connection_type function
-    #[test]
-    #[ignore] // Requires database connections
-    fn test_define_connection_type_postgres() {
-        // let connection = _define_connection_type("postgres");
-        // match connection {
-        //     _ConnectionType::Postgres(_) => assert!(true),
-        //     _ => panic!("Expected Postgres connection"),
-        // }
-    }
-
-    #[test]
-    #[ignore] // Requires database connections
-    fn test_define_connection_type_sqlite() {
-        // let connection = _define_connection_type("sqlite");
-        // match connection {
-        //     _ConnectionType::Sqlite(_) => assert!(true),
-        //     _ => panic!("Expected SQLite connection"),
-        // }
-    }
-
     #[test]
     #[should_panic(expected = "worker type not found")]
     fn test_define_connection_type_invalid() {

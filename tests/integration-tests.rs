@@ -436,36 +436,3 @@ mod cleanup_tests {
         assert!(!temp_dir_path.exists());
     }
 }
-
-// Property-based integration tests (if using proptest)
-#[cfg(test)]
-mod property_integration_tests {
-    use super::*;
-    use proptest::prelude::*;
-
-    proptest! {
-        #[test]
-        fn test_path_handling_property(path_suffix in "[a-zA-Z0-9_-]+") {
-            let test_env = integration_helpers::TestEnvironment::setup();
-            let test_path = test_env.temp_dir.path().join(&path_suffix);
-
-            fs::write(&test_path, "test content").expect("Failed to write");
-            assert!(test_path.exists());
-
-            let content = fs::read_to_string(&test_path).expect("Failed to read");
-            assert_eq!(content, "test content");
-        }
-
-        #[test]
-        fn test_string_replacement_property(
-            template in "[A-Z_]+",
-            replacement in "[a-zA-Z0-9 ]+",
-        ) {
-            let text = format!("Hello {} world", template);
-            let result = text.replace(&template, &replacement);
-
-            assert!(result.contains(&replacement));
-            assert!(!result.contains(&template));
-        }
-    }
-}

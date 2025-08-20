@@ -119,28 +119,6 @@ fn is_tailscale_connected() -> io::Result<bool> {
 
 #[cfg(test)]
 mod tests {
-    // use super::*;
-    use serial_test::serial;
-    // use std::os::unix::process::ExitStatusExt;
-
-    // Mock function for testing is_tailscale_connected without external dependencies
-    // fn mock_command_output(success: bool, stdout: &str) -> std::io::Result<std::process::Output> {
-    //     use std::process::{ExitStatus, Output};
-    //
-    //     // Create a mock output
-    //     let status = if success {
-    //         ExitStatus::from_raw(0)
-    //     } else {
-    //         ExitStatus::from_raw(1)
-    //     };
-    //
-    //     Ok(Output {
-    //         status,
-    //         stdout: stdout.as_bytes().to_vec(),
-    //         stderr: Vec::new(),
-    //     })
-    // }
-
     #[test]
     fn test_is_tailscale_connected_success_connected() {
         // Test the function with a mock that simulates connected state
@@ -180,86 +158,7 @@ mod tests {
         assert!(!is_connected);
     }
 
-    // Tests for prepare_cv function
-    #[test]
-    #[serial]
-    #[ignore] // Requires GLOBAL_VAR setup and file system operations
-    fn test_prepare_cv_success() {
-        // This test requires:
-        // 1. GLOBAL_VAR to be set with appropriate config
-        // 2. Mock file system operations
-        // 3. Mock external commands (xelatex, cp)
-
-        // Example test structure:
-        // setup_test_config();
-        // let result = prepare_cv("Software Engineer", "ACME Corp", "Great opportunity");
-        // assert!(result.is_ok());
-        // assert!(!result.unwrap().is_empty());
-    }
-
-    #[test]
-    #[serial]
-    #[ignore] // Requires GLOBAL_VAR setup
-    fn test_prepare_cv_missing_config() {
-        // Test when config is missing required keys
-        // let result = prepare_cv("Engineer", "Corp", "Quote");
-        // assert!(result.is_err());
-    }
-
-    #[test]
-    #[ignore] // Requires file system setup
-    fn test_prepare_cv_invalid_template_path() {
-        // Test when template path doesn't exist
-        // This would test the error handling in create_directory
-    }
-
     // Integration test helpers for testing the full main function
-    #[cfg(test)]
-    mod integration_helpers {
-        // use std::env;
-        // use tempfile::TempDir;
-
-        //         pub fn setup_test_environment() -> TempDir {
-        //             let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        //
-        //             // Create test config file
-        //             let config_path = temp_dir.path().join("test-config.ini");
-        //             let config_content = r#"
-        // [destination]
-        // cv_path = "/tmp/test_cv"
-        //
-        // [cv]
-        // cv_template_path = "/tmp/template"
-        // cv_template_file = "cv.tex"
-        //
-        // [to_replace]
-        // position_line_to_change = "POSITION_PLACEHOLDER"
-        //
-        // [db]
-        // db_path = "/tmp"
-        // db_file = "test.db"
-        // engine = "sqlite"
-        //
-        // [optional]
-        // pdf_viewer = "echo"
-        // "#;
-        //             std::fs::write(&config_path, config_content).expect("Failed to write config");
-        //
-        //             // Set environment variable for database
-        //             env::set_var("DATABASE_URL", "sqlite:///tmp/test.db");
-        //
-        //             temp_dir
-        //         }
-
-        #[test]
-        #[ignore] // Full integration test
-        fn test_main_integration() {
-            // This would test the main function with mocked command line arguments
-            // and a test environment
-        }
-    }
-
-    // Test utility functions for mocking external dependencies
     #[cfg(test)]
     mod mock_utils {
         use std::collections::HashMap;
@@ -302,7 +201,7 @@ mod tests {
             let result = mock.run_command("sudo tailscale status");
             assert!(result.is_ok());
             let (success, output) = result.unwrap();
-            assert_eq!(success, true);
+            assert!(success);
             assert_eq!(output, "100.64.0.1 hostname");
         }
 
