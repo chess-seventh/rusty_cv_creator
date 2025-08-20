@@ -139,7 +139,10 @@ pdf_viewer = "echo"
         // This must be the first #[serial] test in your suite (or run in a context
         // where GLOBAL_VAR is not set), since no reset is possible.
         // Conventionally you’d put it in its own binary test.
-        GLOBAL_VAR.get().map(|_| panic!("Could not get GLOBAL_VAR"));
+        // GLOBAL_VAR.get().map(|_| panic!("Could not get GLOBAL_VAR"));
+        if GLOBAL_VAR.get().is_some() {
+            panic!("Could not get GLOBAL_VAR")
+        }
         let _ = get_variable_from_config("section", "key").unwrap();
     }
 
