@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.4.0...v1.5.0) (2025-08-20)
+
+
+### Features
+
+* Streamline CV tests and error handling ([fd05778](https://github.com/chess-seventh/rusty_cv_creator/commit/fd05778037e4bd1ee871b282fd31a13556ff4848))
+
 ## [1.4.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.3.0...v1.4.0) (2025-08-19)
 
 
