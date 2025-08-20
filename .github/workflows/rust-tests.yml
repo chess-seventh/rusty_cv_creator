@@ -19,7 +19,7 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Run nextests
-        run: cargo nextest run
+        run: cargo nextest run --no-fail-fast
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
