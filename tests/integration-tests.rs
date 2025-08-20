@@ -6,11 +6,9 @@
 use serial_test::serial;
 use std::env;
 use std::fs;
-use std::io::Write;
-use tempfile::{NamedTempFile, TempDir};
+use tempfile::TempDir;
 
 // Import the modules we want to test
-use rusty_cv_creator::*;
 
 mod integration_helpers {
     use super::*;
@@ -172,7 +170,7 @@ mod file_system_integration_tests {
 
 #[cfg(test)]
 mod command_execution_tests {
-    use super::*;
+    
     use std::process::Command;
 
     #[test]
@@ -249,7 +247,7 @@ mod environment_variable_tests {
 
 #[cfg(test)]
 mod text_processing_tests {
-    use super::*;
+    
 
     #[test]
     fn test_string_replacement() {
@@ -326,7 +324,7 @@ mod error_handling_tests {
 
     #[test]
     fn test_invalid_utf8_handling() {
-        use std::ffi::OsString;
+        
 
         // Test handling of invalid UTF-8 sequences
         let invalid_bytes = vec![0xFF, 0xFE, 0xFD];
