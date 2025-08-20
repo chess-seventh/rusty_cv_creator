@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.5.0...v1.6.0) (2025-08-20)
+
+
+### Features
+
+* Enhance Rust dev environment setup ([cac1dbe](https://github.com/chess-seventh/rusty_cv_creator/commit/cac1dbe89613f6147f09b742bb5401ec80f3cca6))
+* Refactor directory paths in file tests ([590af8d](https://github.com/chess-seventh/rusty_cv_creator/commit/590af8df83aeb949aa2286258373277d26c097fd))
+
 ## [1.5.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.4.0...v1.5.0) (2025-08-20)
 
 
