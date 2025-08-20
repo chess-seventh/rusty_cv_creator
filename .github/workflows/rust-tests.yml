@@ -75,7 +75,7 @@ jobs:
         with:
           fetch-depth: 1
       - name: Install correct toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           profile: minimal
@@ -91,7 +91,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           profile: minimal
@@ -106,7 +106,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
           profile: minimal
