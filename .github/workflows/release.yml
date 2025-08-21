@@ -25,10 +25,44 @@
 #           # Provide GitHub token to create PRs, tags, releases, etc.
 #           token: ${{ secrets.GITHUB_TOKEN }}
 
+# name: Release
+# on:
+#   push:
+#     branches: [master]
+#
+# jobs:
+#   release:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+#
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "18"
+#
+#       - name: Install semantic-release
+#         run: |
+#           npm install -g semantic-release
+#           npm install -g @semantic-release/exec
+#           npm install -g @semantic-release/changelog
+#           npm install -g @semantic-release/git
+#
+#       - name: Install semantic-release-rust
+#         run: cargo install semantic-release-rust --version 1.0.0-alpha.8
+#
+#       - name: Release
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+#         run: npx semantic-release
+
 name: Release
 on:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   release:
@@ -38,23 +72,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
         with:
-          node-version: "18"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          output-file: "CHANGELOG.md"
+          release-count: "0"
+          skip-version-file: "true"
+          skip-commit: "false"
+          version-file: "Cargo.toml"
+          version-path: "package.version"
 
-      - name: Install semantic-release
+      - name: Update Cargo.toml version
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
         run: |
-          npm install -g semantic-release
-          npm install -g @semantic-release/exec
-          npm install -g @semantic-release/changelog
-          npm install -g @semantic-release/git
+          cargo set-version ${{ steps.changelog.outputs.version }}
 
-      - name: Install semantic-release-rust
-        run: cargo install semantic-release-rust --version 1.0.0-alpha.8
+      # - name: Build and Publish to crates.io
+      #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
+      #   env:
+      #     CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      #   run: |
+      #     cargo build --release
+      #     cargo publish
 
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: npx semantic-release
+      - name: Create Release
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
