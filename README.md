@@ -4,7 +4,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://rustlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/chess-seventh/rusty_cv_creator/ci.yml?branch=main&style=for-the-badge)](https://github.com/chess-seventh/rusty_cv_creator/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/chess-seventh/rusty_cv_creator/.github/workflow/build.yml?branch=main&style=for-the-badge)](https://github.com/chess-seventh/rusty_cv_creator/actions)
 [![codecov](https://img.shields.io/codecov/c/github/chess-seventh/rusty_cv_creator?style=for-the-badge&logo=codecov)](https://codecov.io/github/chess-seventh/rusty_cv_creator)
 
 *✨ The blazingly fast, memory-safe CV generator that turns your LaTeX dreams into reality ✨*
