@@ -88,6 +88,7 @@ jobs:
           release-count: "0"
           skip-version-file: "false"
           skip-commit: "false"
+          skip-on-empty: "false"
           version-file: "Cargo.toml"
           version-path: "package.version"
 
