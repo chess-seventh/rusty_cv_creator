@@ -91,6 +91,7 @@ jobs:
           skip-on-empty: "false"
           version-file: "Cargo.toml"
           version-path: "package.version"
+          create-summary: "true"
 
       - name: Update Cargo.toml version
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
