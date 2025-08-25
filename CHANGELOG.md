@@ -1,8 +1,13 @@
-## [1.6.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.7.0...v1.6.1) (2025-08-25)
+# [1.7.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.1...v1.7.0) (2025-08-25)
+
+
+### Features
+
+* Enhance release workflow changelog generation ([#64](https://github.com/chess-seventh/rusty_cv_creator/issues/64)) ([5b380f7](https://github.com/chess-seventh/rusty_cv_creator/commit/5b380f733705cc666abf60d1321c421c4b2b3866))
 
 
 
-# [1.7.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.0...v1.7.0) (2025-08-21)
+## [1.6.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.0...v1.6.1) (2025-08-25)
 
 
 ### Features
