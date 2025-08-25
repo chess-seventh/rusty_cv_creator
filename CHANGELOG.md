@@ -1,3 +1,12 @@
+# [1.8.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.7.0...v1.8.0) (2025-08-25)
+
+
+### Features
+
+* Enhance XeLaTeX CV compilation options ([#57](https://github.com/chess-seventh/rusty_cv_creator/issues/57)) ([680866a](https://github.com/chess-seventh/rusty_cv_creator/commit/680866a437e96e60a599feb3097ef7f906f5f699))
+
+
+
 # [1.7.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.1...v1.7.0) (2025-08-25)
 
 
