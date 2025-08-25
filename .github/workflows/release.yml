@@ -83,9 +83,10 @@ jobs:
         uses: TriPSs/conventional-changelog-action@v5
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          git-message: "ci: version bump"
           output-file: "CHANGELOG.md"
           release-count: "0"
-          skip-version-file: "true"
+          skip-version-file: "false"
           skip-commit: "false"
           version-file: "Cargo.toml"
           version-path: "package.version"
