@@ -35,7 +35,11 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
         panic!("File does not exist");
     }
 
+    // TODO: Make sure to have the destination CV directory where to output the pdf, out, log, aux.
     let cmd_output = Command::new("xelatex")
+        .arg(format!("-output-directory=/home/seventh/cv/{cv_dir:}"))
+        .arg("--file-line-error")
+        .arg("--interaction=nonstopmode")
         .arg(cv_file)
         .current_dir(cv_dir)
         // .stdout(Stdio::null())
