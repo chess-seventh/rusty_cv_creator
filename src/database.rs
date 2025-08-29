@@ -78,7 +78,13 @@ fn check_if_entry_exists(g_job_title: &str, g_company: &str, g_quote: &str) -> O
     }
 }
 
-pub fn save_new_cv_to_db(cv_path: &str) -> Result<Cv, &str> {
+// pub fn save_new_cv_to_db(cv_path: &str, insert_args: FilterArgs) -> Result<Cv, &str> {
+pub fn save_new_cv_to_db(
+    cv_path: &str,
+    job_title: &str,
+    company: &str,
+    quote: &str,
+) -> Result<Cv, String> {
     // let db_engine = GlobalVars::get_db_engine();
     // let conn = &mut define_connection_type("sqlite").unwrap();
 
@@ -87,18 +93,18 @@ pub fn save_new_cv_to_db(cv_path: &str) -> Result<Cv, &str> {
         v
     } else {
         error!("Could not get GLOBAL_VAR, something is wrong");
-        return Err("Could not get GLOBAL_VAR, something is wrong");
+        return Err("Could not get GLOBAL_VAR, something is wrong".to_string());
     };
 
-    let job_title = global_var.get_user_job_title();
-    let company = global_var.get_user_input_company_name();
-    let quote = global_var.get_user_input_quote();
+    // let job_title = insert_args.clone().job_title.unwrap().clone();
+    // let company = insert_args.clone().company_name.unwrap().clone();
+    // let quote = insert_args.clone().quote.unwrap().clone();
 
     let application_date = global_var.get_today_str();
 
     let conn = &mut establish_connection_postgres();
 
-    if let Some(id) = check_if_entry_exists(&job_title, &company, &quote) {
+    if let Some(id) = check_if_entry_exists(job_title, company, quote) {
         info!("Entry already exists with id: {id}");
 
         return Ok(cv::table.find(id).first(conn).expect("Error loading CV"));
@@ -106,9 +112,9 @@ pub fn save_new_cv_to_db(cv_path: &str) -> Result<Cv, &str> {
 
     let new_cv = NewCv {
         application_date: Some(&application_date),
-        job_title: &job_title,
-        company: &company,
-        quote: &quote,
+        job_title,
+        company,
+        quote,
         pdf_cv_path: cv_path,
         generated: true,
     };

@@ -15,8 +15,9 @@ mod helpers;
 mod user_action;
 
 use crate::cli_structure::{match_user_action, UserInput};
-use crate::config_parse::{get_variable_from_config, set_global_vars};
+use crate::config_parse::{get_variable_from_config_file, set_global_vars};
 use crate::file_handlers::{compile_cv, create_directory, make_cv_changes_based_on_input};
+use crate::global_conf::get_global_var;
 use crate::helpers::{
     check_if_db_env_is_set_or_set_from_config, fix_home_directory_path, view_cv_file,
 };
@@ -25,12 +26,6 @@ use crate::helpers::{
 fn main() {
     env_logger::init();
     dotenv().ok();
-
-    match is_tailscale_connected() {
-        Ok(true) => println!("Device is connected to Tailscale!"),
-        Ok(false) => println!("Device is NOT connected to Tailscale."),
-        Err(e) => eprintln!("Error: {e:?}"),
-    }
 
     let user_input = UserInput::parse();
 
