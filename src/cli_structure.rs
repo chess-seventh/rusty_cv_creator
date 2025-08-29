@@ -6,23 +6,23 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
 #[command(propagate_version = true)]
-#[command(about = "A way to save my CV applications", long_about = None)]
+#[command(about = "Generate and save CV based on a Latex template", long_about = None)]
 pub struct UserInput {
     /// What action should run
     #[command(subcommand)]
     pub action: UserAction,
 
-    /// Choice to save the CV in the database [default: true]
-    #[arg(short, long)]
-    pub save_to_database: Option<bool>,
+    /// Choice to save the CV in the database [default: false]
+    #[arg(short, long, default_value_t = false)]
+    pub save_to_database: bool,
 
     /// Choice to show the generated CV [default: false]
-    #[arg(short, long)]
-    pub view_generated_cv: Option<bool>,
+    #[arg(short, long, default_value_t = false)]
+    pub view_generated_cv: bool,
 
     /// Dry Run the whole process without creating or showing anything [default: false]
-    #[arg(short, long)]
-    pub dry_run: Option<bool>,
+    #[arg(short, long, default_value_t = false)]
+    pub dry_run: bool,
 
     /// Directory of the configuration ini
     #[arg(short, long, default_value_t = String::from("~/.config/rusty-cv-creator/rusty-cv-config.ini"))]
@@ -35,28 +35,29 @@ pub struct UserInput {
 
 #[derive(Subcommand, Debug, Clone)]
 pub enum UserAction {
-    Insert(InsertArgs),
+    #[command(about = "Insert CV", long_about = None)]
+    Insert(FilterArgs),
+
+    #[command(about = "Update CV", long_about = None)]
     Update(FilterArgs),
+
+    #[command(about = "Remove CV", long_about = None)]
     Remove(FilterArgs),
+
+    #[command(about = "List CVs", long_about = None)]
     List(FilterArgs),
 }
 
 #[derive(Args, Debug, Clone, Default)]
-#[command(about = "Generate and insert a new CV", long_about = None)]
-pub struct InsertArgs {
-    pub company_name: String,
-    pub job_title: String,
-    pub quote: String,
-}
-
-#[derive(Args, Debug, Clone, Default)]
-#[command(about = "Update a field of a CV in the database", long_about = None)]
 pub struct FilterArgs {
     #[arg(short, long)]
-    pub job: Option<String>,
+    pub job_title: Option<String>,
 
     #[arg(short, long)]
-    pub company: Option<String>,
+    pub company_name: Option<String>,
+
+    #[arg(short, long)]
+    pub quote: Option<String>,
 
     #[arg(short, long)]
     pub date: Option<String>,
