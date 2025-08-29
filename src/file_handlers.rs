@@ -54,25 +54,32 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
     }
 }
 
-pub fn make_cv_changes_based_on_input(job_title: &str, quote: &str, cv_file_path: &str) {
+pub fn make_cv_changes_based_on_input(
+    job_title: &str,
+    quote: &str,
+    cv_file_path: &str,
+) -> Result<String, String> {
     let cv_file_content = read_destination_cv_file(cv_file_path);
-    let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote);
+    let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote)?;
     match write_to_destination_cv_file(cv_file_path, &changed_content) {
-        Ok(()) => info!("✅ CV file updated successfully"),
+        Ok(()) => {
+            info!("✅ CV file updated successfully");
+            Ok("✅ CV file updated successfully".to_string())
+        }
         Err(e) => {
-            error!("Error updating CV file: {e}");
-            panic!("Error updating CV file: {e}");
+            error!("Error updating CV file: {e:}");
+            panic!("Error updating CV file: {e:}");
         }
     }
 }
 
 #[cfg(not(tarpaulin_include))]
 pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, String> {
-    let var = match get_variable_from_config("destination", "cv_path") {
+    let var = match get_variable_from_config_file("destination", "cv_path") {
         Ok(s) => s,
         Err(e) => {
-            error!("Could not get cv_path variable: {e:?}");
-            return Err("Could not get cv_path variable: {e:?}".to_string());
+            error!("Could not get cv_path variable: {e:}");
+            return Err(format!("Could not get cv_path variable: {e:}").to_string());
         }
     };
 
@@ -82,8 +89,8 @@ pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, S
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
         Err(e) => {
-            error!("Error creating year directory: {e}");
-            return Err("Error creating year directory: {e}".to_string());
+            error!("Error creating year directory: {e:}");
+            return Err(format!("Error creating year directory: {e:}").to_string());
         }
     }
 
@@ -92,15 +99,15 @@ pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, S
             Ok(s) => s,
             Err(e) => {
                 error!("{e:?}");
-                return Err("{e:?}".to_string());
+                return Err(format!("{e:?}").to_string());
             }
         };
 
     match copy_dir::copy_dir(cv_template_path, full_destination_path.clone()) {
         Ok(_) => info!("✅ Directory created & copied successfully"),
         Err(e) => {
-            error!("Error copying directory: {e}");
-            return Err("Error copying directory: {e}".to_string());
+            error!("Error copying directory: {e:}");
+            return Err(format!("Error copying directory: {e:}").to_string());
         }
     }
     Ok(full_destination_path)
@@ -118,11 +125,11 @@ fn prepare_path_for_new_cv(
     destination_folder: &str,
     now: &DateTime<Local>,
 ) -> Result<(String, String), String> {
-    let var = match get_variable_from_config("cv", "cv_template_path") {
+    let var = match get_variable_from_config_file("cv", "cv_template_path") {
         Ok(s) => s,
         Err(e) => {
-            error!("Could not get cv_template_path variable {e:?}");
-            return Err("Could not get cv_template_path variable {e:?}".to_string());
+            error!("Could not get cv_template_path variable {e:}");
+            return Err(format!("Could not get cv_template_path variable {e:}").to_string());
         }
     };
 
@@ -160,20 +167,21 @@ fn read_destination_cv_file(destination_cv_file: &str) -> String {
     fs::read_to_string(fix_destination_cv_file).expect("Should have been able to read the file")
 }
 
-fn change_values_in_destination_cv(cv_file_content: &str, job_title: &str, _quote: &str) -> String {
+fn change_values_in_destination_cv(
+    cv_file_content: &str,
+    job_title: &str,
+    _quote: &str,
+) -> Result<String, String> {
     change_position_in_destination_cv(cv_file_content, job_title)
     // modified_cv_content = change_quote_in_destination_cv(&modified_cv_content, quote);
     // modified_cv_content
 }
 
-fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> String {
-    let replace_position = match get_variable_from_config("to_replace", "position_line_to_change") {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Could not get the position_line_to_change variable {e:?}");
-            panic!("Could not get the position_line_to_change variable {e:?}");
-        }
-    };
+fn change_position_in_destination_cv(
+    cv_file_content: &str,
+    job_title: &str,
+) -> Result<String, String> {
+    let replace_position = get_variable_from_config_file("to_replace", "position_line_to_change")?;
 
     info!("✅ Changed position from: {replace_position} to: {job_title}");
 
@@ -181,15 +189,15 @@ fn change_position_in_destination_cv(cv_file_content: &str, job_title: &str) -> 
 
     assert!(new != cv_file_content, "Didn't change shit");
 
-    new
+    Ok(new)
 }
 
 fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
-    let replace_quote = match get_variable_from_config("to_replace", "quote_line_to_change") {
+    let replace_quote = match get_variable_from_config_file("to_replace", "quote_line_to_change") {
         Ok(s) => s,
         Err(e) => {
-            error!("Could not get the quote_line_to_change variable: {e:?}");
-            panic!("Could not get the quote_line_to_change variable: {e:?}");
+            error!("Could not get the quote_line_to_change variable: {e:}");
+            panic!("Could not get the quote_line_to_change variable: {e:}");
         }
     };
 
@@ -261,8 +269,8 @@ fn copy_to_destination(
             info!("✅ copy Directory: {created_cv_dir}");
         }
         Err(e) => {
-            error!("Could not copy the directory: {created_cv_dir}, with error: {e}");
-            panic!("Could not copy the directory: {created_cv_dir}, with error: {e}");
+            error!("Could not copy the directory: {created_cv_dir}, with error: {e:}");
+            panic!("Could not copy the directory: {created_cv_dir}, with error: {e:}");
         }
     }
 }

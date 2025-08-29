@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, info, warn};
 use std::fs;
 use std::process::{Command, Stdio};
 
@@ -7,6 +7,7 @@ use std::io::Cursor;
 
 use crate::config_parse::{get_db_configurations, get_variable_from_config_file};
 use crate::global_conf::GLOBAL_VAR;
+use crate::is_tailscale_connected;
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {
     cv_template_path.replace(['\"', '\''], "")
@@ -21,10 +22,10 @@ pub fn fix_home_directory_path(file_path: &str) -> String {
     }
 }
 
-pub fn check_file_exists(file_path: &str) -> Result<String, &str> {
+pub fn check_config_file_exists(file_path: &str) -> Result<String, &str> {
     let fixed_file_path = fix_home_directory_path(file_path);
 
-    // TODO
+    // TODO: MINOR
     // if db file does not exist, create it
     // if fs::metadata(file_path).is_err() {
     //     panic!("File {} does not exist", file_path)
@@ -38,30 +39,42 @@ pub fn check_file_exists(file_path: &str) -> Result<String, &str> {
     }
 }
 
-pub fn check_if_db_env_is_set_or_set_from_config() -> Result<bool, String> {
-    let engine = match GLOBAL_VAR.get() {
-        Some(eng) => eng.get_user_input_db_engine(),
-        None => return Err("Could not get the DATABASE_URL env variable !".to_string()),
+pub fn check_if_db_env_is_set_or_set_from_config() {
+    let engine = if let Some(eng) = GLOBAL_VAR.get() {
+        eng.get_user_input_db_engine()
+    } else {
+        warn!("Could not get the DATABASE_URL env variable !");
+        Err("Could not get the DATABASE_URL env variable !".to_string())
     };
 
-    if engine == "postgres" {
+    if engine.is_ok_and(|e| "postgres" == e) {
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
-            Ok(true)
         } else {
             let db_url = GLOBAL_VAR.get().unwrap().get_user_input_db_url();
             std::env::set_var("DATABASE_URL", db_url);
-            Ok(true)
+            info!("Fetched the DATABASE_URL env variable");
+        }
+        // info!("Checking if Tailscale is connected");
+        match is_tailscale_connected() {
+            Ok(true) => info!("Device is connected to Tailscale!"),
+            Ok(false) => info!("Device is NOT connected to Tailscale."),
+            Err(e) => warn!("Tailscale issue: {e:}"),
         }
     } else {
-        let db_path = get_db_configurations()?;
+        //TODO: fix unwrap
+        let db_path = match get_db_configurations() {
+            Ok(db) => db,
+            Err(e) => {
+                warn!("Could not get the db configuration: {e:}");
+                String::new()
+            }
+        };
 
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
-            Ok(true)
         } else {
             std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
-            Ok(true)
         }
     }
 }
@@ -70,14 +83,14 @@ pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
     let file_name = match get_variable_from_config_file("cv", "cv_template_file") {
         Ok(s) => s.to_string(),
         Err(e) => {
-            error!("Could not get the cv_template_file variable: {e:?}");
-            return Err("Could not get the cv_template_file variable: {e:?}");
+            error!("Could not get the cv_template_file variable: {e:}");
+            return Err(format!("Could not get the cv_template_file variable: {e:}").to_string());
         }
     };
 
     let cv_dir = cv_path.to_string().replace(&file_name, "");
 
-    let pdf_viewer = match get_variable_from_config("optional", "pdf_viewer") {
+    let pdf_viewer = match get_variable_from_config_file("optional", "pdf_viewer") {
         Ok(s) => s,
         Err(e) => {
             panic!("Could not the pdf_viewer variable: {e:?}")
@@ -97,8 +110,8 @@ pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
             Ok(true)
         }
         Err(e) => {
-            error!("Error compiling CV: {e}");
-            Err("Error compiling CV: {e}")
+            error!("Error compiling CV: {e:}");
+            Err(format!("Error compiling CV: {e:}").to_string())
         }
     }
 }
