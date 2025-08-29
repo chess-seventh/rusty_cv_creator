@@ -1,3 +1,16 @@
+# [1.9.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.8.0...v1.9.0) (2025-08-29)
+
+
+### Features
+
+* Enhance devenv.nix for Rust development ([8f4cccc](https://github.com/chess-seventh/rusty_cv_creator/commit/8f4cccc37c304083f5ab7de4e6fdd11754fed1cb))
+* Enhance GlobalVars handling and defaults ([7d50535](https://github.com/chess-seventh/rusty_cv_creator/commit/7d5053553fa5ff4e0d2ba391a471be63d54dc2fa))
+* Overhaul CV management and filtering functions ([9070c33](https://github.com/chess-seventh/rusty_cv_creator/commit/9070c33f38ead4619b96cfdedb1e12dd87097fb6))
+* Refactor config and database interactions ([3d922e9](https://github.com/chess-seventh/rusty_cv_creator/commit/3d922e9a7a8eca4b9c1828161276535ea459e14a))
+* Revamp CLI structure and defaults for CV cmd ([ff2eb83](https://github.com/chess-seventh/rusty_cv_creator/commit/ff2eb83525e91fc1cb31d5e98234354e0169e343))
+
+
+
 # [1.8.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.7.0...v1.8.0) (2025-08-25)
 
 
