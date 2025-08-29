@@ -44,7 +44,9 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
         eng.get_user_input_db_engine()
     } else {
         warn!("Could not get the DATABASE_URL env variable !");
-        Err("Could not get the DATABASE_URL env variable !".to_string())
+        Err("Could not get the DATABASE_URL env variable !"
+            .to_string()
+            .into())
     };
 
     if engine.is_ok_and(|e| "postgres" == e) {

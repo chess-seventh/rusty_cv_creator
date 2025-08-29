@@ -47,7 +47,10 @@ fn load_config(config_string: String) -> Ini {
     config
 }
 
-pub fn get_variable_from_config_file(section: &str, variable: &str) -> Result<String, String> {
+pub fn get_variable_from_config_file(
+    section: &str,
+    variable: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     debug!("Retrieving from config: {section:} {variable:}");
     let config_get = get_global_var().get_user_input_vars(section, variable)?;
 
@@ -56,7 +59,7 @@ pub fn get_variable_from_config_file(section: &str, variable: &str) -> Result<St
     Ok(clean_string_from_quotes(&value))
 }
 
-pub fn get_db_configurations() -> Result<String, String> {
+pub fn get_db_configurations() -> Result<String, Box<dyn std::error::Error>> {
     debug!("Getting DB Configuration");
     let cfg_db_path = get_global_var_config_db_path()?;
     let cfg_db_file = get_global_var_config_db_file()?;

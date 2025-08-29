@@ -19,12 +19,12 @@ pub fn _get_global_var_config() -> Ini {
     get_global_var().get_config()
 }
 
-pub fn get_global_var_config_db_path() -> Result<String, String> {
+pub fn get_global_var_config_db_path() -> Result<String, Box<dyn std::error::Error>> {
     let gvar = get_global_var();
     gvar.get_user_input_vars("db", "db_path")
 }
 
-pub fn get_global_var_config_db_file() -> Result<String, String> {
+pub fn get_global_var_config_db_file() -> Result<String, Box<dyn std::error::Error>> {
     let gvar = get_global_var();
     gvar.get_user_input_vars("db", "db_file")
 }
@@ -65,14 +65,18 @@ impl GlobalVars {
             .clone()
     }
 
-    pub fn get_user_input_vars(&self, section: &str, key: &str) -> Result<String, String> {
+    pub fn get_user_input_vars(
+        &self,
+        section: &str,
+        key: &str,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let conf = self
             .config
             .get()
             .unwrap_or_else(|| panic!("Failed getting the Config INI"));
 
         conf.get(section, key)
-            .ok_or(format!("Could not get {section:} {key:}"))
+            .ok_or(format!("Could not get {section:} {key:}").into())
     }
 
     pub fn get_today(&self) -> &DateTime<Local> {
@@ -111,31 +115,39 @@ impl GlobalVars {
         }
     }
 
-    pub fn get_job_title(&self) -> Result<String, String> {
+    pub fn get_job_title(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().job_title {
             Some(job) => Ok(job),
-            None => Err("This filter does not have the 'job_title' keyword".to_string()),
+            None => Err("This filter does not have the 'job_title' keyword"
+                .to_string()
+                .into()),
         }
     }
 
-    pub fn get_company_name(&self) -> Result<String, String> {
+    pub fn get_company_name(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().company_name {
             Some(job) => Ok(job),
-            None => Err("This filter does not have the 'company_name' keyword".to_string()),
+            None => Err("This filter does not have the 'company_name' keyword"
+                .to_string()
+                .into()),
         }
     }
 
-    pub fn get_quote(&self) -> Result<String, String> {
+    pub fn get_quote(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().quote {
             Some(job) => Ok(job),
-            None => Err("This filter does not have the 'quote' keyword".to_string()),
+            None => Err("This filter does not have the 'quote' keyword"
+                .to_string()
+                .into()),
         }
     }
 
-    pub fn _get_date(&self) -> Result<String, String> {
+    pub fn _get_date(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().date {
             Some(job) => Ok(job),
-            None => Err("This filter does not have the 'date' keyword".to_string()),
+            None => Err("This filter does not have the 'date' keyword"
+                .to_string()
+                .into()),
         }
     }
 
@@ -143,7 +155,7 @@ impl GlobalVars {
         self.get_user_input().save_to_database
     }
 
-    pub fn get_user_input_db_engine(&self) -> Result<String, String> {
+    pub fn get_user_input_db_engine(&self) -> Result<String, Box<dyn std::error::Error>> {
         self.get_user_input_vars("db", "engine")
         // self.get_config().get("db", "engine")
         // .expect("Could not get the database engine")

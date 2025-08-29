@@ -58,7 +58,7 @@ pub fn make_cv_changes_based_on_input(
     job_title: &str,
     quote: Option<&String>,
     cv_file_path: &str,
-) -> Result<String, String> {
+) -> Result<String, Box<dyn std::error::Error>> {
     let cv_file_content = read_destination_cv_file(cv_file_path);
     let changed_content = change_values_in_destination_cv(&cv_file_content, job_title, quote)?;
     match write_to_destination_cv_file(cv_file_path, &changed_content) {
@@ -74,14 +74,11 @@ pub fn make_cv_changes_based_on_input(
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, String> {
-    let var = match get_variable_from_config_file("destination", "cv_path") {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Could not get cv_path variable: {e:}");
-            return Err(format!("Could not get cv_path variable: {e:}").to_string());
-        }
-    };
+pub fn create_directory(
+    job_title: &str,
+    company_name: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let var = get_variable_from_config_file("destination", "cv_path")?;
 
     let destination_folder = fix_home_directory_path(&var);
     let now = GLOBAL_VAR.get().unwrap().get_today();
@@ -90,7 +87,9 @@ pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, S
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
         Err(e) => {
             error!("Error creating year directory: {e:}");
-            return Err(format!("Error creating year directory: {e:}").to_string());
+            return Err(format!("Error creating year directory: {e:}")
+                .to_string()
+                .into());
         }
     }
 
@@ -99,7 +98,7 @@ pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, S
             Ok(s) => s,
             Err(e) => {
                 error!("{e:?}");
-                return Err(format!("{e:?}").to_string());
+                return Err(format!("{e:?}").to_string().into());
             }
         };
 
@@ -107,7 +106,7 @@ pub fn create_directory(job_title: &str, company_name: &str) -> Result<String, S
         Ok(_) => info!("✅ Directory created & copied successfully"),
         Err(e) => {
             error!("Error copying directory: {e:}");
-            return Err(format!("Error copying directory: {e:}").to_string());
+            return Err(format!("Error copying directory: {e:}").to_string().into());
         }
     }
     Ok(full_destination_path)
@@ -124,14 +123,8 @@ fn prepare_path_for_new_cv(
     company_name: &str,
     destination_folder: &str,
     now: &DateTime<Local>,
-) -> Result<(String, String), String> {
-    let var = match get_variable_from_config_file("cv", "cv_template_path") {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Could not get cv_template_path variable {e:}");
-            return Err(format!("Could not get cv_template_path variable {e:}").to_string());
-        }
-    };
+) -> Result<(String, String), Box<dyn std::error::Error>> {
+    let var = get_variable_from_config_file("cv", "cv_template_path")?;
 
     let cv_template_path: String = fix_home_directory_path(&var);
 
@@ -171,7 +164,7 @@ fn change_values_in_destination_cv(
     cv_file_content: &str,
     job_title: &str,
     _quote: Option<&String>,
-) -> Result<String, String> {
+) -> Result<String, Box<dyn std::error::Error>> {
     change_position_in_destination_cv(cv_file_content, job_title)
     // modified_cv_content = change_quote_in_destination_cv(&modified_cv_content, quote);
     // modified_cv_content
@@ -180,7 +173,7 @@ fn change_values_in_destination_cv(
 fn change_position_in_destination_cv(
     cv_file_content: &str,
     job_title: &str,
-) -> Result<String, String> {
+) -> Result<String, Box<dyn std::error::Error>> {
     let replace_position = get_variable_from_config_file("to_replace", "position_line_to_change")?;
 
     info!("✅ Changed position from: {replace_position} to: {job_title}");
@@ -192,36 +185,34 @@ fn change_position_in_destination_cv(
     Ok(new)
 }
 
-fn _change_quote_in_destination_cv(cv_file_content: &str, quote: &str) -> String {
-    let replace_quote = match get_variable_from_config_file("to_replace", "quote_line_to_change") {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Could not get the quote_line_to_change variable: {e:}");
-            panic!("Could not get the quote_line_to_change variable: {e:}");
-        }
-    };
+fn _change_quote_in_destination_cv(
+    cv_file_content: &str,
+    quote: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let replace_quote = get_variable_from_config_file("to_replace", "quote_line_to_change")?;
 
     if quote.is_empty() {
         info!("✅ Removing quote");
 
-        return cv_file_content
+        return Ok(cv_file_content
             .lines()
             .filter(|&line| !line.contains(&replace_quote))
             .collect::<Vec<_>>()
-            .join("\n");
+            .join("\n"));
     }
 
     info!("✅ Changed quote to: {quote:?}");
-    cv_file_content.replace(replace_quote.as_str(), quote)
+    Ok(cv_file_content.replace(replace_quote.as_str(), quote))
 }
 
 // TODO: function should return Result
+// Function should cleanup all the non PDF files
 pub fn remove_created_dir_from_pro(
     job_title: &str,
     company_name: &str,
     created_cv_dir: &String,
     destination_cv_file_full_path: &str,
-) {
+) -> Result<(), Box<dyn std::error::Error>> {
     // Remove directory and keep only the pdf file
     let path_created_dir = Path::new(&created_cv_dir);
     let application_date = GLOBAL_VAR.get().unwrap().get_today_str_yyyy_mm_dd();
@@ -240,7 +231,13 @@ pub fn remove_created_dir_from_pro(
 
     // TODO: make sure that the Path for Obsidian is fetched from config file
     //
-    let destination_cv_pdf_copy = format!("/home/seventh/Documents/Wiki/🧠 P.A.R.A./2. 🌐 Areas/3. 👔 Pro/Dossier_Pro/Applications/{application_year}/{application_date}-{job_title}-{company_name}.pdf");
+    // let destination_cv_pdf_copy = format!("/home/seventh/Documents/Wiki/🧠 P.A.R.A./2. 🌐 Areas/3. 👔 Pro/Dossier_Pro/Applications/{application_year}/{application_date}-{job_title}-{company_name}.pdf");
+
+    let output_dir = get_variable_from_config_file("destination", "output_pdf")?;
+
+    let destination_cv_pdf_copy = format!(
+        "{output_dir}/{application_year}/{application_date}-{job_title}-{company_name}.pdf"
+    );
 
     copy_to_destination(
         created_cv_dir,
@@ -250,6 +247,7 @@ pub fn remove_created_dir_from_pro(
     copy_to_destination(created_cv_dir, pdf_file_name, remove_dir_of_cv_path);
 
     remove_cv_dir(path_created_dir).unwrap();
+    Ok(())
 }
 
 // TODO: function should return Result

@@ -17,7 +17,9 @@ mod user_action;
 
 use crate::cli_structure::{match_user_action, UserAction, UserInput};
 use crate::config_parse::{get_variable_from_config_file, set_global_vars};
-use crate::file_handlers::{compile_cv, create_directory, make_cv_changes_based_on_input};
+use crate::file_handlers::{
+    compile_cv, create_directory, make_cv_changes_based_on_input, remove_created_dir_from_pro,
+};
 use crate::global_conf::get_global_var;
 use crate::helpers::{
     check_if_db_env_is_set_or_set_from_config, fix_home_directory_path, view_cv_file,
@@ -54,14 +56,15 @@ fn prepare_cv(
     job_title: &str,
     company_name: &str,
     quote: Option<&String>,
-) -> Result<String, String> {
+) -> Result<String, Box<dyn std::error::Error>> {
     let cfg = match get_variable_from_config_file("cv", "cv_template_file") {
         Ok(c) => c,
         Err(e) => {
             error!("Something went wrong when gathering variable from config: {e:?}");
             return Err(
                 format!("Something went wrong when gathering variable from config: {e:?}")
-                    .to_string(),
+                    .to_string()
+                    .into(),
             );
         }
     };
@@ -71,7 +74,9 @@ fn prepare_cv(
         Ok(s) => s,
         Err(e) => {
             error!("Could not create directory for CV: {e:?}");
-            return Err(format!("Could not create directory for CV: {e:?}").to_string());
+            return Err(format!("Could not create directory for CV: {e:?}")
+                .to_string()
+                .into());
         }
     };
 
@@ -81,12 +86,12 @@ fn prepare_cv(
     make_cv_changes_based_on_input(job_title, quote, &destination_cv_file_full_path)?;
     compile_cv(&created_cv_dir, &cv_template_file);
 
-    file_handlers::remove_created_dir_from_pro(
+    remove_created_dir_from_pro(
         job_title,
         company_name,
         &created_cv_dir,
         &destination_cv_file_full_path,
-    );
+    )?;
 
     Ok(destination_cv_file_full_path)
 }

@@ -4,24 +4,14 @@ use crate::prepare_cv;
 use crate::global_conf::get_global_var;
 use log::{info, warn};
 
-pub fn insert_cv() -> Result<String, String> {
+pub fn insert_cv() -> Result<String, Box<dyn std::error::Error>> {
     // These come from the UserInput, FilterArgs
     // TODO: remove unwrap to make sure we don't break stuff
     let job_title = get_global_var().get_job_title()?;
     let company_name = get_global_var().get_company_name()?;
-    let quote = get_global_var().get_quote().err();
+    let quote = get_global_var().get_quote().ok();
 
-    let destination_cv_file_full_path = match prepare_cv(&job_title, &company_name, quote.as_ref())
-    {
-        Ok(s) => s,
-        Err(e) => {
-            warn!("Could not get the destination_cv_file_full_path: {e:}");
-            warn!("{e:}");
-            return Err(
-                format!("Could not get the destination_cv_file_full_path: {e:}").to_string(),
-            );
-        }
-    };
+    let destination_cv_file_full_path = prepare_cv(&job_title, &company_name, quote.as_ref())?;
 
     // This comes from the INI file.
     let save_to_db = get_global_var().get_user_input_save_to_db();
