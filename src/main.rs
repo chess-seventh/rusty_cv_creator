@@ -29,30 +29,22 @@ fn main() {
 
     let user_input = UserInput::parse();
 
-    match set_global_vars(&user_input.clone()) {
-        Ok(o) => info!("all good: {o}"),
-        Err(e) => panic!("could not set global vars {e}"),
-    }
+    set_global_vars(&user_input.clone());
+    check_if_db_env_is_set_or_set_from_config();
 
-    match check_if_db_env_is_set_or_set_from_config() {
-        Ok(_v) => info!("Fetched the DATABASE_URL env variable"),
-        Err(v) => panic!("{}", v),
-    }
+    let action = get_global_var()._get_user_input_action();
 
-    let cv_full_path = match_user_action();
+    let cv_full_path = match_user_action(user_input.clone());
 
     if !cv_full_path.is_empty() {
-        match user_input.view_generated_cv {
-            Some(true) => {
-                match view_cv_file(&cv_full_path) {
-                    Ok(b) => b,
-                    Err(e) => panic!("{e:?}"),
-                };
-            }
-            Some(false) | None => {
-                info!("CV saved to: {cv_full_path}");
-                // println!("CV saved to: {cv_full_path}");
-            }
+        if user_input.view_generated_cv {
+            match view_cv_file(&cv_full_path) {
+                Ok(b) => b,
+                Err(e) => panic!("{e:}"),
+            };
+        } else {
+            info!("CV saved to: {cv_full_path}");
+            // println!("CV saved to: {cv_full_path}");
         }
     }
 }
@@ -63,7 +55,8 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> Result<String
         Err(e) => {
             error!("Something went wrong when gathering variable from config: {e:?}");
             return Err(
-                "Something went wrong when gathering variable from config: {e:?}".to_string(),
+                format!("Something went wrong when gathering variable from config: {e:?}")
+                    .to_string(),
             );
         }
     };
@@ -73,14 +66,14 @@ fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> Result<String
         Ok(s) => s,
         Err(e) => {
             error!("Could not create directory for CV: {e:?}");
-            return Err("Could not create directory for CV: {e:?}".to_string());
+            return Err(format!("Could not create directory for CV: {e:?}").to_string());
         }
     };
 
     let destination_cv_file_full_path =
         fix_home_directory_path(&format!("{created_cv_dir}/{cv_template_file}"));
 
-    make_cv_changes_based_on_input(job_title, quote, &destination_cv_file_full_path);
+    make_cv_changes_based_on_input(job_title, quote, &destination_cv_file_full_path)?;
     compile_cv(&created_cv_dir, &cv_template_file);
 
     file_handlers::remove_created_dir_from_pro(
