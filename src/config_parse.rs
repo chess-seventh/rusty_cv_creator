@@ -1,46 +1,45 @@
 use crate::cli_structure::UserInput;
-use crate::global_conf::{GlobalVars, GLOBAL_VAR};
-use crate::helpers::{check_file_exists, clean_string_from_quotes, fix_home_directory_path};
+use crate::global_conf::{
+    get_global_var, get_global_var_config_db_file, get_global_var_config_db_path, GlobalVars,
+    GLOBAL_VAR,
+};
+use crate::helpers::{check_config_file_exists, clean_string_from_quotes, fix_home_directory_path};
 use configparser::ini::Ini;
-use log::{error, info};
+use log::{debug, info};
 use std::fs;
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn set_global_vars(user_input: &UserInput) -> Result<&str, &str> {
+pub fn set_global_vars(user_input: &UserInput) {
     let read_file_path = user_input.clone().config_ini;
-    info!("Reading config file here: {read_file_path}");
+    info!("Reading config file here: {read_file_path:}");
 
-    let file_path = match check_file_exists(read_file_path.as_str()) {
+    let file_path = match check_config_file_exists(read_file_path.as_str()) {
         Ok(filepath) => filepath,
-        Err(e) => panic!("cloud not set file path: {e}"),
+        Err(e) => panic!("Error in checking that the file path exists: {e:}"),
     };
 
-    let contents = fs::read_to_string(file_path).expect("Should have been able to read the file");
+    let contents = fs::read_to_string(file_path.clone())
+        .unwrap_or_else(|_| panic!("Should have been able to read the file: {file_path:}"));
 
     let config = load_config(contents);
     let today = chrono::offset::Local::now();
 
     match GLOBAL_VAR.set(GlobalVars::new()) {
-        Ok(()) => info!("GLOBAL_VAR is not set!"),
+        Ok(()) => info!("GLOBAL_VAR is not set, setting OnceCell now..."),
         Err(e) => {
-            error!("Something went wrong when trying to set the GLOBAL_VAR: {e:?}");
-            return Err("Something went wrong when trying to set the GLOBAL_VAR: {e:?}");
+            panic!("Something went wrong when trying to create a new GLOBAL_VAR: {e:?}");
         }
     }
 
-    let global_vars = if let Some(v) = GLOBAL_VAR.get() {
-        info!("Could get GLOBAL_VAR");
-        v
-    } else {
-        error!("Could not get GLOBAL_VAR, something is wrong");
-        return Err("Could not get GLOBAL_VAR, something is wrong");
+    let Some(global_vars) = GLOBAL_VAR.get() else {
+        panic!("Could not get GLOBAL_VAR, something is wrong");
     };
 
-    global_vars.set_all(config, today, user_input.clone());
-    Ok("all good")
+    global_vars.set_all(config.clone(), today, user_input.clone());
 }
 
 fn load_config(config_string: String) -> Ini {
+    info!("Reading the config file");
     let mut config = Ini::new();
     config
         .read(config_string)
