@@ -1,11 +1,11 @@
 use crate::cli_structure::FilterArgs;
 use crate::global_conf::GLOBAL_VAR;
-use crate::helpers::{check_if_db_env_is_set_or_set_from_config, fix_home_directory_path};
+use crate::helpers::fix_home_directory_path;
 use diesel::prelude::*;
 use log::{error, info};
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::models::NewCv;
-use rusty_cv_creator::schema::cv;
+use rusty_cv_creator::schema::cv::{self};
 use std::env;
 
 extern crate skim;
@@ -33,13 +33,8 @@ pub fn establish_connection_postgres() -> PgConnection {
 }
 
 pub fn _establish_connection_sqlite() -> SqliteConnection {
-    let database_url = &env::var("DATABASE_URL").unwrap_or_else(|_| {
-        match check_if_db_env_is_set_or_set_from_config() {
-            Ok(_v) => info!("Fetched the DATABASE_URL env variable"),
-            Err(v) => panic!("{}", v),
-        }
-        env::var("DATABASE_URL").unwrap()
-    });
+    let database_url = &env::var("DATABASE_URL")
+        .unwrap_or_else(|_| panic!("Could not get DATABASE_URL from env when establishing sqlite"));
 
     let db = fix_home_directory_path(database_url);
     println!("{db:?}");
