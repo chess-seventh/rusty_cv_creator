@@ -205,8 +205,7 @@ fn _change_quote_in_destination_cv(
     Ok(cv_file_content.replace(replace_quote.as_str(), quote))
 }
 
-// TODO: function should return Result
-// Function should cleanup all the non PDF files
+// TODO: Function should cleanup all the non PDF files
 pub fn remove_created_dir_from_pro(
     job_title: &str,
     company_name: &str,

@@ -3,6 +3,9 @@ on:
   push:
     branches: [master]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -36,6 +39,7 @@ jobs:
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         run: |
           cargo set-version ${{ steps.changelog.outputs.version }}
+          cargo build --verbose
 
       # - name: Build and Publish to crates.io
       #   if: ${{ steps.changelog.outputs.skipped == 'false' }}
