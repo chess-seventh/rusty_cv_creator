@@ -32,7 +32,7 @@
     postgresql
     cargo-nextest
     cargo-shear
-
+    cargo-llvm-cov
     # cmake
     # gcc
     # openssl
@@ -45,7 +45,7 @@
     rust = {
       enable = true;
       channel = "stable";
-      components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-std" ];
+      components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-std" "llvm-tools-preview"];
     };
 
     shell.enable = true;
@@ -125,13 +125,22 @@
       '';
     };
 
+    cclippy = {
+      description = ''
+        Run clippy
+      '';
+      exec = ''
+         cargo clippy --all-targets -- -W clippy::pedantic -A clippy::missing_errors_doc -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::doc_markdown -A clippy::missing_panics_doc
+      '';
+    };
+
     pre-check = {
       description = ''
         runs linters, tests, and builds to prepare commit/push (more extensively than pre-commit hook)
       '';
       exec = ''
         #!/usr/bin/env bash
-        set -euxo pipefail
+        set -euo pipefail
 
         if [ -f .env.testing ]; then
             source .env.testing
@@ -140,7 +149,7 @@
         cargo fmt --all --check
         cargo clippy --all-targets -- -D warnings
         cargo shear --fix
-        cargo nextest run
+        cargo llvm-cov --html nextest 
       '';
     };
   };
