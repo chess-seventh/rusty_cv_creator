@@ -48,19 +48,9 @@ fn load_config(config_string: String) -> Ini {
     config
 }
 
-pub fn get_variable_from_config(section: &str, variable: &str) -> Result<String, String> {
-    let config = if let Some(v) = GLOBAL_VAR.get() {
-        info!("Could get GLOBAL_VAR");
-        &v.get_config()
-    } else {
-        error!("Could not get GLOBAL_VAR, something is wrong");
-        return Err("Could not get GLOBAL_VAR, something is wrong".to_string());
-    };
-
-    let config_get = match &config.get(section, variable) {
-        Some(cfg) => cfg.clone(),
-        None => return Err("Could not get GLOBAL_VAR, something is wrong".to_string()),
-    };
+pub fn get_variable_from_config_file(section: &str, variable: &str) -> Result<String, String> {
+    debug!("Retrieving from config: {section:} {variable:}");
+    let config_get = get_global_var().get_user_input_vars(section, variable)?;
 
     let value = fix_home_directory_path(&config_get);
 
@@ -68,24 +58,12 @@ pub fn get_variable_from_config(section: &str, variable: &str) -> Result<String,
 }
 
 pub fn get_db_configurations() -> Result<String, String> {
-    let config = match GLOBAL_VAR.get() {
-        Some(cfg) => cfg.get_config(),
-        None => return Err("GlobalVar Get didn't work".to_string()),
-    };
+    debug!("Getting DB Configuration");
+    let cfg_db_path = get_global_var_config_db_path()?;
+    let cfg_db_file = get_global_var_config_db_file()?;
 
-    let config_get = match &config.get("db", "db_path") {
-        Some(cfg) => cfg.clone(),
-        None => return Err("Could not get DB Path from GlobalVars".to_string()),
-    };
-
-    let mut db_path = fix_home_directory_path(&clean_string_from_quotes(&config_get));
-
-    let config_file = match &config.get("db", "db_file") {
-        Some(cfg) => cfg.clone(),
-        None => return Err("Could not get DB File from GlobalVars".to_string()),
-    };
-
-    let db_file = clean_string_from_quotes(&config_file);
+    let mut db_path = fix_home_directory_path(&clean_string_from_quotes(&cfg_db_path));
+    let db_file = clean_string_from_quotes(&cfg_db_file);
 
     db_path.push('/');
     db_path.push_str(db_file.as_str());

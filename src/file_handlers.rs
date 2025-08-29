@@ -1,4 +1,4 @@
-use crate::config_parse::get_variable_from_config;
+use crate::config_parse::get_variable_from_config_file;
 use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
 use chrono::{DateTime, Local};

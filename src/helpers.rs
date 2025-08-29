@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use skim::prelude::*;
 use std::io::Cursor;
 
-use crate::config_parse::{get_db_configurations, get_variable_from_config};
+use crate::config_parse::{get_db_configurations, get_variable_from_config_file};
 use crate::global_conf::GLOBAL_VAR;
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {
@@ -66,8 +66,8 @@ pub fn check_if_db_env_is_set_or_set_from_config() -> Result<bool, String> {
     }
 }
 
-pub fn view_cv_file(cv_path: &str) -> Result<bool, &str> {
-    let file_name = match get_variable_from_config("cv", "cv_template_file") {
+pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
+    let file_name = match get_variable_from_config_file("cv", "cv_template_file") {
         Ok(s) => s.to_string(),
         Err(e) => {
             error!("Could not get the cv_template_file variable: {e:?}");

@@ -58,7 +58,7 @@ fn main() {
 }
 
 fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> Result<String, String> {
-    let cfg = match get_variable_from_config("cv", "cv_template_file") {
+    let cfg = match get_variable_from_config_file("cv", "cv_template_file") {
         Ok(c) => c,
         Err(e) => {
             error!("Something went wrong when gathering variable from config: {e:?}");
