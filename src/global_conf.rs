@@ -5,7 +5,28 @@ use once_cell::sync::OnceCell;
 
 pub static GLOBAL_VAR: OnceCell<GlobalVars> = OnceCell::new();
 
-#[derive(Debug, Clone)]
+pub fn get_global_var() -> GlobalVars {
+    match GLOBAL_VAR.get() {
+        Some(gvar) => gvar.clone(),
+        None => panic!("GlobalVar Get didn't work"),
+    }
+}
+
+pub fn _get_global_var_config() -> Ini {
+    get_global_var().get_config()
+}
+
+pub fn get_global_var_config_db_path() -> Result<String, String> {
+    let gvar = get_global_var();
+    gvar.get_user_input_vars("db", "db_path")
+}
+
+pub fn get_global_var_config_db_file() -> Result<String, String> {
+    let gvar = get_global_var();
+    gvar.get_user_input_vars("db", "db_file")
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct GlobalVars {
     pub config: OnceCell<Ini>,
     pub today: OnceCell<DateTime<Local>>,
@@ -41,6 +62,16 @@ impl GlobalVars {
             .clone()
     }
 
+    pub fn get_user_input_vars(&self, section: &str, key: &str) -> Result<String, String> {
+        let conf = self
+            .config
+            .get()
+            .unwrap_or_else(|| panic!("Failed getting the Config INI"));
+
+        conf.get(section, key)
+            .ok_or(format!("Could not get {section:} {key:}"))
+    }
+
     pub fn get_today(&self) -> &DateTime<Local> {
         self.today.get().unwrap()
     }
@@ -64,39 +95,18 @@ impl GlobalVars {
             .clone()
     }
 
-    pub fn get_user_input_action(&self) -> UserAction {
-        self.get_user_input().action
-    }
-
-    pub fn get_user_job_title(&self) -> String {
-        match self.get_user_input_action() {
-            UserAction::Insert(insert) => insert.job_title,
-            _ => panic!("Could not get the job title"),
-        }
-    }
-
-    pub fn get_user_input_company_name(&self) -> String {
-        match self.get_user_input_action() {
-            UserAction::Insert(insert) => insert.company_name,
-            _ => panic!("Could not get the company name"),
-        }
-    }
-
-    pub fn get_user_input_quote(&self) -> String {
-        match self.get_user_input_action() {
-            UserAction::Insert(insert) => insert.quote,
-            _ => panic!("Could not get the quote"),
-        }
+    pub fn _get_user_input_action(&self) -> UserAction {
+        self.user_input.get().unwrap().clone().action
     }
 
     pub fn get_user_input_save_to_db(&self) -> bool {
-        self.get_user_input().save_to_database.unwrap_or(true)
+        self.get_user_input().save_to_database
     }
 
-    pub fn get_user_input_db_engine(&self) -> String {
-        self.get_config()
-            .get("db", "engine")
-            .expect("Could not get the database engine")
+    pub fn get_user_input_db_engine(&self) -> Result<String, String> {
+        self.get_user_input_vars("db", "engine")
+        // self.get_config().get("db", "engine")
+        // .expect("Could not get the database engine")
     }
 
     pub fn get_user_input_db_url(&self) -> String {
