@@ -1,4 +1,3 @@
-use crate::global_conf::GLOBAL_VAR;
 use crate::user_action::{insert_cv, remove_cv};
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand};
@@ -63,10 +62,9 @@ pub struct FilterArgs {
     pub date: Option<String>,
 }
 
-pub fn match_user_action() -> String {
-    let input = GLOBAL_VAR.get().unwrap().get_user_input();
-    match input.action {
-        UserAction::Insert(_insert) => match insert_cv() {
+pub fn match_user_action(user_input: UserInput) -> String {
+    match user_input.action {
+        UserAction::Insert(insert_args) => match insert_cv(insert_args) {
             Ok(s) => s,
             Err(e) => panic!("{e:?}"),
         },
