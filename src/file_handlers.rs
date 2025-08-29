@@ -56,7 +56,7 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
 
 pub fn make_cv_changes_based_on_input(
     job_title: &str,
-    quote: &str,
+    quote: Option<&String>,
     cv_file_path: &str,
 ) -> Result<String, String> {
     let cv_file_content = read_destination_cv_file(cv_file_path);
@@ -170,7 +170,7 @@ fn read_destination_cv_file(destination_cv_file: &str) -> String {
 fn change_values_in_destination_cv(
     cv_file_content: &str,
     job_title: &str,
-    _quote: &str,
+    _quote: Option<&String>,
 ) -> Result<String, String> {
     change_position_in_destination_cv(cv_file_content, job_title)
     // modified_cv_content = change_quote_in_destination_cv(&modified_cv_content, quote);

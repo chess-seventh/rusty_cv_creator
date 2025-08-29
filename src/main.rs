@@ -8,13 +8,14 @@ use std::process::Command;
 
 mod cli_structure;
 mod config_parse;
+mod cv_insert;
 mod database;
 mod file_handlers;
 mod global_conf;
 mod helpers;
 mod user_action;
 
-use crate::cli_structure::{match_user_action, UserInput};
+use crate::cli_structure::{match_user_action, UserAction, UserInput};
 use crate::config_parse::{get_variable_from_config_file, set_global_vars};
 use crate::file_handlers::{compile_cv, create_directory, make_cv_changes_based_on_input};
 use crate::global_conf::get_global_var;
@@ -32,7 +33,7 @@ fn main() {
     set_global_vars(&user_input.clone());
     check_if_db_env_is_set_or_set_from_config();
 
-    let action = get_global_var()._get_user_input_action();
+    let _action: UserAction = get_global_var().get_user_input_action();
 
     let cv_full_path = match_user_action(user_input.clone());
 
@@ -49,7 +50,11 @@ fn main() {
     }
 }
 
-fn prepare_cv(job_title: &str, company_name: &str, quote: &str) -> Result<String, String> {
+fn prepare_cv(
+    job_title: &str,
+    company_name: &str,
+    quote: Option<&String>,
+) -> Result<String, String> {
     let cfg = match get_variable_from_config_file("cv", "cv_template_file") {
         Ok(c) => c,
         Err(e) => {

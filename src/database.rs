@@ -43,17 +43,26 @@ pub fn _establish_connection_sqlite() -> SqliteConnection {
 }
 
 // fn check_if_entry_exists() -> Result<i64, diesel::result::Error> {
-fn check_if_entry_exists(g_job_title: &str, g_company: &str, g_quote: &str) -> Option<i32> {
+fn check_if_entry_exists(
+    g_job_title: &str,
+    g_company: &str,
+    g_quote: Option<&String>,
+) -> Option<i32> {
     use rusty_cv_creator::schema::cv::dsl::cv;
     use rusty_cv_creator::schema::cv::{company, job_title, quote};
 
     let conn = &mut establish_connection_postgres();
 
+    let my_quote = match g_quote {
+        Some(q) => q,
+        None => &String::new(),
+    };
+
     let selection = cv
         .select(Cv::as_select())
         .filter(job_title.eq(g_job_title))
         .filter(company.eq(g_company))
-        .filter(quote.eq(g_quote))
+        .filter(quote.eq(my_quote))
         .first(conn)
         .optional();
 
@@ -78,7 +87,7 @@ pub fn save_new_cv_to_db(
     cv_path: &str,
     job_title: &str,
     company: &str,
-    quote: &str,
+    quote: Option<&String>,
 ) -> Result<Cv, String> {
     // let db_engine = GlobalVars::get_db_engine();
     // let conn = &mut define_connection_type("sqlite").unwrap();
@@ -105,11 +114,16 @@ pub fn save_new_cv_to_db(
         return Ok(cv::table.find(id).first(conn).expect("Error loading CV"));
     }
 
+    let my_quote = match quote {
+        Some(q) => q,
+        None => &String::new(),
+    };
+
     let new_cv = NewCv {
         application_date: Some(&application_date),
         job_title,
         company,
-        quote,
+        quote: my_quote,
         pdf_cv_path: cv_path,
         generated: true,
     };

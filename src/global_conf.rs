@@ -1,4 +1,7 @@
-use crate::{cli_structure::UserAction, UserInput};
+use crate::{
+    cli_structure::{FilterArgs, UserAction},
+    UserInput,
+};
 use chrono::{DateTime, Local};
 use configparser::ini::Ini;
 use once_cell::sync::OnceCell;
@@ -95,8 +98,45 @@ impl GlobalVars {
             .clone()
     }
 
-    pub fn _get_user_input_action(&self) -> UserAction {
+    pub fn get_user_input_action(&self) -> UserAction {
         self.user_input.get().unwrap().clone().action
+    }
+
+    pub fn get_user_input_action_filter_args(&self) -> FilterArgs {
+        match self.get_user_input_action() {
+            UserAction::Insert(filter_args)
+            | UserAction::Remove(filter_args)
+            | UserAction::List(filter_args)
+            | UserAction::Update(filter_args) => filter_args,
+        }
+    }
+
+    pub fn get_job_title(&self) -> Result<String, String> {
+        match self.get_user_input_action_filter_args().job_title {
+            Some(job) => Ok(job),
+            None => Err("This filter does not have the 'job_title' keyword".to_string()),
+        }
+    }
+
+    pub fn get_company_name(&self) -> Result<String, String> {
+        match self.get_user_input_action_filter_args().company_name {
+            Some(job) => Ok(job),
+            None => Err("This filter does not have the 'company_name' keyword".to_string()),
+        }
+    }
+
+    pub fn get_quote(&self) -> Result<String, String> {
+        match self.get_user_input_action_filter_args().quote {
+            Some(job) => Ok(job),
+            None => Err("This filter does not have the 'quote' keyword".to_string()),
+        }
+    }
+
+    pub fn _get_date(&self) -> Result<String, String> {
+        match self.get_user_input_action_filter_args().date {
+            Some(job) => Ok(job),
+            None => Err("This filter does not have the 'date' keyword".to_string()),
+        }
     }
 
     pub fn get_user_input_save_to_db(&self) -> bool {
