@@ -71,3 +71,49 @@ pub fn get_db_configurations() -> Result<String, Box<dyn std::error::Error>> {
     db_path.push_str(db_file.as_str());
     Ok(db_path)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    #[test]
+    fn test_load_config_reads_values() {
+        let config = "[section]\nkey = \"value\"";
+        let ini = load_config(config.to_string());
+        assert_eq!(ini.get("section", "key").unwrap(), "\"value\"");
+    }
+
+    #[test]
+    fn test_set_global_vars_sets_oncecell() {
+        let mut f = NamedTempFile::new().unwrap();
+        writeln!(f, "[db]\ndb_path = \"/tmp\"\ndb_file = \"test.db\"").unwrap();
+        let ui = crate::cli_structure::UserInput {
+            action: crate::cli_structure::UserAction::Insert(
+                crate::cli_structure::FilterArgs::default(),
+            ),
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: f.path().to_str().unwrap().to_string(),
+            engine: "sqlite".to_string(),
+        };
+        set_global_vars(&ui);
+        // If no panic, we consider pass
+    }
+
+    #[test]
+    #[should_panic(expected = "GlobalVar Get didn't work")]
+    fn test_get_variable_from_config_file_error_if_missing() {
+        let result = get_variable_from_config_file("missing", "key");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[should_panic(expected = "GlobalVar Get didn't work")]
+    fn test_get_db_configurations_error_if_missing() {
+        let result = get_db_configurations();
+        assert!(result.is_err());
+    }
+}

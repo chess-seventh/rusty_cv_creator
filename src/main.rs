@@ -33,7 +33,7 @@ fn main() {
     let user_input = UserInput::parse();
 
     set_global_vars(&user_input.clone());
-    check_if_db_env_is_set_or_set_from_config();
+    let _ = check_if_db_env_is_set_or_set_from_config();
 
     let _action: UserAction = get_global_var().get_user_input_action();
 
@@ -57,17 +57,7 @@ fn prepare_cv(
     company_name: &str,
     quote: Option<&String>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let cfg = match get_variable_from_config_file("cv", "cv_template_file") {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Something went wrong when gathering variable from config: {e:?}");
-            return Err(
-                format!("Something went wrong when gathering variable from config: {e:?}")
-                    .to_string()
-                    .into(),
-            );
-        }
-    };
+    let cfg = get_variable_from_config_file("cv", "cv_template_file")?;
     let cv_template_file = fix_home_directory_path(&cfg);
 
     let created_cv_dir = match create_directory(job_title, company_name) {

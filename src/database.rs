@@ -1,4 +1,5 @@
 use crate::cli_structure::FilterArgs;
+use crate::global_conf::get_global_var;
 use crate::global_conf::GLOBAL_VAR;
 use crate::helpers::fix_home_directory_path;
 use diesel::prelude::*;
@@ -18,18 +19,20 @@ pub enum _ConnectionType {
 
 #[allow(clippy::used_underscore_items)]
 #[allow(dead_code)]
-fn define_connection_type(worker_type: &str) -> _ConnectionType {
+fn define_connection_type(
+    worker_type: &str,
+) -> Result<_ConnectionType, Box<dyn std::error::Error>> {
     match worker_type {
-        "postgres" => _ConnectionType::Postgres(establish_connection_postgres()),
-        "sqlite" => _ConnectionType::Sqlite(_establish_connection_sqlite()),
+        "postgres" => Ok(_ConnectionType::Postgres(establish_connection_postgres()?)),
+        "sqlite" => Ok(_ConnectionType::Sqlite(_establish_connection_sqlite())),
         _ => panic!("worker type not found"),
     }
 }
 
-pub fn establish_connection_postgres() -> PgConnection {
-    let db_url = GLOBAL_VAR.get().unwrap().get_user_input_db_url();
+pub fn establish_connection_postgres() -> Result<PgConnection, Box<dyn std::error::Error>> {
+    let db_url = get_global_var().get_user_input_db_url()?;
 
-    PgConnection::establish(&db_url).unwrap_or_else(|_| panic!("Error connecting to {db_url}"))
+    Ok(PgConnection::establish(&db_url)?) // .unwrap_or_else(|_| panic!("Error connecting to {db_url}"))
 }
 
 pub fn _establish_connection_sqlite() -> SqliteConnection {
@@ -51,7 +54,7 @@ fn check_if_entry_exists(
     use rusty_cv_creator::schema::cv::dsl::cv;
     use rusty_cv_creator::schema::cv::{company, job_title, quote};
 
-    let conn = &mut establish_connection_postgres();
+    let conn = &mut establish_connection_postgres().ok()?;
 
     let my_quote = match g_quote {
         Some(q) => q,
@@ -88,7 +91,7 @@ pub fn save_new_cv_to_db(
     job_title: &str,
     company: &str,
     quote: Option<&String>,
-) -> Result<Cv, String> {
+) -> Result<Cv, Box<dyn std::error::Error>> {
     // let db_engine = GlobalVars::get_db_engine();
     // let conn = &mut define_connection_type("sqlite").unwrap();
 
@@ -97,7 +100,9 @@ pub fn save_new_cv_to_db(
         v
     } else {
         error!("Could not get GLOBAL_VAR, something is wrong");
-        return Err("Could not get GLOBAL_VAR, something is wrong".to_string());
+        return Err("Could not get GLOBAL_VAR, something is wrong"
+            .to_string()
+            .into());
     };
 
     // let job_title = insert_args.clone().job_title.unwrap().clone();
@@ -106,7 +111,7 @@ pub fn save_new_cv_to_db(
 
     let application_date = global_var.get_today_str();
 
-    let conn = &mut establish_connection_postgres();
+    let conn = &mut establish_connection_postgres().unwrap();
 
     if let Some(id) = check_if_entry_exists(job_title, company, quote) {
         info!("Entry already exists with id: {id}");
@@ -135,10 +140,10 @@ pub fn save_new_cv_to_db(
         .expect("Error saving new CV"))
 }
 
-pub fn read_cv_from_db(filters: &FilterArgs) -> Vec<String> {
+pub fn read_cv_from_db(filters: &FilterArgs) -> Result<Vec<String>, Box<dyn std::error::Error>> {
     use rusty_cv_creator::schema::cv::dsl::cv;
 
-    let conn = &mut establish_connection_postgres();
+    let conn = &mut establish_connection_postgres()?;
 
     // TODO filters on proper DB
     println!("Filter to apply to DB: {filters:?}");
@@ -155,5 +160,5 @@ pub fn read_cv_from_db(filters: &FilterArgs) -> Vec<String> {
         pdf_cvs.push("\n".to_string());
     }
 
-    pdf_cvs
+    Ok(pdf_cvs)
 }

@@ -149,7 +149,7 @@
         cargo fmt --all --check
         cargo clippy --all-targets -- -D warnings
         cargo shear --fix
-        cargo llvm-cov --html nextest 
+        cargo llvm-cov --html nextest --no-fail-fast 
       '';
     };
   };

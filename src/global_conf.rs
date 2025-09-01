@@ -16,7 +16,7 @@ pub fn get_global_var() -> GlobalVars {
 }
 
 pub fn _get_global_var_config() -> Ini {
-    get_global_var().get_config()
+    get_global_var().get_config().unwrap()
 }
 
 pub fn get_global_var_config_db_path() -> Result<String, Box<dyn std::error::Error>> {
@@ -58,11 +58,8 @@ impl GlobalVars {
         self
     }
 
-    pub fn get_config(&self) -> Ini {
-        self.config
-            .get()
-            .expect("Config.ini file not initialized")
-            .clone()
+    pub fn get_config(&self) -> Result<Ini, &str> {
+        self.config.get().cloned().ok_or("Cnofig not initialized")
     }
 
     pub fn get_user_input_vars(
@@ -161,9 +158,93 @@ impl GlobalVars {
         // .expect("Could not get the database engine")
     }
 
-    pub fn get_user_input_db_url(&self) -> String {
+    pub fn get_user_input_db_url(&self) -> Result<String, &str> {
         self.get_config()
+            .unwrap()
             .get("db", "db_pg_host")
-            .expect("Could not get the database engine")
+            .ok_or("Could not get the database engine")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Local, TimeZone};
+    use configparser::ini::Ini;
+
+    fn dummy_ini() -> Ini {
+        let mut ini = Ini::new();
+        ini.set("test", "key", Some("value".to_string()));
+        ini.set("db", "engine", Some("sqlite".to_string()));
+        ini.set("db", "db_file", Some("test.db".to_string()));
+        ini
+    }
+
+    fn dummy_user_input() -> UserInput {
+        UserInput {
+            action: UserAction::Insert(FilterArgs {
+                job_title: Some("Dev".to_string()),
+                company_name: Some("Company".to_string()),
+                quote: Some("Quote".to_string()),
+                date: Some("2024-01-01".to_string()),
+            }),
+            save_to_database: true,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: String::new(),
+            engine: "sqlite".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_globalvars_new_creates_empty_cells() {
+        let gvars = GlobalVars::new();
+        assert!(gvars.config.get().is_none());
+        assert!(gvars.today.get().is_none());
+        assert!(gvars.user_input.get().is_none());
+    }
+
+    #[test]
+    fn test_set_all_sets_cells() {
+        let gvars = GlobalVars::new();
+        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
+        let ui = dummy_user_input();
+        gvars.set_all(dummy_ini(), now, ui.clone());
+        assert!(gvars.config.get().is_some());
+        assert!(gvars.today.get().is_some());
+        assert!(gvars.user_input.get().is_some());
+    }
+
+    #[test]
+    fn test_get_user_input_vars_returns_value() {
+        let gvars = GlobalVars::new();
+        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
+        gvars.set_all(dummy_ini(), now, dummy_user_input());
+        let val = gvars.get_user_input_vars("test", "key");
+        assert_eq!(val.unwrap(), "value");
+    }
+
+    #[test]
+    fn test_get_today_str_and_year_str() {
+        let gvars = GlobalVars::new();
+        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
+        gvars.set_all(dummy_ini(), now, dummy_user_input());
+        assert!(gvars.get_today_str().contains("Aug"));
+        assert_eq!(gvars.get_year_str(), "2025");
+    }
+
+    #[test]
+    #[allow(clippy::used_underscore_items)]
+    fn test_get_job_company_quote_and_date() {
+        let gvars = GlobalVars::new();
+        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
+        let ui = dummy_user_input();
+        gvars.set_all(dummy_ini(), now, ui.clone());
+
+        assert_eq!(gvars.get_job_title().unwrap(), "Dev");
+        assert_eq!(gvars.get_company_name().unwrap(), "Company");
+        assert_eq!(gvars.get_quote().unwrap(), "Quote");
+        assert_eq!(gvars._get_date().unwrap(), "2024-01-01");
+        assert!(gvars.get_user_input_save_to_db());
     }
 }
