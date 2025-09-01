@@ -1,3 +1,13 @@
+# [1.10.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.3...v1.10.0) (2025-09-01)
+
+
+### Features
+
+* Enhance error handling across modules ([0620c9f](https://github.com/chess-seventh/rusty_cv_creator/commit/0620c9f48e4eec64f59eee601b4bf9584c82f882))
+* Improve error handling in pre-check script ([416f3a7](https://github.com/chess-seventh/rusty_cv_creator/commit/416f3a73b4f2bf53458bfb38e402486b36881a71))
+
+
+
 ## [1.9.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.2...v1.9.3) (2025-09-01)
 
 
