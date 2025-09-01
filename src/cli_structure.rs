@@ -70,7 +70,7 @@ pub fn match_user_action(user_input: UserInput) -> String {
         },
 
         UserAction::Remove(filters) => {
-            remove_cv(&filters);
+            let _ = remove_cv(&filters);
             let out = format!("filter args for LIST: {filters:?}");
             println!("{out:?}");
             out
@@ -114,4 +114,31 @@ fn parse_date(input: &str) -> Result<String, String> {
     }
 
     Err(format!("Failed to parse date: {input}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_date_full_date() {
+        let r = parse_date("2024-01-01");
+        assert!(r.is_ok());
+        assert_eq!(r.unwrap(), "2024-01-01");
+    }
+
+    #[test]
+    fn test_parse_date_invalid() {
+        let r = parse_date("badstring");
+        assert!(r.is_err());
+    }
+
+    #[test]
+    fn test_filter_args_default() {
+        let args = FilterArgs::default();
+        assert!(args.job_title.is_none());
+        assert!(args.company_name.is_none());
+        assert!(args.quote.is_none());
+        assert!(args.date.is_none());
+    }
 }

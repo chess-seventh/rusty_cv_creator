@@ -271,3 +271,49 @@ fn copy_to_destination(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_check_dir_exists_true_for_dir() {
+        let td = TempDir::new().unwrap();
+        assert!(check_dir_exists(td.path().to_str().unwrap()));
+    }
+
+    #[test]
+    fn test_check_dir_exists_false_for_non_dir() {
+        assert!(!check_dir_exists("/definitely/not/here"));
+    }
+
+    #[test]
+    fn test_check_file_exists_true_for_file() {
+        let td = TempDir::new().unwrap();
+        let path = td.path().to_str().unwrap();
+        let file = format!("{path:}/file.txt");
+        fs::write(&file, "hi").unwrap();
+        assert!(check_file_exists(path, "file.txt"));
+    }
+
+    #[test]
+    fn test_check_file_exists_false_for_missing_file() {
+        let td = TempDir::new().unwrap();
+        assert!(!check_file_exists(
+            td.path().to_str().unwrap(),
+            "missing.txt"
+        ));
+    }
+
+    #[test]
+    fn test_write_and_read_destination_cv_file() {
+        let td = TempDir::new().unwrap();
+        let file = format!("{}/cv.tex", td.path().to_str().unwrap());
+        let content = "CV content".to_string();
+        write_to_destination_cv_file(&file, &content).unwrap();
+        let read = read_destination_cv_file(&file);
+        assert_eq!(read, content);
+    }
+}

@@ -6,7 +6,6 @@ use log::{info, warn};
 
 pub fn insert_cv() -> Result<String, Box<dyn std::error::Error>> {
     // These come from the UserInput, FilterArgs
-    // TODO: remove unwrap to make sure we don't break stuff
     let job_title = get_global_var().get_job_title()?;
     let company_name = get_global_var().get_company_name()?;
     let quote = get_global_var().get_quote().ok();
@@ -29,4 +28,15 @@ pub fn insert_cv() -> Result<String, Box<dyn std::error::Error>> {
     }
 
     Ok(destination_cv_file_full_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic(expected = "GlobalVar Get didn't work")]
+    fn test_insert_cv_panics_without_global() {
+        let _ = insert_cv().unwrap();
+    }
 }

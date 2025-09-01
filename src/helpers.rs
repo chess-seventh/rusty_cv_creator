@@ -6,7 +6,7 @@ use skim::prelude::*;
 use std::io::Cursor;
 
 use crate::config_parse::{get_db_configurations, get_variable_from_config_file};
-use crate::global_conf::GLOBAL_VAR;
+use crate::global_conf::{get_global_var, GLOBAL_VAR};
 use crate::is_tailscale_connected;
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {
@@ -39,7 +39,7 @@ pub fn check_config_file_exists(file_path: &str) -> Result<String, &str> {
     }
 }
 
-pub fn check_if_db_env_is_set_or_set_from_config() {
+pub fn check_if_db_env_is_set_or_set_from_config() -> Result<String, Box<dyn std::error::Error>> {
     let engine = if let Some(eng) = GLOBAL_VAR.get() {
         eng.get_user_input_db_engine()
     } else {
@@ -53,15 +53,24 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
         } else {
-            let db_url = GLOBAL_VAR.get().unwrap().get_user_input_db_url();
+            let db_url = get_global_var().get_user_input_db_url()?;
             std::env::set_var("DATABASE_URL", db_url);
             info!("Fetched the DATABASE_URL env variable");
         }
         // info!("Checking if Tailscale is connected");
         match is_tailscale_connected() {
-            Ok(true) => info!("Device is connected to Tailscale!"),
-            Ok(false) => info!("Device is NOT connected to Tailscale."),
-            Err(e) => warn!("Tailscale issue: {e:}"),
+            Ok(true) => {
+                info!("Device is connected to Tailscale!");
+                Ok("Device is connected to Tailscale!".to_string())
+            }
+            Ok(false) => {
+                info!("Device is NOT connected to Tailscale.");
+                Ok("Device is NOT connected to Tailscale.".to_string())
+            }
+            Err(e) => {
+                warn!("Tailscale issue: {e:}");
+                Err(e.into())
+            }
         }
     } else {
         //TODO: fix unwrap
@@ -75,8 +84,10 @@ pub fn check_if_db_env_is_set_or_set_from_config() {
 
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
+            Ok("If Let OKAY: Set the DATABASE_URL env variable".to_string())
         } else {
             std::env::set_var("DATABASE_URL", format!("sqlite://{db_path}"));
+            Ok("If Let NOT OKAY: Set the DATABASE_URL env variable".to_string())
         }
     }
 }
@@ -142,4 +153,61 @@ pub fn my_fzf(list_to_show: Vec<String>) -> String {
     } else {
         panic!("shit, no items found");
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clean_string_from_double_quotes() {
+        let input = "\"sample text\"";
+        let output = clean_string_from_quotes(input);
+        assert_eq!(output, "sample text");
+    }
+
+    #[test]
+    fn test_clean_string_from_single_quotes() {
+        let input = "'sample text'";
+        let output = clean_string_from_quotes(input);
+        assert_eq!(output, "sample text");
+    }
+
+    #[test]
+    fn test_clean_string_from_mixed_quotes() {
+        let input = "\"sam'ple te'xt\"";
+        let output = clean_string_from_quotes(input);
+        assert_eq!(output, "sample text");
+    }
+
+    #[test]
+    fn test_clean_string_from_no_quotes() {
+        let input = "plain text";
+        let output = clean_string_from_quotes(input);
+        assert_eq!(output, "plain text");
+    }
+
+    #[test]
+    fn test_fix_home_directory_path_with_tilde() {
+        let input = "~/some/path";
+        let expanded = fix_home_directory_path(input);
+        assert!(!expanded.contains('~'));
+        assert!(expanded.contains("some/path"));
+    }
+
+    #[test]
+    fn test_fix_home_directory_path_absolute() {
+        let input = "/absolute/path";
+        let expanded = fix_home_directory_path(input);
+        assert_eq!(expanded, "/absolute/path");
+    }
+
+    #[test]
+    fn test_check_config_file_exists_nonexistent_file() {
+        let result = check_config_file_exists("/definitely/does/not/exist");
+        assert!(result.is_err());
+    }
+
+    // For check_config_file_exists with an actual file,
+    // Write a temp file and check (do this after first batch passes)
 }
