@@ -6,10 +6,11 @@
   env.GREET = "Welcome to the Rusty CV Creator";
   # env.OPENSSL_DIR="${pkgs.openssl.dev}";
   # env.OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib";
-  env.DATABASE_URL="postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
+  env.DATABASE_URL =
+    "postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
 
   starship = {
-    enable = true; 
+    enable = true;
     config = {
       enable = false;
       path = "~/.config/starship.toml";
@@ -17,8 +18,8 @@
   };
 
   # https://devenv.sh/packages/
-  packages = with pkgs; [ 
-    git 
+  packages = with pkgs; [
+    git
     jq
     curl
     gnused
@@ -45,17 +46,22 @@
     rust = {
       enable = true;
       channel = "stable";
-      components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" "rust-std" "llvm-tools-preview"];
+      components = [
+        "rustc"
+        "cargo"
+        "clippy"
+        "rustfmt"
+        "rust-analyzer"
+        "rust-std"
+        "llvm-tools-preview"
+      ];
     };
 
     shell.enable = true;
   };
 
-
   # https://devenv.sh/processes/
-  processes = {
-    cargo-watch.exec = "cargo-watch";
-  };
+  processes = { cargo-watch.exec = "cargo-watch"; };
 
   tasks = {
     "bash:source_env" = {
@@ -110,9 +116,7 @@
 
     commitizen.enable = true;
 
-    gptcommit = {
-      enable = true;
-    };
+    gptcommit = { enable = true; };
 
     gitlint = {
       enable = true;
@@ -133,7 +137,6 @@
 
   };
 
-
   scripts = {
     install_pre_hooks = {
       description = "Install Pre Hooks, such as gptcommit";
@@ -151,7 +154,7 @@
         Run clippy
       '';
       exec = ''
-         cargo clippy --all-targets -- -W clippy::pedantic -A clippy::missing_errors_doc -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::doc_markdown -A clippy::missing_panics_doc
+        cargo clippy --all-targets -- -W clippy::pedantic -A clippy::missing_errors_doc -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::doc_markdown -A clippy::missing_panics_doc
       '';
     };
 
@@ -180,7 +183,8 @@
     echo 💡 Helper scripts to ease development process:
     echo
     ${pkgs.gnused}/bin/sed -e 's| |••|g' -e 's|=| |' <<EOF | ${pkgs.util-linuxMinimal}/bin/column -t | ${pkgs.gnused}/bin/sed -e 's|^|• |' -e 's|••| |g'
-    ${lib.generators.toKeyValue {} (lib.mapAttrs (name: value: value.description) config.scripts)}
+    ${lib.generators.toKeyValue { }
+    (lib.mapAttrs (name: value: value.description) config.scripts)}
     EOF
     echo
   '';

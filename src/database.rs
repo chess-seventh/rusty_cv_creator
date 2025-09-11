@@ -1,6 +1,6 @@
 use crate::cli_structure::FilterArgs;
-use crate::global_conf::get_global_var;
 use crate::global_conf::GLOBAL_VAR;
+use crate::global_conf::get_global_var;
 use crate::helpers::fix_home_directory_path;
 use diesel::prelude::*;
 use log::{error, info};

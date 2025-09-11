@@ -1,6 +1,6 @@
 use crate::{
-    cli_structure::{FilterArgs, UserAction},
     UserInput,
+    cli_structure::{FilterArgs, UserAction},
 };
 use chrono::{DateTime, Local};
 use configparser::ini::Ini;

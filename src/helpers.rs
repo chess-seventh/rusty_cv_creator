@@ -6,7 +6,7 @@ use skim::prelude::*;
 use std::io::Cursor;
 
 use crate::config_parse::{get_db_configurations, get_variable_from_config_file};
-use crate::global_conf::{get_global_var, GLOBAL_VAR};
+use crate::global_conf::{GLOBAL_VAR, get_global_var};
 use crate::is_tailscale_connected;
 
 pub fn clean_string_from_quotes(cv_template_path: &str) -> String {

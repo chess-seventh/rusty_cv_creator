@@ -1,7 +1,7 @@
 use crate::cli_structure::UserInput;
 use crate::global_conf::{
-    get_global_var, get_global_var_config_db_file, get_global_var_config_db_path, GlobalVars,
-    GLOBAL_VAR,
+    GLOBAL_VAR, GlobalVars, get_global_var, get_global_var_config_db_file,
+    get_global_var_config_db_path,
 };
 use crate::helpers::{check_config_file_exists, clean_string_from_quotes, fix_home_directory_path};
 use configparser::ini::Ini;

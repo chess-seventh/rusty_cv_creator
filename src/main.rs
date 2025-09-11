@@ -15,7 +15,7 @@ mod global_conf;
 mod helpers;
 mod user_action;
 
-use crate::cli_structure::{match_user_action, UserAction, UserInput};
+use crate::cli_structure::{UserAction, UserInput, match_user_action};
 use crate::config_parse::{get_variable_from_config_file, set_global_vars};
 use crate::file_handlers::{
     compile_cv, create_directory, make_cv_changes_based_on_input, remove_created_dir_from_pro,
