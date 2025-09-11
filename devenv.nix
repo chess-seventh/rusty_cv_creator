@@ -65,6 +65,27 @@
   };
 
   git-hooks.hooks = {
+    check-merge-conflicts.enable = true;
+
+    detect-aws-credentials.enable = true;
+
+    detect-private-keys.enable = true;
+
+    end-of-file-fixer.enable = true;
+
+    mixed-line-endings.enable = true;
+
+    no-commit-to-branch.enable = true;
+
+    # typos.enable = true;
+
+    treefmt = {
+      enable = true;
+      settings.formatters = [ pkgs.nixfmt-classic pkgs.deadnix ];
+    };
+
+    trim-trailing-whitespace.enable = true;
+
     # lint shell scripts
     shellcheck.enable = true;
 
