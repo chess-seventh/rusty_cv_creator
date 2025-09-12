@@ -65,7 +65,7 @@
   git-hooks.hooks = {
     rusty-commit-saver = {
       enable = true;
-      name = "Rusty Commit Saver";
+      name = "🦀 Rusty Commit Saver";
       stages = [ "post-commit" ];
       entry = "${
           inputs.rusty-commit-saver.packages.${pkgs.system}.default
@@ -75,19 +75,48 @@
       always_run = true;
     };
 
-    check-merge-conflicts.enable = true;
+    check-merge-conflicts = {
+      name = "🔒 Check Merge Conflicts";
+      enable = true;
+    };
 
-    detect-aws-credentials.enable = true;
+    detect-aws-credentials = {
+      name = "💭 Detect AWS Credentials";
+      enable = true;
+    };
 
-    detect-private-keys.enable = true;
+    detect-private-keys = {
+      name = "🔑 Detect Private Keys";
+      enable = true;
+    };
 
-    end-of-file-fixer.enable = true;
+    end-of-file-fixer = {
+      name = "🔚 End of File Fixer";
+      enable = true;
+    };
 
-    mixed-line-endings.enable = true;
+    mixed-line-endings = {
+      name = "🔀 Mixed Line Endings";
+      enable = true;
+    };
 
-    no-commit-to-branch.enable = true;
+    trim-trailing-whitespace = {
+      name = "✨ Trim Trailing Whitespace";
+      enable = true;
+    };
+
+    shellcheck = {
+      name = "✨ Shell Check";
+      enable = true;
+    };
+
+    mdsh = {
+      enable = true;
+      name = "✨ MDSH";
+    };
 
     treefmt = {
+      name = "🌲 TreeFMT";
       enable = true;
       settings.formatters = [
         pkgs.nixfmt-classic
@@ -98,28 +127,31 @@
       ];
     };
 
-    trim-trailing-whitespace.enable = true;
-
-    shellcheck.enable = true;
-
-    mdsh.enable = true;
-
     clippy = {
+      name = "✂️ Clippy";
       enable = true;
       settings.allFeatures = true;
       extraPackages = [ pkgs.openssl ];
     };
 
-    commitizen.enable = true;
+    commitizen = {
+      name = "✨ Commitizen";
+      enable = true;
+    };
 
-    gptcommit = { enable = true; };
+    gptcommit = {
+      name = "🤖 GPT Commit";
+      enable = true;
+    };
 
     gitlint = {
+      name = "✨ GitLint";
       enable = true;
       after = [ "gptcommit" ];
     };
 
     markdownlint = {
+      name = "✨ MarkdownLint";
       enable = true;
       settings.configuration = {
         MD033 = false;
