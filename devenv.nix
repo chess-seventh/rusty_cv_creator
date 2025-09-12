@@ -89,7 +89,13 @@
 
     treefmt = {
       enable = true;
-      settings.formatters = [ pkgs.nixfmt-classic pkgs.deadnix ];
+      settings.formatters = [
+        pkgs.nixfmt-classic
+        pkgs.deadnix
+        pkgs.yamlfmt
+        pkgs.rustfmt
+        pkgs.toml-sort
+      ];
     };
 
     trim-trailing-whitespace.enable = true;
