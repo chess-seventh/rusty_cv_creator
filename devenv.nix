@@ -1,11 +1,12 @@
 { pkgs, lib, config, inputs, ... }:
 
 {
-  dotenv.enable = true;
+  dotenv = {
+    enable = true;
+    filename = ".env";
+  };
 
   env.GREET = "Welcome to the Rusty CV Creator";
-  # env.OPENSSL_DIR="${pkgs.openssl.dev}";
-  # env.OPENSSL_LIB_DIR="${pkgs.openssl.out}/lib";
   env.DATABASE_URL =
     "postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
 
@@ -17,15 +18,11 @@
     };
   };
 
-  # https://devenv.sh/packages/
   packages = with pkgs; [
     git
     jq
     curl
     gnused
-    # pkgs.rustup
-    # pkgs.rust-analyzer
-    # ruststable
     zlib
     sqlite
     texlive.combined.scheme-small
@@ -34,12 +31,8 @@
     cargo-nextest
     cargo-shear
     cargo-llvm-cov
-    # cmake
-    # gcc
-    # openssl
   ];
 
-  # https://devenv.sh/languages/
   languages = {
     nix.enable = true;
 
@@ -60,7 +53,6 @@
     shell.enable = true;
   };
 
-  # https://devenv.sh/processes/
   processes = { cargo-watch.exec = "cargo-watch"; };
 
   tasks = {
@@ -71,6 +63,18 @@
   };
 
   git-hooks.hooks = {
+    rusty-commit-saver = {
+      enable = true;
+      name = "Rusty Commit Saver";
+      stages = [ "post-commit" ];
+      entry = "${
+          inputs.rusty-commit-saver.packages.${pkgs.system}.default
+        }/bin/rusty-commit-saver";
+      pass_filenames = false;
+      language = "system";
+      always_run = true;
+    };
+
     check-merge-conflicts.enable = true;
 
     detect-aws-credentials.enable = true;
@@ -83,8 +87,6 @@
 
     no-commit-to-branch.enable = true;
 
-    # typos.enable = true;
-
     treefmt = {
       enable = true;
       settings.formatters = [ pkgs.nixfmt-classic pkgs.deadnix ];
@@ -92,24 +94,14 @@
 
     trim-trailing-whitespace.enable = true;
 
-    # lint shell scripts
     shellcheck.enable = true;
 
-    # execute example shell from Markdown files
     mdsh.enable = true;
 
-    # format Python code
-    # black.enable = true;
-
-    # some hooks have more than one package, like clippy:
-    #
     rustfmt.enable = true;
 
     clippy = {
       enable = true;
-      packageOverrides.cargo = pkgs.cargo;
-      packageOverrides.clippy = pkgs.clippy;
-      # some hooks provide settings
       settings.allFeatures = true;
       extraPackages = [ pkgs.openssl ];
     };
@@ -134,7 +126,6 @@
         MD041 = false;
       };
     };
-
   };
 
   scripts = {
@@ -173,12 +164,17 @@
         cargo fmt --all --check
         cargo clippy --all-targets -- -D warnings
         cargo shear --fix
-        cargo llvm-cov --html nextest --no-fail-fast 
+        cargo llvm-cov --html nextest --no-fail-fast
       '';
     };
   };
 
   enterShell = ''
+    echo "Sourcing .env with evaluated command substitution…"
+    if [ -f ".env" ]; then
+      eval "$(<.env)"
+    fi
+
     echo
     echo 💡 Helper scripts to ease development process:
     echo
@@ -188,6 +184,4 @@
     EOF
     echo
   '';
-
-  # See full reference at https://devenv.sh/reference/options/
 }
