@@ -1,3 +1,7 @@
+## [2.0.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.2...v2.0.3) (2025-09-12)
+
+
+
 ## [2.0.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.1...v2.0.2) (2025-09-12)
 
 
