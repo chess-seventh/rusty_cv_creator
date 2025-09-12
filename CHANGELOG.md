@@ -1,3 +1,33 @@
+# [2.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.10.1...v2.0.0) (2025-09-12)
+
+
+* feat!: Expand devenv with rusty-commit-saver (#71) ([19ca679](https://github.com/chess-seventh/rusty_cv_creator/commit/19ca6796c3706c4782d5f76d2d88a30e42003a9f)), closes [#71](https://github.com/chess-seventh/rusty_cv_creator/issues/71)
+
+
+### BREAKING CHANGES
+
+* Add my own flake for saving my commits to Obsidian
+
+chore: Refactor git hooks and update paths
+
+- Refactor git hooks to enhance structure and configurability
+- Introduce `always_run` option for `rusty-commit-saver` hook
+- Update nix store path in pre-commit configuration for alignment
+
+chore: Refactor devenv git-hooks structure
+
+- Streamline `devenv.nix` configuration, enhancing 'git-hooks' setup
+- Remove redundancies and consolidate configurations for better
+  maintainability
+
+feat: Enhance development environment setup
+
+- Enhance development environment setup by adding conditional .env file
+  evaluation
+- Display debug information with echoed messages in `enterShell` script
+
+
+
 ## [1.10.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.10.0...v1.10.1) (2025-09-11)
 
 
