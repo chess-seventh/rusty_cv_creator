@@ -444,9 +444,9 @@ dependencies = [
 
 [[package]]
 name = "diesel"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc2878db86786e9ed862fd30ac8ce4ffff1f40a5732269debfb309e80f624c2a"
+checksum = "cb300b92bb5f1a44ce412aeb36a7387931bf7a5238b4570bc1d0b9c8a78fde4e"
 dependencies = [
  "bitflags 2.9.4",
  "byteorder",
@@ -461,9 +461,9 @@ dependencies = [
 
 [[package]]
 name = "diesel_derives"
-version = "2.3.1"
+version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e975adc5da26e0f8c247056d6ba03b3872ca2ef79f5f298faa9c996e32015ba"
+checksum = "f8dc7010a1e9f98f10c746da308c3da09416a87498731cc18cc666f55b5fc53d"
 dependencies = [
  "diesel_table_macro_syntax",
  "dsl_auto_type",
@@ -1234,7 +1234,7 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "rusty_cv_creator"
-version = "2.0.4"
+version = "2.0.5"
 dependencies = [
  "chrono",
  "clap",
