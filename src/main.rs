@@ -47,7 +47,6 @@ fn main() {
             };
         } else {
             info!("CV saved to: {cv_full_path}");
-            // println!("CV saved to: {cv_full_path}");
         }
     }
 }

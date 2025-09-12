@@ -55,6 +55,7 @@ impl GlobalVars {
         self.user_input
             .set(user_input)
             .expect("Couldn't set user_input in GlobalVars");
+
         self
     }
 

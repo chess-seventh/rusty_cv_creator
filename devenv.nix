@@ -104,8 +104,6 @@
 
     mdsh.enable = true;
 
-    rustfmt.enable = true;
-
     clippy = {
       enable = true;
       settings.allFeatures = true;

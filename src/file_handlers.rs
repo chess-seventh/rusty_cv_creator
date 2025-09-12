@@ -42,7 +42,6 @@ pub fn compile_cv(cv_dir: &str, cv_file: &str) {
         .arg("--interaction=nonstopmode")
         .arg(cv_file)
         .current_dir(cv_dir)
-        // .stdout(Stdio::null())
         .status()
         .expect("Failed to run XELATEX");
 

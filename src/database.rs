@@ -32,7 +32,8 @@ fn define_connection_type(
 pub fn establish_connection_postgres() -> Result<PgConnection, Box<dyn std::error::Error>> {
     let db_url = get_global_var().get_user_input_db_url()?;
 
-    Ok(PgConnection::establish(&db_url)?) // .unwrap_or_else(|_| panic!("Error connecting to {db_url}"))
+    Ok(PgConnection::establish(&db_url)?)
+    // .unwrap_or_else(|_| panic!("Error connecting to {db_url}"))
 }
 
 pub fn _establish_connection_sqlite() -> SqliteConnection {
@@ -155,6 +156,7 @@ pub fn read_cv_from_db(filters: &FilterArgs) -> Result<Vec<String>, Box<dyn std:
         .expect("Error loading CVs");
 
     let mut pdf_cvs = vec![];
+
     for pdf in cv_results {
         pdf_cvs.push(pdf.pdf_cv_path);
         pdf_cvs.push("\n".to_string());

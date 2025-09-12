@@ -8,6 +8,7 @@ use std::path::Path;
 
 pub fn show_cvs(filters: &FilterArgs) -> Result<String, Box<dyn std::error::Error>> {
     // TODO:
+    //
     // apply filters
     warn!("TODO: apply these filters: {filters:?}");
     let pdfs = read_cv_from_db(filters)?;

@@ -1,20 +1,13 @@
-[package]
-name = "rusty_cv_creator"
-version = "2.0.1"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 chrono = "0.4.41"
-clap = { version = "4.5.46", features = ["derive"] }
+clap = {version = "4.5.46", features = ["derive"]}
 configparser = "3.0.4"
 copy_dir = "0.1.3"
-diesel = { version = "2.2.12", features = [
+diesel = {version = "2.2.12", features = [
   "sqlite",
   "postgres",
-  "returning_clauses_for_sqlite_3_35",
-] }
+  "returning_clauses_for_sqlite_3_35"
+]}
 dirs = "6.0.0"
 dotenvy = "0.15.7"
 env_logger = "0.11.6"
@@ -27,4 +20,9 @@ tempfile = "3.21"
 serial_test = "3.0"
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+unexpected_cfgs = {level = "warn", check-cfg = ['cfg(tarpaulin_include)']}
+
+[package]
+name = "rusty_cv_creator"
+version = "2.0.1"
+edition = "2021"

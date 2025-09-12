@@ -8,6 +8,7 @@ env:
   CARGO_TERM_COLOR: always
 jobs:
   unittest:
+    name: 🧪 Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +55,7 @@ jobs:
         with:
           files: lcov.info
   clippy:
+    name: ✂️ Rust Clippy
     runs-on: ubuntu-latest
     steps:
       - name: ♻️ Checkout repository
@@ -71,6 +73,7 @@ jobs:
       - name: ✂️ Clippy
         run: cargo clippy --all-targets -- -W clippy::pedantic
   rustfmt:
+    name: ✂️ RustFMT
     runs-on: ubuntu-latest
     steps:
       - name: ♻️ Checkout repository
@@ -85,6 +88,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
   cleanup-deps:
+    name: 🧹 Cleanup Dependencies
     runs-on: ubuntu-latest
     steps:
       - name: ♻️ Checkout repository

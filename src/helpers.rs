@@ -35,6 +35,7 @@ pub fn check_config_file_exists(file_path: &str) -> Result<String, &str> {
         Ok(fixed_file_path)
     } else {
         println!("Could not check if file exists");
+
         Err("File does not exist!")
     }
 }

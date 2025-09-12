@@ -1,7 +1,6 @@
 use crate::database::save_new_cv_to_db;
-use crate::prepare_cv;
-// use crate::cli_structure::FilterArgs;
 use crate::global_conf::get_global_var;
+use crate::prepare_cv;
 use log::{info, warn};
 
 pub fn insert_cv() -> Result<String, Box<dyn std::error::Error>> {
