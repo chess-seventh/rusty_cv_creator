@@ -67,6 +67,7 @@
       enable = true;
       name = "🦀 Rusty Commit Saver";
       stages = [ "post-commit" ];
+      after = [ "commitizen" "gitlint" "gptcommit" ];
       entry = "${
           inputs.rusty-commit-saver.packages.${pkgs.system}.default
         }/bin/rusty-commit-saver";
@@ -78,41 +79,49 @@
     check-merge-conflicts = {
       name = "🔒 Check Merge Conflicts";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     detect-aws-credentials = {
       name = "💭 Detect AWS Credentials";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     detect-private-keys = {
       name = "🔑 Detect Private Keys";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     end-of-file-fixer = {
       name = "🔚 End of File Fixer";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     mixed-line-endings = {
       name = "🔀 Mixed Line Endings";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     trim-trailing-whitespace = {
       name = "✨ Trim Trailing Whitespace";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     shellcheck = {
       name = "✨ Shell Check";
       enable = true;
+      stages = [ "pre-commit" ];
     };
 
     mdsh = {
       enable = true;
       name = "✨ MDSH";
+      stages = [ "pre-commit" ];
     };
 
     treefmt = {
@@ -125,6 +134,7 @@
         pkgs.rustfmt
         pkgs.toml-sort
       ];
+      stages = [ "pre-commit" ];
     };
 
     clippy = {
@@ -132,11 +142,13 @@
       enable = true;
       settings.allFeatures = true;
       extraPackages = [ pkgs.openssl ];
+      stages = [ "pre-commit" ];
     };
 
     commitizen = {
       name = "✨ Commitizen";
       enable = true;
+      stages = [ "post-commit" ];
     };
 
     gptcommit = {
@@ -153,6 +165,7 @@
     markdownlint = {
       name = "✨ MarkdownLint";
       enable = true;
+      stages = [ "pre-commit" ];
       settings.configuration = {
         MD033 = false;
         MD013 = {

@@ -72,21 +72,21 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: ✂️ Clippy
         run: cargo clippy --all-targets -- -W clippy::pedantic
-  rustfmt:
-    name: ✂️ RustFMT
-    runs-on: ubuntu-latest
-    steps:
-      - name: ♻️ Checkout repository
-        uses: actions/checkout@v4
-      - name: 🛠️ Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-      - name: 🛠️ Check formatting
-        run: |
-          cargo fmt --all -- --check
+  # rustfmt:
+  #   name: ✂️ RustFMT
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: ♻️ Checkout repository
+  #       uses: actions/checkout@v4
+  #     - name: 🛠️ Install Rust
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: stable
+  #         profile: minimal
+  #         components: rustfmt
+  #     - name: 🛠️ Check formatting
+  #       run: |
+  #         cargo fmt --all -- --check
   cleanup-deps:
     name: 🧹 Cleanup Dependencies
     runs-on: ubuntu-latest
