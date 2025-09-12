@@ -36,12 +36,7 @@ jobs:
         run: |
           cargo set-version ${{ steps.changelog.outputs.version }}
           cargo build --verbose
-      - name: 🛠️ Update lockfile
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        run: cargo update
-      - name: 🛠️ Commit Cargo.lock
-        if: ${{ steps.changelog.outputs.skipped == 'false' }}
-        run: |
+          cargo update
           git config user.name "chess-seventh"
           git config user.email "chess7th@pm.me"
           git add Cargo.lock
