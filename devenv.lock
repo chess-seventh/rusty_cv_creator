@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1757570236,
+        "lastModified": 1758064567,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "c57bded76fa6a885ab1dee2c75216cc23d58b311",
+        "rev": "bc697443a9653586e5be5150b4458f3096a93f67",
         "type": "github"
       },
       "original": {
@@ -57,10 +57,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1757588530,
+        "lastModified": 1757974173,
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "b084b2c2b6bc23e83bbfe583b03664eb0b18c411",
+        "rev": "302af509428169db34f268324162712d10559f74",
         "type": "github"
       },
       "original": {
@@ -106,10 +106,10 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1757487488,
+        "lastModified": 1757745802,
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "ab0f3607a6c7486ea22229b92ed2d355f1482ee0",
+        "rev": "c23193b943c6c689d70ee98ce3128239ed9e32d1",
         "type": "github"
       },
       "original": {
@@ -121,10 +121,10 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1757651841,
+        "lastModified": 1758029226,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "ad4e6dd68c30bc8bd1860a27bc6f0c485bd7f3b6",
+        "rev": "08b8f92ac6354983f5382124fef6006cade4a1c1",
         "type": "github"
       },
       "original": {
@@ -153,10 +153,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1757644300,
+        "lastModified": 1758076341,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "591c5ae84f066bdfc9797b217df392d58eafd088",
+        "rev": "562fb6f14678eb9b8a36829140f6a4d0737776d2",
         "type": "github"
       },
       "original": {
@@ -170,10 +170,10 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1757644300,
+        "lastModified": 1757989933,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "591c5ae84f066bdfc9797b217df392d58eafd088",
+        "rev": "8249aa3442fb9b45e615a35f39eca2fe5510d7c3",
         "type": "github"
       },
       "original": {
@@ -189,10 +189,10 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1757700692,
+        "lastModified": 1758011550,
         "owner": "chess-seventh",
         "repo": "rusty-commit-saver",
-        "rev": "b0882d96c3fcd8f9e1465a11b34e52575e9ee5e1",
+        "rev": "afa9e517618f99f860d7ccfba3aedbd3581028a1",
         "type": "github"
       },
       "original": {
