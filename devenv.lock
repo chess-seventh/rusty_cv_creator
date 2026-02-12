@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1758064567,
+        "lastModified": 1770888787,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "bc697443a9653586e5be5150b4458f3096a93f67",
+        "rev": "99089f97ece2d3f05a231b7cf709cb7c4486f80e",
         "type": "github"
       },
       "original": {
@@ -19,14 +19,14 @@
     "flake-compat": {
       "flake": false,
       "locked": {
-        "lastModified": 1747046372,
-        "owner": "edolstra",
+        "lastModified": 1767039857,
+        "owner": "NixOS",
         "repo": "flake-compat",
-        "rev": "9100a0f413b0c601e0533d1d94ffd501ce2e7885",
+        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
         "type": "github"
       },
       "original": {
-        "owner": "edolstra",
+        "owner": "NixOS",
         "repo": "flake-compat",
         "type": "github"
       }
@@ -57,10 +57,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1757974173,
+        "lastModified": 1770726378,
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "302af509428169db34f268324162712d10559f74",
+        "rev": "5eaaedde414f6eb1aea8b8525c466dc37bba95ae",
         "type": "github"
       },
       "original": {
@@ -77,10 +77,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1709087332,
+        "lastModified": 1762808025,
         "owner": "hercules-ci",
         "repo": "gitignore.nix",
-        "rev": "637db329424fd7e46cf4185293b9cc8c88c95394",
+        "rev": "cb5e3fdca1de58ccbc3ef53de65bd372b48f567c",
         "type": "github"
       },
       "original": {
@@ -90,11 +90,14 @@
       }
     },
     "nixpkgs": {
+      "inputs": {
+        "nixpkgs-src": "nixpkgs-src"
+      },
       "locked": {
-        "lastModified": 1755783167,
+        "lastModified": 1770434727,
         "owner": "cachix",
         "repo": "devenv-nixpkgs",
-        "rev": "4a880fb247d24fbca57269af672e8f78935b0328",
+        "rev": "8430f16a39c27bdeef236f1eeb56f0b51b33d348",
         "type": "github"
       },
       "original": {
@@ -104,27 +107,29 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
+    "nixpkgs-src": {
+      "flake": false,
       "locked": {
-        "lastModified": 1757745802,
-        "owner": "nixos",
+        "lastModified": 1769922788,
+        "narHash": "sha256-H3AfG4ObMDTkTJYkd8cz1/RbY9LatN5Mk4UF48VuSXc=",
+        "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "c23193b943c6c689d70ee98ce3128239ed9e32d1",
+        "rev": "207d15f1a6603226e1e223dc79ac29c7846da32e",
         "type": "github"
       },
       "original": {
-        "owner": "nixos",
-        "ref": "nixos-unstable",
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
         "repo": "nixpkgs",
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_2": {
       "locked": {
-        "lastModified": 1758029226,
+        "lastModified": 1770812194,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "08b8f92ac6354983f5382124fef6006cade4a1c1",
+        "rev": "8482c7ded03bae7550f3d69884f1e611e3bd19e8",
         "type": "github"
       },
       "original": {
@@ -153,10 +158,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1758076341,
+        "lastModified": 1770865833,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "562fb6f14678eb9b8a36829140f6a4d0737776d2",
+        "rev": "c8cfbe26238638e2f3a2c0ae7e8d240f5e4ded85",
         "type": "github"
       },
       "original": {
@@ -167,13 +172,13 @@
     },
     "rust-overlay_2": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1757989933,
+        "lastModified": 1770606655,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "8249aa3442fb9b45e615a35f39eca2fe5510d7c3",
+        "rev": "11a396520bf911e4ed01e78e11633d3fc63b350e",
         "type": "github"
       },
       "original": {
@@ -185,18 +190,21 @@
     "rusty-commit-saver": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1758011550,
+        "lastModified": 1770738642,
         "owner": "chess-seventh",
         "repo": "rusty-commit-saver",
-        "rev": "afa9e517618f99f860d7ccfba3aedbd3581028a1",
+        "rev": "f03561f8e0fceb50950f22cd1269965d8142d6db",
         "type": "github"
       },
       "original": {
         "owner": "chess-seventh",
+        "ref": "HEAD",
         "repo": "rusty-commit-saver",
         "type": "github"
       }

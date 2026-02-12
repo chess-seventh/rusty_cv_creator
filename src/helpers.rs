@@ -95,7 +95,7 @@ pub fn check_if_db_env_is_set_or_set_from_config() -> Result<String, Box<dyn std
 
 pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
     let file_name = match get_variable_from_config_file("cv", "cv_template_file") {
-        Ok(s) => s.to_string(),
+        Ok(s) => s.clone(),
         Err(e) => {
             error!("Could not get the cv_template_file variable: {e:}");
             return Err(format!("Could not get the cv_template_file variable: {e:}").to_string());
@@ -132,7 +132,7 @@ pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
 
 pub fn my_fzf(list_to_show: Vec<String>) -> String {
     let options = SkimOptionsBuilder::default()
-        .height("50%".to_string())
+        .height(Some("50%"))
         .multi(false)
         .build()
         .unwrap();
