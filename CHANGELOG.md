@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.6...v3.0.0) (2026-02-12)
+
+
+* feat!: Update dependencies and metadata in Cargo.toml ([29bfaf5](https://github.com/chess-seventh/rusty_cv_creator/commit/29bfaf5533e93e24125ece433ad7d969297b4791))
+
+
+### BREAKING CHANGES
+
+* update Cargo.toml dependencies
+
+
+
 ## [2.0.6](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.5...v2.0.6) (2025-09-17)
 
 
