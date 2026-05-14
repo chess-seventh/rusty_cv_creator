@@ -6,7 +6,6 @@
   inputs,
   ...
 }:
-
 {
   imports = [
     "${builtins.getEnv "HOME"}/devenv_shared/shared_pkgs.nix"
@@ -19,14 +18,6 @@
   env.GREET = "Welcome to the Rusty CV Creator";
   env.DATABASE_URL = "postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
 
-  starship = {
-    enable = true;
-    config = {
-      enable = false;
-      path = "~/.config/starship.toml";
-    };
-  };
-
   packages = with pkgs; [
     zlib
     sqlite
@@ -37,6 +28,22 @@
 
   languages = {
     nix.enable = true;
+
+    rust = {
+      enable = true;
+      channel = "nightly";
+      components = [
+        "rustc"
+        "cargo"
+        "clippy"
+        "rustfmt"
+        "rust-analyzer"
+        "rust-std"
+        "llvm-tools-preview"
+      ];
+    };
+
+    shell.enable = true;
   };
 
   processes = {
@@ -51,22 +58,22 @@
   };
 
   git-hooks.hooks = {
-    # rusty-commit-saver = {
-    #   enable = true;
-    #   name = "🦀 Rusty Commit Saver";
-    #   stages = [ "post-commit" ];
-    #   after = [
-    #     "commitizen"
-    #     "gitlint"
-    #     "gptcommit"
-    #   ];
-    #   entry = "${
-    #     inputs.rusty-commit-saver.packages.${pkgs.stdenv.hostPlatform.system}.default
-    #   }/bin/rusty-commit-saver";
-    #   pass_filenames = false;
-    #   language = "system";
-    #   always_run = true;
-    # };
+    rusty-commit-saver = {
+      enable = true;
+      name = "🦀 Rusty Commit Saver";
+      stages = [ "post-commit" ];
+      after = [
+        "commitizen"
+        "gitlint"
+        "gptcommit"
+      ];
+      entry = "${
+        inputs.rusty-commit-saver.packages.${pkgs.stdenv.hostPlatform.system}.default
+      }/bin/rusty-commit-saver";
+      pass_filenames = false;
+      language = "system";
+      always_run = true;
+    };
 
     check-merge-conflicts = {
       name = "🔒 Check Merge Conflicts";
@@ -101,6 +108,18 @@
     trim-trailing-whitespace = {
       name = "✨ Trim Trailing Whitespace";
       enable = true;
+      stages = [ "pre-commit" ];
+    };
+
+    shellcheck = {
+      name = "✨ Shell Check";
+      enable = true;
+      stages = [ "pre-commit" ];
+    };
+
+    mdsh = {
+      enable = true;
+      name = "✨ MDSH";
       stages = [ "pre-commit" ];
     };
 

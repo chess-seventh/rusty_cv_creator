@@ -132,7 +132,7 @@ pub fn view_cv_file(cv_path: &str) -> Result<bool, String> {
 
 pub fn my_fzf(list_to_show: Vec<String>) -> String {
     let options = SkimOptionsBuilder::default()
-        .height(Some("50%"))
+        .height("50%".to_string())
         .multi(false)
         .build()
         .unwrap();
@@ -142,8 +142,9 @@ pub fn my_fzf(list_to_show: Vec<String>) -> String {
     let item_reader = SkimItemReader::default();
     let items = item_reader.of_bufread(Cursor::new(input));
 
-    let selected_items =
-        Skim::run_with(&options, Some(items)).map_or_else(Vec::new, |out| out.selected_items);
+    let selected_items = Skim::run_with(options, Some(items))
+        .map(|out| out.selected_items)
+        .unwrap_or_else(|_| Vec::new());
 
     if selected_items.len() == 1 {
         selected_items
