@@ -1,4 +1,5 @@
 {
+  imports,
   pkgs,
   lib,
   config,
@@ -7,6 +8,12 @@
 }:
 
 {
+  imports = [
+    "${builtins.getEnv "HOME"}/devenv_shared/shared_pkgs.nix"
+    "${builtins.getEnv "HOME"}/devenv_shared/rust_pkgs.nix"
+    "${builtins.getEnv "HOME"}/devenv_shared/git_hooks.nix"
+  ];
+
   dotenv.enable = true;
 
   env.GREET = "Welcome to the Rusty CV Creator";
@@ -21,38 +28,15 @@
   };
 
   packages = with pkgs; [
-    git
-    jq
-    curl
-    gnused
     zlib
     sqlite
     texlive.combined.scheme-small
     diesel-cli
     postgresql
-    cargo-nextest
-    cargo-shear
-    cargo-llvm-cov
   ];
 
   languages = {
     nix.enable = true;
-
-    rust = {
-      enable = true;
-      channel = "nightly";
-      components = [
-        "rustc"
-        "cargo"
-        "clippy"
-        "rustfmt"
-        "rust-analyzer"
-        "rust-std"
-        "llvm-tools-preview"
-      ];
-    };
-
-    shell.enable = true;
   };
 
   processes = {
@@ -67,22 +51,22 @@
   };
 
   git-hooks.hooks = {
-    rusty-commit-saver = {
-      enable = true;
-      name = "🦀 Rusty Commit Saver";
-      stages = [ "post-commit" ];
-      after = [
-        "commitizen"
-        "gitlint"
-        "gptcommit"
-      ];
-      entry = "${
-        inputs.rusty-commit-saver.packages.${pkgs.stdenv.hostPlatform.system}.default
-      }/bin/rusty-commit-saver";
-      pass_filenames = false;
-      language = "system";
-      always_run = true;
-    };
+    # rusty-commit-saver = {
+    #   enable = true;
+    #   name = "🦀 Rusty Commit Saver";
+    #   stages = [ "post-commit" ];
+    #   after = [
+    #     "commitizen"
+    #     "gitlint"
+    #     "gptcommit"
+    #   ];
+    #   entry = "${
+    #     inputs.rusty-commit-saver.packages.${pkgs.stdenv.hostPlatform.system}.default
+    #   }/bin/rusty-commit-saver";
+    #   pass_filenames = false;
+    #   language = "system";
+    #   always_run = true;
+    # };
 
     check-merge-conflicts = {
       name = "🔒 Check Merge Conflicts";
@@ -120,18 +104,6 @@
       stages = [ "pre-commit" ];
     };
 
-    shellcheck = {
-      name = "✨ Shell Check";
-      enable = true;
-      stages = [ "pre-commit" ];
-    };
-
-    mdsh = {
-      enable = true;
-      name = "✨ MDSH";
-      stages = [ "pre-commit" ];
-    };
-
     treefmt = {
       name = "🌲 TreeFMT";
       enable = true;
@@ -145,16 +117,16 @@
       stages = [ "pre-commit" ];
     };
 
-    clippy = {
-      name = "✂️ Clippy";
-      enable = true;
-      entry = "cargo clippy --all-targets -- -W clippy::pedantic -A clippy::must-use-candidate";
-      language = "system";
-      settings.allFeatures = true;
-      extraPackages = [ pkgs.openssl ];
-      stages = [ "pre-commit" ];
-      pass_filenames = false;
-    };
+    # clippy = {
+    #   name = "✂️ Clippy";
+    #   enable = true;
+    #   entry = "cargo clippy --all-targets -- -W clippy::pedantic -A clippy::must-use-candidate";
+    #   language = "system";
+    #   settings.allFeatures = true;
+    #   extraPackages = [ pkgs.openssl ];
+    #   stages = [ "pre-commit" ];
+    #   pass_filenames = false;
+    # };
 
     commitizen = {
       name = "✨ Commitizen";
@@ -200,14 +172,14 @@
       '';
     };
 
-    cclippy = {
-      description = ''
-        Run clippy
-      '';
-      exec = ''
-        cargo clippy --all-targets -- -W clippy::pedantic -A clippy::missing_errors_doc -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::doc_markdown -A clippy::missing_panics_doc
-      '';
-    };
+    # cclippy = {
+    #   description = ''
+    #     Run clippy
+    #   '';
+    #   exec = ''
+    #     cargo clippy --all-targets -- -W clippy::pedantic -A clippy::missing_errors_doc -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::doc_markdown -A clippy::missing_panics_doc
+    #   '';
+    # };
 
     pre-check = {
       description = ''
@@ -221,12 +193,27 @@
             source .env.testing
         fi
 
-        cargo fmt --all --check
+        treefmt src/
         cargo clippy --all-targets -- -D warnings
         cargo shear --fix
         cargo llvm-cov --html nextest --no-fail-fast
       '';
     };
+
+    # devhelp = {
+    #   description = ''
+    #     Show helper commands for devenv.nix
+    #   '';
+    #   exec = ''
+    #     echo
+    #     echo 💡 Helper scripts to ease development process:
+    #     echo
+    #     ${pkgs.gnused}/bin/sed -e 's| |••|g' -e 's|=| |' <<EOF | ${pkgs.util-linuxMinimal}/bin/column -t | ${pkgs.gnused}/bin/sed -e 's|^|• |' -e 's|••| |g'
+    #     ${lib.generators.toKeyValue { } (lib.mapAttrs (name: value: value.description) config.scripts)}
+    #     EOF
+    #     echo
+    #   '';
+    # };
   };
 
   enterShell = ''
