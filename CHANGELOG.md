@@ -1,3 +1,16 @@
+# [4.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v3.0.1...v4.0.0) (2026-05-14)
+
+
+* feat!: Add Rust support and new git hooks in devenv.nix ([a407dd9](https://github.com/chess-seventh/rusty_cv_creator/commit/a407dd96c57e9779b0ae8e3704bb4b1f6ca7cd7d))
+
+
+### BREAKING CHANGES
+
+* Update Cargo.toml dependencies and fix tests to ensure
+project still works fine
+
+
+
 ## [3.0.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v3.0.0...v3.0.1) (2026-05-14)
 
 
