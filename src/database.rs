@@ -164,3 +164,11 @@ pub fn read_cv_from_db(filters: &FilterArgs) -> Result<Vec<String>, Box<dyn std:
 
     Ok(pdf_cvs)
 }
+
+// SCAFFOLD: true
+// DELIVER slice-01: implement using establish_connection_postgres(), select all Cv records.
+// Pre-slice-01 prerequisite per DESIGN D-9 / feature-delta.md upstream table.
+// read_cv_from_db is intentionally left unchanged (used by remove_cv).
+pub fn load_all_applications() -> Result<Vec<Cv>, Box<dyn std::error::Error>> {
+    panic!("Not yet implemented — RED scaffold");
+}

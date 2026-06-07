@@ -1,0 +1,78 @@
+version: "1.0"
+feature: tui-job-applications
+wave: DISCUSS
+
+journey:
+  id: job-applications-review
+  name: "Review Job Applications in TUI"
+  persona: active-job-seeker
+  primary_job: job-01-review-applications
+
+  mental_model:
+    description: "User thinks of their job search as a pipeline. Applications are 'in flight' until heard back. The terminal is their primary workspace — they resent context-switching to a browser or spreadsheet just to answer 'where did I apply?'"
+    vocabulary:
+      - term: "application" — one submission: one company, one role, one date, one PDF
+      - term: "list" — the act of reviewing all applications; expected to work like `git log` or `ls`
+      - term: "open" — launch the PDF in the system viewer, same as double-clicking
+
+  shared_artifacts:
+    - id: applications
+      type: "Vec<Cv>"
+      source: "DB query on TUI startup (read_cv_from_db)"
+      consumers: [table_widget, filter_state]
+    - id: filter_text
+      type: String
+      source: "User keyboard input in filter mode"
+      consumers: [filtered_applications]
+    - id: filtered_applications
+      type: "Vec<&Cv>"
+      source: "applications filtered by filter_text (client-side)"
+      consumers: [table_widget, status_bar]
+    - id: selected_index
+      type: usize
+      source: "Navigation state (↑/↓ keypresses)"
+      consumers: [row_highlight, pdf_open_action]
+
+  happy_path:
+    - step: 1
+      action: "Run `rusty-cv list`"
+      output: "TUI launches, spinner briefly visible, then table renders"
+      emotion: "Neutral → anticipation"
+    - step: 2
+      action: "Scan the table"
+      output: "Rows show: #, Date, Company, Job Title, PDF path (truncated). Count shown in status bar."
+      emotion: "Relief — data is there"
+    - step: 3
+      action: "Press ↓ to scroll"
+      output: "Selected row highlights. Status bar updates (e.g., '3 of 17 applications')."
+      emotion: "Comfortable — familiar keyboard pattern"
+    - step: 4
+      action: "Press '/' to filter"
+      output: "Filter bar appears at bottom. User types company name. Table narrows instantly."
+      emotion: "Confident — find what you need fast"
+    - step: 5
+      action: "Press Esc to clear filter"
+      output: "Full list restored"
+      emotion: "In control"
+    - step: 6
+      action: "Navigate to target row, press Enter"
+      output: "PDF opens in system viewer"
+      emotion: "Empowered — one keystroke to the source of truth"
+    - step: 7
+      action: "Press 'q'"
+      output: "TUI exits cleanly, terminal restored"
+      emotion: "Done — no residue"
+
+  error_paths:
+    - scenario: "DB connection failure"
+      detection: "establish_connection_postgres() returns Err"
+      recovery: "TUI renders with red footer: 'Database error: <message>. Check your DATABASE_URL.' and exits after keypress."
+    - scenario: "Empty applications table"
+      detection: "Vec<Cv> is empty"
+      recovery: "Table renders with empty-state row: 'No applications recorded yet. Run: rusty-cv insert'"
+    - scenario: "PDF file missing from disk"
+      detection: "pdf_cv_path does not exist when Enter pressed"
+      recovery: "Status bar shows: 'File not found: <path>' — TUI stays open"
+    - scenario: "Terminal too narrow (< 80 cols)"
+      detection: "terminal_size() < (80, 20)"
+      recovery: "Render a single-line warning: 'Terminal too small. Resize to at least 80x20.'"

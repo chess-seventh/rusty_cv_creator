@@ -1,0 +1,58 @@
+version: "1.0"
+feature: tui-job-applications
+wave: DISCUSS
+
+jobs:
+  - id: job-01-review-applications
+    title: "Review all job applications at a glance"
+    job_story: "When I am actively job searching and have sent out multiple applications, I want to see the full list of where I have applied with dates and role details, so I can decide which companies to follow up with and when."
+    dimensions:
+      functional: "Display a scrollable, filterable list of applications with company, job title, date applied, and CV path"
+      emotional: "Feel organised and in control during a stressful, unpredictable search process"
+      social: "Project professionalism by never accidentally applying twice or forgetting a company's name"
+    four_forces:
+      push: "The current `rusty-cv list` subcommand is broken — it outputs a raw debug string (FilterArgs { ... }) instead of actual application data. Users have no in-tool way to see their history."
+      pull: "A fast terminal-native table that renders instantly without leaving the shell workflow"
+      anxiety: "Will ratatui add a heavy compile-time cost? Will it break on minimal terminals (no colour support)?"
+      habit: "Users currently track applications in a spreadsheet or email search outside the tool. Switching requires trusting the DB as the single source of truth."
+    opportunity:
+      importance: 9
+      satisfaction: 1
+      gap: 8
+      tier: HIGH
+
+  - id: job-02-check-duplicate
+    title: "Quickly check if I have already applied to a company"
+    job_story: "When I am about to apply somewhere new, I want to search my application history by company name in seconds, so I can avoid the embarrassment of a duplicate application."
+    dimensions:
+      functional: "Filter the application list by free-text query matching company or job title"
+      emotional: "Feel confident before hitting submit on a new application"
+      social: "Not contact the same recruiter twice with the same CV"
+    four_forces:
+      push: "Currently requires grep on a mental spreadsheet or email search — slow and error-prone"
+      pull: "Real-time filter bar in the TUI that narrows results as you type"
+      anxiety: "Is the database always up to date? Did I save every application?"
+      habit: "Currently checks email 'Sent' folder or spreadsheet; filter inside the tool changes that lookup reflex"
+    opportunity:
+      importance: 7
+      satisfaction: 2
+      gap: 5
+      tier: MEDIUM
+
+  - id: job-03-access-sent-cv
+    title: "Access the exact CV I sent to a company"
+    job_story: "When I receive an interview invitation or rejection, I want to open the PDF CV I submitted, so I can prepare for the interview knowing what they read or understand why I was rejected."
+    dimensions:
+      functional: "Open the stored PDF path from the selected application row"
+      emotional: "Feel prepared and professional before an interview"
+      social: "Reference the same experiences and projects the recruiter has already seen"
+    four_forces:
+      push: "PDF path is stored in DB but completely inaccessible from any list/view command"
+      pull: "Press Enter in the TUI to open the PDF in the OS default viewer"
+      anxiety: "What if the PDF was moved or deleted since it was saved?"
+      habit: "Currently hunts through filesystem for the right PDF filename"
+    opportunity:
+      importance: 6
+      satisfaction: 3
+      gap: 3
+      tier: LOW-MEDIUM
