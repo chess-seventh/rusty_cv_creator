@@ -13,6 +13,7 @@ mod database;
 mod file_handlers;
 mod global_conf;
 mod helpers;
+mod tui;
 mod user_action;
 
 use crate::cli_structure::{UserAction, UserInput, match_user_action};

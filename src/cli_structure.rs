@@ -75,10 +75,9 @@ pub fn match_user_action(user_input: UserInput) -> String {
             println!("{out:?}");
             out
         }
-        UserAction::List(filters) => {
-            let out = format!("filter args for LIST: {filters:?}");
-            println!("{out:?}");
-            out
+        UserAction::List(_filters) => {
+            crate::tui::run().unwrap_or_else(|e| panic!("{e:?}"));
+            String::from("tui: ok")
         }
         UserAction::Update(filters) => {
             let out = format!("filter args for UPDATE: {filters:?}");
