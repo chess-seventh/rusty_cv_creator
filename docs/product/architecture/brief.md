@@ -65,13 +65,16 @@ layered frameworks were unnecessary and are not used. See ADR-0002, ADR-0003.
 | Domain model | `src/models.rs`, `src/schema.rs` | diesel `Cv`/`NewCv`, `cv` table. |
 | Config | `src/config_parse.rs`, `src/global_conf.rs` | INI load + immutable injected `AppContext` (ADR-0006), typed accessors. |
 | Helpers | `src/helpers.rs` | `ensure_tools_available`/`tool_on_path`, `view_cv_file`, `my_fzf`, path utils. |
-| Library facade | `src/lib.rs` | exposes `models` + `schema`; enables `coverage_nightly` attribute. |
+| Library facade | `src/lib.rs` | exposes `models` + `schema` + `tui`; enables `coverage_nightly` attribute. |
+| TUI | `src/tui/*.rs` | ratatui terminal UI (feature `tui-job-applications`) to browse/filter applications + open PDFs — `app`/`state`/`events`/`ui`/`db`/`terminal_guard`. |
 
 ### Ports and adapters
 
 **Driving ports (inbound)**
 - **CLI** — clap parses `UserInput`; `match_user_action` dispatches to use cases.
-  The only entry surface.
+- **TUI** — a ratatui terminal UI (feature `tui-job-applications`) launched from the
+  CLI; reads applications from the DB and opens PDFs. ADRs under
+  `docs/feature/tui-job-applications/architecture/` (adr-001 ratatui, adr-002 module structure).
 
 **Driven ports (outbound)**
 - **`CommandRunner`** (subprocess effects) — `status`/`output`/`spawn`.

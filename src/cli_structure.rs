@@ -1,3 +1,4 @@
+use crate::config_parse::resolve_db_target;
 use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
@@ -82,10 +83,9 @@ pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
             println!("{out:?}");
             out
         }
-        UserAction::List(filters) => {
-            let out = format!("filter args for LIST: {filters:?}");
-            println!("{out:?}");
-            out
+        UserAction::List(_filters) => {
+            run_list_tui(ctx).unwrap_or_else(|e| panic!("{e:?}"));
+            String::from("tui: ok")
         }
         UserAction::Update(filters) => {
             let out = format!("filter args for UPDATE: {filters:?}");
@@ -93,6 +93,17 @@ pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
             out
         }
     }
+}
+
+/// Drive the interactive `list` TUI: probe the terminal first (so a non-TTY
+/// invocation fails fast without touching the DB), then load every stored
+/// application through the v5 `DbConnection` seam and hand it to the pure-UI TUI.
+fn run_list_tui(ctx: &AppContext) -> Result<(), Box<dyn std::error::Error>> {
+    rusty_cv_creator::tui::probe::run_startup_probe()?;
+    let (engine, url) = resolve_db_target(ctx)?;
+    let mut conn = rusty_cv_creator::database::establish_connection(&engine, &url)?;
+    let cvs = rusty_cv_creator::database::load_all_applications(&mut conn)?;
+    rusty_cv_creator::tui::run(cvs)
 }
 
 #[derive(Debug, Clone, Default, Parser)]
@@ -169,15 +180,9 @@ mod tests {
         )
     }
 
-    #[test]
-    fn test_match_user_action_list_arm() {
-        let ctx = context_with(UserAction::List(FilterArgs::default()));
-        let out = match_user_action(
-            &ctx,
-            user_input_with(UserAction::List(FilterArgs::default())),
-        );
-        assert!(out.contains("LIST"));
-    }
+    // NOTE: the `list` arm now launches the interactive TUI (feature
+    // tui-job-applications), so it is exercised by the TUI's own subprocess
+    // tests (tests/tui_job_applications_*), not by an in-process unit test.
 
     #[test]
     fn test_match_user_action_update_arm() {

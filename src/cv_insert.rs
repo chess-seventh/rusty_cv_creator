@@ -1,8 +1,9 @@
 use crate::command_runner::SystemRunner;
-use crate::database::{DbConnection, establish_connection, save_new_cv_to_db};
+use crate::config_parse::resolve_db_target;
 use crate::global_conf::AppContext;
 use crate::prepare_cv;
 use log::{info, warn};
+use rusty_cv_creator::database::{DbConnection, establish_connection, save_new_cv_to_db};
 use rusty_cv_creator::models::Cv;
 
 pub fn insert_cv(ctx: &AppContext) -> Result<String, Box<dyn std::error::Error>> {
@@ -27,7 +28,10 @@ pub fn insert_cv(ctx: &AppContext) -> Result<String, Box<dyn std::error::Error>>
     // A failed DB save must not discard a successfully generated CV — log and continue.
     if let Err(e) = run_persistence(
         save_to_db,
-        || establish_connection(ctx),
+        || {
+            let (engine, url) = resolve_db_target(ctx)?;
+            establish_connection(&engine, &url)
+        },
         &destination_cv_file_full_path,
         &job_title,
         &company_name,

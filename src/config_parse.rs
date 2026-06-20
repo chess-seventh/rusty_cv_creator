@@ -63,6 +63,33 @@ pub fn get_db_configurations(ctx: &AppContext) -> Result<String, Box<dyn std::er
     Ok(db_path)
 }
 
+/// Resolve the `(engine, url)` pair the DB layer needs to open a connection.
+///
+/// Mirrors [`crate::helpers::check_if_db_env_is_set_or_set_from_config`]:
+/// - `postgres` -> the `db_pg_host` configured in the INI file.
+/// - `sqlite`   -> the `DATABASE_URL` env var when set, otherwise a
+///   `sqlite://<configured-path>` URL built from the INI config.
+pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn std::error::Error>> {
+    let engine = ctx.get_user_input_db_engine()?;
+
+    match engine.trim() {
+        "postgres" => {
+            let url = ctx
+                .get_user_input_db_url()
+                .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+            Ok((engine, url))
+        }
+        "sqlite" => {
+            let url = match std::env::var("DATABASE_URL") {
+                Ok(value) => fix_home_directory_path(&value),
+                Err(_) => format!("sqlite://{}", get_db_configurations(ctx)?),
+            };
+            Ok((engine, url))
+        }
+        _ => Ok((engine, String::new())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
