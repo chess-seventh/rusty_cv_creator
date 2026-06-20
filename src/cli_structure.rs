@@ -1,3 +1,4 @@
+use crate::config_parse::resolve_db_target;
 use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
@@ -83,7 +84,7 @@ pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
             out
         }
         UserAction::List(_filters) => {
-            rusty_cv_creator::tui::run().unwrap_or_else(|e| panic!("{e:?}"));
+            run_list_tui(ctx).unwrap_or_else(|e| panic!("{e:?}"));
             String::from("tui: ok")
         }
         UserAction::Update(filters) => {
@@ -92,6 +93,17 @@ pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
             out
         }
     }
+}
+
+/// Drive the interactive `list` TUI: probe the terminal first (so a non-TTY
+/// invocation fails fast without touching the DB), then load every stored
+/// application through the v5 `DbConnection` seam and hand it to the pure-UI TUI.
+fn run_list_tui(ctx: &AppContext) -> Result<(), Box<dyn std::error::Error>> {
+    rusty_cv_creator::tui::probe::run_startup_probe()?;
+    let (engine, url) = resolve_db_target(ctx)?;
+    let mut conn = rusty_cv_creator::database::establish_connection(&engine, &url)?;
+    let cvs = rusty_cv_creator::database::load_all_applications(&mut conn)?;
+    rusty_cv_creator::tui::run(cvs)
 }
 
 #[derive(Debug, Clone, Default, Parser)]

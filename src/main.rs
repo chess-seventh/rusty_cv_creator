@@ -11,7 +11,6 @@ mod cli_structure;
 mod command_runner;
 mod config_parse;
 mod cv_insert;
-mod database;
 mod file_handlers;
 mod global_conf;
 mod helpers;

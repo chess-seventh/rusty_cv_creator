@@ -1,10 +1,27 @@
 // DISTILL: tui-job-applications — unit-level specifications
 // Imports from rusty_cv_creator::tui::* resolve against scaffold stubs in src/tui/.
 
+use diesel::prelude::*;
+use rusty_cv_creator::database::{
+    DbConnection, establish_connection, load_all_applications, save_new_cv_to_db,
+};
 use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::tui::events::open_pdf;
-use rusty_cv_creator::tui::load_all_applications;
 use rusty_cv_creator::tui::state::{AppState, ApplicationRow, Mode};
+
+// ─── Helper: in-memory SQLite DbConnection with the `cv` table ────────────────
+
+fn sqlite_with_cv_table() -> DbConnection {
+    let mut conn = DbConnection::Sqlite(SqliteConnection::establish(":memory:").unwrap());
+    diesel::sql_query(
+        "CREATE TABLE cv (id INTEGER PRIMARY KEY AUTOINCREMENT, application_date VARCHAR, \
+         job_title VARCHAR NOT NULL, company VARCHAR NOT NULL, quote VARCHAR NOT NULL, \
+         pdf_cv_path VARCHAR NOT NULL, generated BOOLEAN NOT NULL DEFAULT 1)",
+    )
+    .execute(&mut conn)
+    .unwrap();
+    conn
+}
 
 // ─── Helper: make a test ApplicationRow ──────────────────────────────────────
 
@@ -84,18 +101,51 @@ fn us01_s04_empty_state_when_no_rows() {
     assert!(state.status_text().contains("No applications"));
 }
 
-/// @real-io @adapter-integration @us-01 @error
-/// load_all_applications() returns an error when DATABASE_URL is not set.
+/// @real-io @adapter-integration @us-01
+/// load_all_applications seeds and reads back every stored CV through the seam.
 #[test]
-fn us01_e01_load_all_applications_returns_error_when_database_url_not_set() {
-    // Temporarily remove DATABASE_URL, then restore it.
-    let saved = std::env::var("DATABASE_URL").ok();
-    unsafe { std::env::remove_var("DATABASE_URL") };
-    let result = load_all_applications();
-    if let Some(url) = saved {
-        unsafe { std::env::set_var("DATABASE_URL", url) };
-    }
-    assert!(result.is_err(), "Expected Err when DATABASE_URL is not set");
+fn us01_s05_load_all_applications_returns_seeded_rows() {
+    let mut conn = sqlite_with_cv_table();
+    save_new_cv_to_db(
+        &mut conn,
+        "/home/user/cvs/acme.pdf",
+        "Rust Engineer",
+        "Acme Corp",
+        None,
+        "2024-03-15",
+    )
+    .unwrap();
+
+    let cvs = load_all_applications(&mut conn).unwrap();
+    assert_eq!(cvs.len(), 1);
+    let row = ApplicationRow::from(cvs.into_iter().next().unwrap());
+    assert_eq!(row.company, "Acme Corp");
+    assert_eq!(row.job_title, "Rust Engineer");
+    assert_eq!(row.pdf_path, "/home/user/cvs/acme.pdf");
+    assert_eq!(row.date, "2024-03-15");
+}
+
+/// @real-io @adapter-integration @us-01
+/// load_all_applications returns an empty vec when no CVs are stored.
+#[test]
+fn us01_s06_load_all_applications_empty_when_no_rows() {
+    let mut conn = sqlite_with_cv_table();
+    let cvs = load_all_applications(&mut conn).unwrap();
+    assert!(cvs.is_empty());
+}
+
+/// @real-io @adapter-integration @us-01 @error
+/// establish_connection surfaces an error for an unreachable / unknown target.
+#[test]
+fn us01_e01_establish_connection_returns_error_on_bad_target() {
+    assert!(
+        establish_connection("bogus", "").is_err(),
+        "Expected Err for an unknown DB engine"
+    );
+    assert!(
+        establish_connection("sqlite", "/nonexistent-dir/x.db").is_err(),
+        "Expected Err for a sqlite path in a missing directory"
+    );
 }
 
 // ─── Keyboard navigation ──────────────────────────────────────────────────────
