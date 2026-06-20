@@ -142,6 +142,7 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
 | D-4 | Pre-usage tool-availability checks at orchestration layer. | [ADR-0004](adr-0004.md) |
 | D-5 | Coverage discipline via test seams + `coverage_nightly` gating. | [ADR-0005](adr-0005.md) |
 | D-6 | Inject immutable `AppContext` (`&AppContext`) instead of `GLOBAL_VAR` `OnceCell`. | [ADR-0006](adr-0006-inject-appcontext.md) |
+| D-7 | CI quality gates made blocking (clippy `-D warnings`, rustfmt, threaded `cargo test`) + single release mechanism (`release.yml`; dormant `.releaserc*` removed). | [ADR-0007](adr-0007-ci-quality-gates-single-release.md) |
 
 ### Component Inventory — delivery status
 
