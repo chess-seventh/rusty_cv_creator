@@ -117,3 +117,59 @@ System Context (L1) and Container (L2) are **unchanged** — see
 that the `Config` container stops being a global cell and becomes a value flowing
 from `main` into the use cases. The new component view lives in
 `c4-diagrams.md` under "L3 — Config injection (feature `config-injection`)".
+
+## Wave: DELIVER / [REF] Implementation Summary
+
+> Delivered 2026-06-20 (DES step `01-01`, commit `5214f33`). Behavior-preserving
+> refactor implementing ADR-0006 Option A.
+
+The process-global `pub static GLOBAL_VAR: OnceCell<GlobalVars>` and its free
+accessors (`get_global_var`, `get_global_var_config_db_*`) were removed. `GlobalVars`
+became an immutable `AppContext { config: Ini, today: DateTime<Local>, user_input: UserInput }`
+built once in `main` via `build_context(&UserInput)` and threaded by borrow
+(`&AppContext`) through `match_user_action → insert_cv/run_persistence → prepare_cv →
+create_directory/compile_cv/remove_created_dir_from_pro`, `view_cv_file`,
+`check_if_db_env_is_set_or_set_from_config`, and `establish_connection`.
+`get_variable_from_config_file` / `get_db_configurations` now take `&AppContext`.
+The `once_cell` dependency was dropped (no longer used).
+
+## Wave: DELIVER / [REF] Files Modified
+
+Production (11, commit `5214f33`):
+- `src/global_conf.rs` — `GlobalVars`+`OnceCell` → immutable `AppContext`; global static + free getters removed.
+- `src/config_parse.rs` — `set_global_vars` → `build_context`; config accessors take `&AppContext`.
+- `src/main.rs`, `src/cli_structure.rs`, `src/cv_insert.rs`, `src/file_handlers.rs`, `src/helpers.rs`, `src/database.rs`, `src/user_action.rs` — thread `&AppContext`.
+- `Cargo.toml` / `Cargo.lock` — drop `once_cell`.
+
+Tests: in-crate `#[cfg(test)]` modules updated to construct `AppContext` locally; the 3 previously order-dependent `should_panic`-without-global tests became deterministic local-construct tests.
+
+## Wave: DELIVER / [REF] Scenarios Green Count
+
+No `.feature` scenarios (behavior-preserving refactor — no DISTILL wave). Acceptance net = the existing suite. **85 of 85** tests pass under **both** `cargo nextest run` (was already green) **and** threaded `cargo test` (previously 3 failing) — 2026-06-20.
+
+## Wave: DELIVER / [REF] DoD Check
+
+- [x] Goal met: threaded `cargo test` is now deterministic (85/85), not just nextest — the whole point of ADR-0006.
+- [x] `GLOBAL_VAR` static + free `get_global_var*` accessors removed (`grep` clean).
+- [x] Behavior preserved: all 85 tests green; no `.feature`/contract changes.
+- [x] No new dependencies; `once_cell` removed.
+- [x] No contradiction with ADR-0001..0005 (composes with the CommandRunner + DbConnection seams).
+
+## Wave: DELIVER / [REF] Demo Evidence
+
+Determinism demo (the user-visible outcome of this refactor), 2026-06-20:
+- `cargo test` (threaded, single process) → **85 passed, 0 failed** (was 3 failed pre-refactor).
+- `cargo nextest run` → **85 passed**.
+- `./target/debug/rusty_cv_creator --help` → exit **0** (CLI behavior unchanged).
+
+## Wave: DELIVER / [REF] Quality Gates
+
+- **clippy** — `-D warnings` clean + pedantic clean.
+- **tests** — 85/85 green under both runners; `treefmt` applied.
+- **DES integrity** — `des-verify-integrity` → "All 1 steps have complete DES traces" (exit 0); RED/GREEN/COMMIT recorded for step 01-01; commit carries `Step-Id: 01-01` + `Task-Id: config-injection`.
+- **refactor (L1-L6) / adversarial review / mutation** — N/A / skipped: this change *is* a refactor (clippy+treefmt clean), mutation strategy is `nightly-delta`, and the behavior-preserving change is gated by the full existing suite under both runners.
+
+## Wave: DELIVER / [REF] Pre-requisites
+
+- ADR-0006 (the decision) + the DESIGN [REF] sections above.
+- The existing 85-test suite as the behavior-preservation net.

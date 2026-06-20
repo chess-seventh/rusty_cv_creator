@@ -1,0 +1,50 @@
+{
+  "roadmap": {
+    "project_id": "config-injection",
+    "created_at": "2026-06-20T14:44:00Z",
+    "total_steps": 1,
+    "goal": "Replace the process-global GLOBAL_VAR OnceCell with an injected immutable AppContext (ADR-0006 Option A), behavior-preserving.",
+    "note": "Single atomic step: removing the global breaks all callers until threaded, so the crate compiles only when complete. No DISTILL .feature scenarios (behavior-preserving refactor); the existing 85 tests are the acceptance net.",
+    "validation": {
+      "status": "approved",
+      "by": "orchestrator",
+      "rationale": "single-step behavior-preserving refactor authored from ADR-0006"
+    }
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Inject AppContext and remove the global",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Introduce AppContext, remove GLOBAL_VAR OnceCell",
+          "criteria": [
+            "Immutable AppContext built in main and threaded by borrow through the use cases.",
+            "GLOBAL_VAR static and free get_global_var accessors removed; no process-global config remains.",
+            "All tests pass under both cargo nextest run and threaded cargo test.",
+            "clippy -D warnings and pedantic clean; no new dependencies."
+          ],
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "in-crate cfg(test) modules",
+          "scenario_name": "n/a behavior-preserving refactor",
+          "files_to_modify": [
+            "src/global_conf.rs",
+            "src/config_parse.rs",
+            "src/main.rs",
+            "src/cli_structure.rs",
+            "src/cv_insert.rs",
+            "src/file_handlers.rs",
+            "src/helpers.rs",
+            "src/database.rs",
+            "src/user_action.rs",
+            "Cargo.toml"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -63,7 +63,7 @@ layered frameworks were unnecessary and are not used. See ADR-0002, ADR-0003.
 | Command port | `src/command_runner.rs` | `CommandRunner` trait + `SystemRunner` (prod) + `testing::FakeRunner`. |
 | Persistence | `src/database.rs` | `DbConnection` (diesel `MultiConnection`), connection + CRUD functions. |
 | Domain model | `src/models.rs`, `src/schema.rs` | diesel `Cv`/`NewCv`, `cv` table. |
-| Config | `src/config_parse.rs`, `src/global_conf.rs` | INI load + `GLOBAL_VAR` `OnceCell`, typed accessors. |
+| Config | `src/config_parse.rs`, `src/global_conf.rs` | INI load + immutable injected `AppContext` (ADR-0006), typed accessors. |
 | Helpers | `src/helpers.rs` | `ensure_tools_available`/`tool_on_path`, `view_cv_file`, `my_fzf`, path utils. |
 | Library facade | `src/lib.rs` | exposes `models` + `schema`; enables `coverage_nightly` attribute. |
 
@@ -80,8 +80,9 @@ layered frameworks were unnecessary and are not used. See ADR-0002, ADR-0003.
 - **`DbConnection`** (persistence) — diesel `MultiConnection` enum.
   Adapters: `PgConnection` (prod), `SqliteConnection` (tests / local). Functions
   take `&mut DbConnection`. See ADR-0003.
-- **Configuration** (INI) — `configparser` read into `GLOBAL_VAR` `OnceCell`;
-  typed accessors in `global_conf.rs`. Output dir, prefix, builder, recipe,
+- **Configuration** (INI) — `configparser` read into an immutable `AppContext`
+  built in `main` and injected by borrow (ADR-0006; no process-global cell).
+  Typed accessors in `global_conf.rs`. Output dir, prefix, builder, recipe,
   default variant, DB engine all config-driven.
 - **Filesystem** — `copy_dir` (template copy) + `std::fs` (copy/cleanup) behind
   the `file_handlers` functions.
@@ -103,7 +104,6 @@ orchestration layer before any subprocess runs. See ADR-0004.
 | dirs | 6.0.0 | home-dir expansion | MIT/Apache-2.0 |
 | dotenvy | 0.15.7 | `.env` loading | MIT |
 | env_logger / log | 0.11.10 / 0.4.30 | logging | MIT/Apache-2.0 |
-| once_cell | 1.21.4 | `GLOBAL_VAR` `OnceCell` | MIT/Apache-2.0 |
 | skim | 4.6.2 | interactive selection (`my_fzf`) | MIT |
 | tempfile (dev) | 3.27.0 | test fixtures | MIT/Apache-2.0 |
 | serial_test (dev) | 3.5.0 | serialize PATH-mutating tests | MIT |
@@ -175,12 +175,13 @@ HTTP contract tooling (Pact) does not apply. Recommended instead:
 
 ### Decided (was open)
 
-- **`GLOBAL_VAR` `OnceCell` → injected `AppContext`** — DECIDED. The process-global
-  config is to be replaced by an immutable `AppContext` value threaded by borrow
-  (`&AppContext`) through the use cases, making plain threaded `cargo test`
-  deterministic. See [ADR-0006](adr-0006-inject-appcontext.md) (forward refactor,
-  feature `config-injection`). **This supersedes the "GLOBAL_VAR OnceCell" open
-  item deferred in [ADR-0005](adr-0005.md).**
+- **`GLOBAL_VAR` `OnceCell` → injected `AppContext`** — **DELIVERED 2026-06-20**
+  (commit `5214f33`). The process-global config was replaced by an immutable
+  `AppContext` value threaded by borrow (`&AppContext`) through the use cases;
+  `GLOBAL_VAR` and `once_cell` are gone and plain threaded `cargo test` is now
+  85/85 green (was 3 failing). See [ADR-0006](adr-0006-inject-appcontext.md),
+  feature `config-injection`. **Supersedes the "GLOBAL_VAR OnceCell" open item
+  deferred in [ADR-0005](adr-0005.md).**
 
 ### Open questions / known smells
 
