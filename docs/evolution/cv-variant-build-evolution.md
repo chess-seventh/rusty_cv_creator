@@ -59,11 +59,16 @@ Non-feature: `e5d95af` chore(tooling) (claude session logs + nix-store symlinks)
 
 ## Known Gaps Carried Forward
 
-- **No subprocess-level CLI test** — the binary is never spawned to assert exit
-  code + stdout; coverage is at the `prepare_cv` orchestration layer
-  (`test_prepare_cv_end_to_end_with_fake_builder`).
-- **No test for `--save-to-database` omitted path** (`CV NOT SAVED TO DATABASE!`
-  no-write branch).
+> Post-review update (2026-06-20): the first two gaps below were closed after the
+> nw-review pass — test count 80 → **85**, line coverage 84% → **85.7%**.
+
+- ~~**No subprocess-level CLI test**~~ — **RESOLVED**: `tests/cli_smoke.rs` spawns
+  the built binary and asserts `--help` / `insert --help` exit 0 + expected stdout
+  and that a missing subcommand is a usage error. (The deeper `prepare_cv`
+  orchestration path remains covered by `test_prepare_cv_end_to_end_with_fake_builder`.)
+- ~~**No test for `--save-to-database` omitted path**~~ — **RESOLVED**: `cv_insert.rs`
+  now routes persistence through a lazily-connecting `run_persistence` seam, tested
+  both opt-in (writes one row) and opt-out (no connection, no write).
 - **`GLOBAL_VAR` `OnceCell` flakiness** under threaded `cargo test` (deterministic
   only under `cargo-nextest`) — process-global mutable config smell.
 - **`parse_date` dead code** (`cli_structure.rs`, `#[allow(dead_code)]`) — built
@@ -79,10 +84,8 @@ Non-feature: `e5d95af` chore(tooling) (claude session logs + nix-store symlinks)
 1. Add a **template-contract smoke test** in CI: run `just build <variant>` for
    each of the 4 variants and assert the expected PDF basename (verifies the
    recipe/output contract `compile_cv` assumes). See brief External Integrations.
-2. Add a **subprocess CLI driving-adapter test** (spawn the built binary, assert
-   exit code + stdout) to close the documented driving-port gap.
-3. Add the missing **no-DB-write** unit test for the `--save-to-database` omitted
-   path.
+2. ~~Add a **subprocess CLI driving-adapter test**~~ — DONE (`tests/cli_smoke.rs`).
+3. ~~Add the missing **no-DB-write** unit test~~ — DONE (`run_persistence` opt-out test).
 4. Refactor `GLOBAL_VAR` `OnceCell` → an injected `Config` value threaded through
    use cases (removes the nextest-only determinism constraint).
 5. Wire `parse_date` and real DB filtering, or remove the dead code; complete or

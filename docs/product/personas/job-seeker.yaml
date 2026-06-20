@@ -1,14 +1,11 @@
 # Persona SSOT — rusty_cv_creator (LEAN, retroactive backfill)
 schema_version: 1
-
 persona:
   id: job-seeker
   name: Francesco
   role: Senior infrastructure engineer / repo owner (single user)
   context: >-
-    Applies to senior DevOps, Platform Engineer, SRE, and Engineering Manager
-    roles across many companies. Owns a LaTeX CV template repo with 4 role
-    variants. Works on the CLI; runs the tool locally on Linux.
+    Applies to senior DevOps, Platform Engineer, SRE, and Engineering Manager roles across many companies. Owns a LaTeX CV template repo with 4 role variants. Works on the CLI; runs the tool locally on Linux.
   goals:
     - Send a CV framed for the specific role, fast, without manual LaTeX edits.
     - Keep a record of which company/role he has already applied to.

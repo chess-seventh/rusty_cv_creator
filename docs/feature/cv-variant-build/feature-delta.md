@@ -399,9 +399,11 @@ under `tests/acceptance/cv-variant-build/` (new, doc-only — no runner wired).
 The sole driving adapter is the **`insert` CLI subcommand** (clap). It is covered
 at the orchestration level: dispatch via `test_match_user_action_list_arm` /
 `_update_arm` (`cli_structure.rs`) and the end-to-end flow via
-`test_prepare_cv_end_to_end_with_fake_builder` (`main.rs`). **Gap / Open
-Question**: there is no subprocess-level CLI test that spawns the built binary
-and asserts exit code + stdout (the architecture-of-reference target mechanism).
+`test_prepare_cv_end_to_end_with_fake_builder` (`main.rs`). ~~**Gap / Open
+Question**: there is no subprocess-level CLI test that spawns the built binary~~
+— **CLOSED post-review (2026-06-20)**: `tests/cli_smoke.rs` spawns the built
+binary and asserts exit code + stdout for `--help` / `insert --help` and the
+no-subcommand usage error (the architecture-of-reference target mechanism).
 Recorded in `docs/architecture/atdd-infrastructure-policy.md` (Driving table).
 
 ## Wave: DISTILL / [REF] Pre-requisites
@@ -436,9 +438,10 @@ Recorded in `docs/architecture/atdd-infrastructure-policy.md` (Driving table).
 | C7b interruption mid-operation | PASS (N/A) | Single-shot CLI; no mid-flow interruption contract. |
 | C7c concurrent actors | PASS (N/A) | Single-user tool by claim. |
 
-Additional documented gaps beyond the checklist: (a) no subprocess CLI
-driving-adapter test; (b) no test for the `--save-to-database` omitted →
-no-DB-write path (`CV NOT SAVED TO DATABASE!`).
+Additional documented gaps beyond the checklist — both CLOSED post-review
+(2026-06-20): (a) ~~no subprocess CLI driving-adapter test~~ → `tests/cli_smoke.rs`;
+(b) ~~no test for the `--save-to-database` omitted → no-DB-write path~~ →
+`run_persistence` opt-out test in `cv_insert.rs`.
 
 ## Wave: DISTILL / [REF] Traceability table: Scenario → existing Rust test(s)
 
@@ -562,7 +565,8 @@ roadmap.json, evolution record (this DELIVER backfill).
 - **32 of 32** DISTILL acceptance scenarios mapped to GREEN Rust tests (see DISTILL
   Traceability table above; the `.feature` files are a documentation SSOT — no
   cucumber harness).
-- **80 of 80** unit/integration tests pass under `cargo nextest run`.
+- **85 of 85** unit/integration tests pass under `cargo nextest run` (80 at
+  backfill time + 5 added post-review: 3 in `tests/cli_smoke.rs`, 2 `run_persistence`).
 - Date verified: **2026-06-20**.
 
 ## Wave: DELIVER / [REF] DoD Check
@@ -574,8 +578,8 @@ Against the DISCUSS Definition of Done:
 - [x] Output PDF under per-year dir, deterministic name, working dir cleaned up —
   `test_create_directory_and_remove_flow`, `test_sanitize_for_path_replaces_spaces`.
 - [x] Persistence & view opt-in per RD-4/RD-5 — `test_save_new_cv_*`,
-  `test_view_cv_file_*`. **Documented gap**: no test for the `--save-to-database`
-  *omitted* (no-write) path.
+  `test_view_cv_file_*`; the `--save-to-database` *omitted* (no-write) path is now
+  covered by the `run_persistence` opt-out test (post-review, 2026-06-20).
 - [x] No contradiction with DESIGN [REF] / ADR-0001..0005 — merged, v4.0.2.
 
 ## Wave: DELIVER / [REF] Demo Evidence
@@ -597,8 +601,8 @@ tmp FS + fake build runner).
 ## Wave: DELIVER / [REF] Quality Gates
 
 - **clippy** — `-D warnings` clean + pedantic clean.
-- **tests** — `cargo nextest run` 80/80 GREEN.
-- **coverage** — 54% → **84%** line coverage (`cargo-llvm-cov`, ADR-0005).
+- **tests** — `cargo nextest run` 85/85 GREEN (80 at backfill + 5 post-review).
+- **coverage** — 54% → **85.7%** line coverage (`cargo-llvm-cov`, ADR-0005).
 - **refactor / mutation / review** — **N/A (retroactive)**; no TDD cycle was run
   for this backfill (DES-EXEMPT). Mutation strategy is a forward DEVOPS Decision-9
   concern, not applicable to shipped code.
