@@ -7,7 +7,12 @@
   ...
 }:
 {
-  imports = [
+  # Optional shared modules: present on the maintainer's machine
+  # (~/devenv_shared/*), absent in CI. `builtins.filter pathExists` keeps the
+  # environment evaluable in CI; the packages those modules add that CI needs
+  # (just, cargo-nextest/shear/llvm-cov, treefmt + formatters) are declared
+  # directly below so this devenv is self-sufficient.
+  imports = builtins.filter builtins.pathExists [
     "${builtins.getEnv "HOME"}/devenv_shared/shared_pkgs.nix"
     "${builtins.getEnv "HOME"}/devenv_shared/rust_pkgs.nix"
     "${builtins.getEnv "HOME"}/devenv_shared/git_hooks.nix"
@@ -24,6 +29,15 @@
     tectonic
     diesel-cli
     postgresql
+    # Self-sufficiency for CI (these otherwise come from ~/devenv_shared/* or the
+    # maintainer's global profile): build tool + test/lint tooling + formatters.
+    just
+    cargo-nextest
+    cargo-shear
+    cargo-llvm-cov
+    treefmt
+    yamlfmt
+    toml-sort
   ];
 
   languages = {

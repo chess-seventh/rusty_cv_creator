@@ -7,92 +7,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  unittest:
-    name: 🧪 Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: 🛠️ Install latest nextest release
-        uses: taiki-e/install-action@v2 # v2
-        with:
-          tool: nextest
-      - uses: Swatinem/rust-cache@v2 # v2
-      - name: 🛠️ Run nextests
-        run: cargo nextest run --no-fail-fast
-  threaded-test:
-    name: 🧵 Threaded cargo test (ADR-0006 determinism guard)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: 🛠️ Install correct toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          profile: minimal
-      - uses: Swatinem/rust-cache@v2
-      # Plain `cargo test` is multi-threaded / single-process — the condition the
-      # former GLOBAL_VAR OnceCell flaked under. Guards the ADR-0006 fix that
-      # nextest's process-per-test model cannot catch.
-      - name: 🧵 Run threaded cargo test
-        run: cargo test
-  coverage:
-    name: 📚 Collect test coverage
-    runs-on: ubuntu-latest
-    # nightly rust might break from time to time
-    continue-on-error: true
-    env:
-      RUSTFLAGS: -D warnings
-      CARGO_TERM_COLOR: always
-    steps:
-      - uses: actions/checkout@v4
-        # Nightly Rust is used for cargo llvm-cov --doc below.
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@v2 # v2
-      - name: 🛠️ Install latest nextest release
-        uses: taiki-e/install-action@v2 # v2
-        with:
-          tool: nextest
-      - name: 🛠️ Install cargo-llvm-cov
-        uses: taiki-e/install-action@v2 # v2
-        with:
-          tool: cargo-llvm-cov
-      - name: 📚 Collect coverage data
-        # Generate separate reports for nextest and doctests, and combine them.
-        run: |
-          cargo llvm-cov --no-report nextest
-          cargo llvm-cov --no-report --doc
-          cargo llvm-cov report --doctests --lcov --output-path lcov.info --ignore-filename-regex 'schema\.rs'
-      - name: 💭 Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
-        env:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        with:
-          files: lcov.info
-  clippy:
-    name: ✂️ Rust Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - name: ♻️ Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      - name: 🛠️ Install correct toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          profile: minimal
-          components: clippy
-      - name: ♻️ Cache
-        uses: Swatinem/rust-cache@v2
-      - name: ✂️ Clippy (deny warnings — failing gate)
-        run: cargo clippy --all-targets -- -D warnings
-      - name: ✂️ Clippy pedantic (advisory — never fails the build)
-        run: cargo clippy --all-targets -- -W clippy::pedantic
-        continue-on-error: true
-  treefmt:
-    name: ✂️ treefmt (format check)
+  gates:
+    name: 🧪 Tests, Lint & Format (devenv)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,25 +19,46 @@ jobs:
             accept-flake-config = true
       - name: 🛠️ Install devenv
         run: nix profile install nixpkgs#devenv
-      # Runs the SAME treefmt + formatter config as local (rustfmt edition 2024 +
-      # skip_children, nixfmt, toml-sort, yamlfmt) so local and CI never disagree.
+      # Every gate runs inside devenv so CI matches local exactly: the nightly
+      # toolchain, just + tectonic, cargo-nextest/shear, and treefmt + its
+      # formatters all come from devenv.nix (self-sufficient; no ~/devenv_shared).
+      - name: 🧪 nextest
+        run: devenv shell -- cargo nextest run --no-fail-fast
+      - name: 🧵 threaded cargo test (ADR-0006 determinism guard)
+        run: devenv shell -- cargo test
+      - name: ✂️ clippy (deny warnings — failing gate)
+        run: devenv shell -- cargo clippy --all-targets -- -D warnings
+      - name: ✂️ clippy pedantic (advisory — never fails the build)
+        run: devenv shell -- cargo clippy --all-targets -- -W clippy::pedantic
+        continue-on-error: true
       - name: ✂️ treefmt (fail on change)
         run: devenv shell -- treefmt --fail-on-change --no-cache
-  cleanup-deps:
-    name: 🧹 Cleanup Dependencies
+      - name: 🧹 unused dependencies (cargo-shear)
+        run: devenv shell -- cargo shear
+  coverage:
+    name: 📚 Collect test coverage (devenv)
     runs-on: ubuntu-latest
+    # nightly toolchain / coverage tooling may break from time to time
+    continue-on-error: true
     steps:
-      - name: ♻️ Checkout repository
-        uses: actions/checkout@v4
-      - name: 🛠️ Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - name: ❄️ Install Nix
+        uses: cachix/install-nix-action@v27
         with:
-          toolchain: stable
-          profile: minimal
-          components: rustfmt
-      - name: 🛠️ Install Cargo-Shear
+          extra_nix_config: |
+            accept-flake-config = true
+      - name: 🛠️ Install devenv
+        run: nix profile install nixpkgs#devenv
+      - name: 📚 Collect coverage data
         run: |
-          cargo install cargo-shear
-      - name: 🛠️ Check un-used dependenecies
-        run: |
-          cargo shear
+          devenv shell -- bash -c '
+            cargo llvm-cov --no-report nextest
+            cargo llvm-cov --no-report --doc
+            cargo llvm-cov report --doctests --lcov --output-path lcov.info --ignore-filename-regex "schema\.rs"
+          '
+      - name: 💭 Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        env:
+          token: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: lcov.info

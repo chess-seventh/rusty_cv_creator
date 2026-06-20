@@ -15,7 +15,6 @@ log = "0.4.30"
 skim = "4.6.2"
 ratatui = "0.30"
 crossterm = "0.28"
-ctrlc = "3.4"
 
 [dev-dependencies]
 serial_test = "3.5.0"
