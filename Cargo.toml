@@ -23,7 +23,7 @@ serial_test = "3.5.0"
 doctest = false
 
 [lints.rust]
-unexpected_cfgs = {level = "warn", check-cfg = ['cfg(coverage_nightly)', 'cfg(coverage)', 'cfg(tarpaulin_include)']}
+unexpected_cfgs = {level = "warn", check-cfg = ['cfg(coverage_nightly)', 'cfg(coverage)']}
 
 [package]
 name = "rusty_cv_creator"
