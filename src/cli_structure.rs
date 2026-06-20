@@ -1,3 +1,4 @@
+use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand};
@@ -68,15 +69,15 @@ pub struct FilterArgs {
     pub variant: Option<String>,
 }
 
-pub fn match_user_action(user_input: UserInput) -> String {
+pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
     match user_input.action {
-        UserAction::Insert(_insert_args) => match insert_cv() {
+        UserAction::Insert(_insert_args) => match insert_cv(ctx) {
             Ok(s) => s,
             Err(e) => panic!("{e:?}"),
         },
 
         UserAction::Remove(filters) => {
-            let _ = remove_cv(&filters);
+            let _ = remove_cv(ctx, &filters);
             let out = format!("filter args for LIST: {filters:?}");
             println!("{out:?}");
             out
@@ -160,15 +161,31 @@ mod tests {
         }
     }
 
+    fn context_with(action: UserAction) -> AppContext {
+        AppContext::new(
+            configparser::ini::Ini::new(),
+            chrono::Local::now(),
+            user_input_with(action),
+        )
+    }
+
     #[test]
     fn test_match_user_action_list_arm() {
-        let out = match_user_action(user_input_with(UserAction::List(FilterArgs::default())));
+        let ctx = context_with(UserAction::List(FilterArgs::default()));
+        let out = match_user_action(
+            &ctx,
+            user_input_with(UserAction::List(FilterArgs::default())),
+        );
         assert!(out.contains("LIST"));
     }
 
     #[test]
     fn test_match_user_action_update_arm() {
-        let out = match_user_action(user_input_with(UserAction::Update(FilterArgs::default())));
+        let ctx = context_with(UserAction::Update(FilterArgs::default()));
+        let out = match_user_action(
+            &ctx,
+            user_input_with(UserAction::Update(FilterArgs::default())),
+        );
         assert!(out.contains("UPDATE"));
     }
 }

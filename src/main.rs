@@ -19,11 +19,11 @@ mod user_action;
 
 use crate::cli_structure::{UserAction, UserInput, match_user_action};
 use crate::command_runner::{CommandRunner, SystemRunner};
-use crate::config_parse::{get_variable_from_config_file, set_global_vars};
+use crate::config_parse::{build_context, get_variable_from_config_file};
 use crate::file_handlers::{
     BuildConfig, compile_cv, create_directory, remove_created_dir_from_pro, resolve_variant,
 };
-use crate::global_conf::get_global_var;
+use crate::global_conf::AppContext;
 use crate::helpers::{
     check_if_db_env_is_set_or_set_from_config, ensure_tools_available, view_cv_file,
 };
@@ -35,16 +35,16 @@ fn main() {
 
     let user_input = UserInput::parse();
 
-    set_global_vars(&user_input.clone());
-    let _ = check_if_db_env_is_set_or_set_from_config();
+    let ctx = build_context(&user_input);
+    let _ = check_if_db_env_is_set_or_set_from_config(&ctx);
 
-    let _action: UserAction = get_global_var().get_user_input_action();
+    let _action: UserAction = ctx.get_user_input_action();
 
-    let cv_full_path = match_user_action(user_input.clone());
+    let cv_full_path = match_user_action(&ctx, user_input.clone());
 
     if !cv_full_path.is_empty() {
         if user_input.view_generated_cv {
-            let pdf_viewer = get_variable_from_config_file("optional", "pdf_viewer")
+            let pdf_viewer = get_variable_from_config_file(&ctx, "optional", "pdf_viewer")
                 .unwrap_or_else(|e| panic!("Could not get the pdf_viewer variable: {e:?}"));
             if let Err(e) = ensure_tools_available(&[pdf_viewer.as_str()]) {
                 panic!("{e:}");
@@ -60,23 +60,24 @@ fn main() {
 }
 
 fn prepare_cv(
+    ctx: &AppContext,
     runner: &dyn CommandRunner,
     job_title: &str,
     company_name: &str,
     variant_flag: Option<&String>,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let default_variant = get_variable_from_config_file("variant", "default")
+    let default_variant = get_variable_from_config_file(ctx, "variant", "default")
         .unwrap_or_else(|_| "senior-devops".to_string());
     let variant = resolve_variant(variant_flag, job_title, &default_variant);
     info!("Selected CV variant: {variant}");
 
-    let cfg = BuildConfig::from_config()?;
+    let cfg = BuildConfig::from_context(ctx)?;
     let pdf_basename = format!("{}-{variant}.pdf", cfg.prefix);
 
     // Pre-usage check: the builder (`just`) drives `tectonic` via the Justfile.
     ensure_tools_available(&[cfg.builder.as_str(), "tectonic"])?;
 
-    let created_cv_dir = match create_directory(job_title, company_name) {
+    let created_cv_dir = match create_directory(ctx, job_title, company_name) {
         Ok(s) => s,
         Err(e) => {
             error!("Could not create directory for CV: {e:?}");
@@ -89,7 +90,7 @@ fn prepare_cv(
     compile_cv(runner, &created_cv_dir, &variant, &cfg)?;
 
     let output_pdf =
-        remove_created_dir_from_pro(job_title, company_name, &created_cv_dir, &pdf_basename)?;
+        remove_created_dir_from_pro(ctx, job_title, company_name, &created_cv_dir, &pdf_basename)?;
 
     Ok(output_pdf)
 }
@@ -164,13 +165,13 @@ mod tests {
             config_ini: ini_path.to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
         };
-        set_global_vars(&ui);
+        let ctx = build_context(&ui);
 
         let runner = PdfWritingRunner {
             pdf_name: "TestCV-senior-devops.pdf".to_string(),
         };
         // "Senior DevOps" infers the senior-devops variant.
-        let output_pdf = prepare_cv(&runner, "Senior DevOps", "ACME", None).unwrap();
+        let output_pdf = prepare_cv(&ctx, &runner, "Senior DevOps", "ACME", None).unwrap();
 
         let out_path = std::path::Path::new(&output_pdf);
         assert!(out_path.is_file());

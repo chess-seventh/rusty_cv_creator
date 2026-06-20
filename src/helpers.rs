@@ -7,7 +7,7 @@ use std::io::Cursor;
 
 use crate::command_runner::{CommandRunner, SystemRunner};
 use crate::config_parse::get_db_configurations;
-use crate::global_conf::{GLOBAL_VAR, get_global_var};
+use crate::global_conf::AppContext;
 use crate::is_tailscale_connected;
 
 /// Hint appended to tool-availability errors, nudging the user to run the
@@ -74,15 +74,10 @@ pub fn check_config_file_exists(file_path: &str) -> Result<String, &str> {
     }
 }
 
-pub fn check_if_db_env_is_set_or_set_from_config() -> Result<String, Box<dyn std::error::Error>> {
-    let engine = if let Some(eng) = GLOBAL_VAR.get() {
-        eng.get_user_input_db_engine()
-    } else {
-        warn!("Could not get the DATABASE_URL env variable !");
-        Err("Could not get the DATABASE_URL env variable !"
-            .to_string()
-            .into())
-    };
+pub fn check_if_db_env_is_set_or_set_from_config(
+    ctx: &AppContext,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let engine = ctx.get_user_input_db_engine();
 
     if engine.is_ok_and(|e| "postgres" == e) {
         // Pre-usage check: the postgres path probes connectivity via Tailscale.
@@ -91,7 +86,7 @@ pub fn check_if_db_env_is_set_or_set_from_config() -> Result<String, Box<dyn std
         if let Ok(val) = std::env::var("DATABASE_URL") {
             drop(val);
         } else {
-            let db_url = get_global_var().get_user_input_db_url()?;
+            let db_url = ctx.get_user_input_db_url()?;
             std::env::set_var("DATABASE_URL", db_url);
             info!("Fetched the DATABASE_URL env variable");
         }
@@ -112,7 +107,7 @@ pub fn check_if_db_env_is_set_or_set_from_config() -> Result<String, Box<dyn std
         }
     } else {
         //TODO: fix unwrap
-        let db_path = match get_db_configurations() {
+        let db_path = match get_db_configurations(ctx) {
             Ok(db) => db,
             Err(e) => {
                 warn!("Could not get the db configuration: {e:}");

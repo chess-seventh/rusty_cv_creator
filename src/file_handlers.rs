@@ -1,6 +1,6 @@
 use crate::command_runner::CommandRunner;
 use crate::config_parse::get_variable_from_config_file;
-use crate::global_conf::GLOBAL_VAR;
+use crate::global_conf::AppContext;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
 use chrono::{DateTime, Local};
 use log::{error, info, warn};
@@ -91,12 +91,12 @@ pub struct BuildConfig {
 }
 
 impl BuildConfig {
-    pub fn from_config() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_context(ctx: &AppContext) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
-            prefix: get_variable_from_config_file("cv", "cv_file_prefix")?,
-            builder: get_variable_from_config_file("build", "builder")
+            prefix: get_variable_from_config_file(ctx, "cv", "cv_file_prefix")?,
+            builder: get_variable_from_config_file(ctx, "build", "builder")
                 .unwrap_or_else(|_| "just".to_string()),
-            recipe: get_variable_from_config_file("build", "recipe")
+            recipe: get_variable_from_config_file(ctx, "build", "recipe")
                 .unwrap_or_else(|_| "build".to_string()),
         })
     }
@@ -157,13 +157,14 @@ pub fn compile_cv(
 }
 
 pub fn create_directory(
+    ctx: &AppContext,
     job_title: &str,
     company_name: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
-    let var = get_variable_from_config_file("destination", "cv_path")?;
+    let var = get_variable_from_config_file(ctx, "destination", "cv_path")?;
 
     let destination_folder = fix_home_directory_path(&var);
-    let now = GLOBAL_VAR.get().unwrap().get_today();
+    let now = ctx.get_today();
 
     match prepare_year_dir(&destination_folder, now) {
         Ok(y) => info!("✅ Year directory created successfully: {y:}"),
@@ -176,7 +177,7 @@ pub fn create_directory(
     }
 
     let (cv_template_path, full_destination_path) =
-        match prepare_path_for_new_cv(job_title, company_name, &destination_folder, now) {
+        match prepare_path_for_new_cv(ctx, job_title, company_name, &destination_folder, now) {
             Ok(s) => s,
             Err(e) => {
                 error!("{e:?}");
@@ -200,12 +201,13 @@ pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
 }
 
 fn prepare_path_for_new_cv(
+    ctx: &AppContext,
     job_title: &str,
     company_name: &str,
     destination_folder: &str,
     now: &DateTime<Local>,
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
-    let var = get_variable_from_config_file("cv", "cv_template_path")?;
+    let var = get_variable_from_config_file(ctx, "cv", "cv_template_path")?;
 
     let cv_template_path: String = fix_home_directory_path(&var);
 
@@ -239,14 +241,15 @@ fn sanitize_for_path(value: &str) -> String {
 ///
 /// Returns the path to the PDF placed in the configured `output_pdf` directory.
 pub fn remove_created_dir_from_pro(
+    ctx: &AppContext,
     job_title: &str,
     company_name: &str,
     created_cv_dir: &String,
     pdf_basename: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let path_created_dir = Path::new(&created_cv_dir);
-    let application_date = GLOBAL_VAR.get().unwrap().get_today_str_yyyy_mm_dd();
-    let application_year = GLOBAL_VAR.get().unwrap().get_year_str();
+    let application_date = ctx.get_today_str_yyyy_mm_dd();
+    let application_year = ctx.get_year_str();
 
     // The PDF produced by `just build <variant>` inside the working directory.
     let built_pdf = format!("{created_cv_dir}/{pdf_basename}");
@@ -267,7 +270,7 @@ pub fn remove_created_dir_from_pro(
     let sibling_pdf = format!("{parent_dir}/{final_name}");
 
     // 2) The configured output location, organised per year.
-    let output_dir = get_variable_from_config_file("destination", "output_pdf")?;
+    let output_dir = get_variable_from_config_file(ctx, "destination", "output_pdf")?;
     let output_year_dir = format!("{output_dir}/{application_year}");
     fs::create_dir_all(&output_year_dir)?;
     let output_pdf = format!("{output_year_dir}/{final_name}");
@@ -492,10 +495,10 @@ mod tests {
             config_ini: ini_path.to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
         };
-        crate::config_parse::set_global_vars(&ui);
+        let ctx = crate::config_parse::build_context(&ui);
 
         // create_directory copies the template into a dated dir under dest.
-        let created = create_directory("Senior DevOps", "ACME").unwrap();
+        let created = create_directory(&ctx, "Senior DevOps", "ACME").unwrap();
         assert!(
             Path::new(&created)
                 .join("TestCV-senior-devops.tex")
@@ -505,6 +508,7 @@ mod tests {
         // Place a "built" PDF, then run the copy-out + cleanup.
         fs::write(format!("{created}/TestCV-senior-devops.pdf"), b"%PDF").unwrap();
         let output_pdf = remove_created_dir_from_pro(
+            &ctx,
             "Senior DevOps",
             "ACME",
             &created,

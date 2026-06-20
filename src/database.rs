@@ -1,5 +1,5 @@
 use crate::cli_structure::FilterArgs;
-use crate::global_conf::get_global_var;
+use crate::global_conf::AppContext;
 use crate::helpers::fix_home_directory_path;
 use diesel::prelude::*;
 use log::{error, info};
@@ -17,12 +17,12 @@ pub enum DbConnection {
 }
 
 /// Establish a connection using the engine configured in the INI file.
-pub fn establish_connection() -> Result<DbConnection, Box<dyn std::error::Error>> {
-    let engine = get_global_var().get_user_input_db_engine()?;
+pub fn establish_connection(ctx: &AppContext) -> Result<DbConnection, Box<dyn std::error::Error>> {
+    let engine = ctx.get_user_input_db_engine()?;
 
     match engine.trim() {
         "postgres" => {
-            let db_url = get_global_var().get_user_input_db_url()?;
+            let db_url = ctx.get_user_input_db_url()?;
             Ok(DbConnection::Postgresql(PgConnection::establish(&db_url)?))
         }
         "sqlite" => {

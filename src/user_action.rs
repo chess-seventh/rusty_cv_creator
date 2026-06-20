@@ -1,6 +1,7 @@
 use crate::cli_structure::FilterArgs;
 use crate::database::{DbConnection, establish_connection, read_cv_from_db};
 use crate::file_handlers;
+use crate::global_conf::AppContext;
 use crate::helpers::my_fzf;
 use diesel::prelude::*;
 use log::{error, info, warn};
@@ -16,10 +17,10 @@ pub fn show_cvs(
     Ok(my_fzf(pdfs))
 }
 
-pub fn remove_cv(filters: &FilterArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub fn remove_cv(ctx: &AppContext, filters: &FilterArgs) -> Result<(), Box<dyn std::error::Error>> {
     use rusty_cv_creator::schema::cv::dsl::{cv, pdf_cv_path};
 
-    let mut conn = establish_connection()?;
+    let mut conn = establish_connection(ctx)?;
 
     let cv_remove = show_cvs(&mut conn, filters)?;
 

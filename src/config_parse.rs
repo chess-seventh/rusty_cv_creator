@@ -1,15 +1,16 @@
 use crate::cli_structure::UserInput;
-use crate::global_conf::{
-    GLOBAL_VAR, GlobalVars, get_global_var, get_global_var_config_db_file,
-    get_global_var_config_db_path,
-};
+use crate::global_conf::AppContext;
 use crate::helpers::{check_config_file_exists, clean_string_from_quotes, fix_home_directory_path};
 use configparser::ini::Ini;
 use log::{debug, info};
 use std::fs;
 
-#[allow(clippy::unnecessary_wraps)]
-pub fn set_global_vars(user_input: &UserInput) {
+/// Build the immutable [`AppContext`] for this run (ADR-0006).
+///
+/// Loads the INI file referenced by `user_input`, captures the run timestamp,
+/// and bundles them with the parsed `UserInput`. Constructed once in `main` and
+/// then threaded by shared borrow — replaces the former `set_global_vars`.
+pub fn build_context(user_input: &UserInput) -> AppContext {
     let read_file_path = user_input.clone().config_ini;
     info!("Reading config file here: {read_file_path:}");
 
@@ -24,18 +25,7 @@ pub fn set_global_vars(user_input: &UserInput) {
     let config = load_config(contents);
     let today = chrono::offset::Local::now();
 
-    match GLOBAL_VAR.set(GlobalVars::new()) {
-        Ok(()) => info!("GLOBAL_VAR is not set, setting OnceCell now..."),
-        Err(e) => {
-            panic!("Something went wrong when trying to create a new GLOBAL_VAR: {e:?}");
-        }
-    }
-
-    let Some(global_vars) = GLOBAL_VAR.get() else {
-        panic!("Could not get GLOBAL_VAR, something is wrong");
-    };
-
-    global_vars.set_all(config.clone(), today, user_input.clone());
+    AppContext::new(config, today, user_input.clone())
 }
 
 fn load_config(config_string: String) -> Ini {
@@ -48,21 +38,22 @@ fn load_config(config_string: String) -> Ini {
 }
 
 pub fn get_variable_from_config_file(
+    ctx: &AppContext,
     section: &str,
     variable: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     debug!("Retrieving from config: {section:} {variable:}");
-    let config_get = get_global_var().get_user_input_vars(section, variable)?;
+    let config_get = ctx.get_user_input_vars(section, variable)?;
 
     let value = fix_home_directory_path(&config_get);
 
     Ok(clean_string_from_quotes(&value))
 }
 
-pub fn get_db_configurations() -> Result<String, Box<dyn std::error::Error>> {
+pub fn get_db_configurations(ctx: &AppContext) -> Result<String, Box<dyn std::error::Error>> {
     debug!("Getting DB Configuration");
-    let cfg_db_path = get_global_var_config_db_path()?;
-    let cfg_db_file = get_global_var_config_db_file()?;
+    let cfg_db_path = ctx.get_user_input_vars("db", "db_path")?;
+    let cfg_db_file = ctx.get_user_input_vars("db", "db_file")?;
 
     let mut db_path = fix_home_directory_path(&clean_string_from_quotes(&cfg_db_path));
     let db_file = clean_string_from_quotes(&cfg_db_file);
@@ -75,8 +66,22 @@ pub fn get_db_configurations() -> Result<String, Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli_structure::{FilterArgs, UserAction};
+    use chrono::Local;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    fn empty_context() -> AppContext {
+        let ui = UserInput {
+            action: UserAction::Insert(FilterArgs::default()),
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: String::new(),
+            engine: "sqlite".to_string(),
+        };
+        AppContext::new(Ini::new(), Local::now(), ui)
+    }
 
     #[test]
     fn test_load_config_reads_values() {
@@ -86,34 +91,32 @@ mod tests {
     }
 
     #[test]
-    fn test_set_global_vars_sets_oncecell() {
+    fn test_build_context_loads_config() {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "[db]\ndb_path = \"/tmp\"\ndb_file = \"test.db\"").unwrap();
-        let ui = crate::cli_structure::UserInput {
-            action: crate::cli_structure::UserAction::Insert(
-                crate::cli_structure::FilterArgs::default(),
-            ),
+        let ui = UserInput {
+            action: UserAction::Insert(FilterArgs::default()),
             save_to_database: false,
             view_generated_cv: false,
             dry_run: false,
             config_ini: f.path().to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
         };
-        set_global_vars(&ui);
-        // If no panic, we consider pass
+        let ctx = build_context(&ui);
+        assert_eq!(get_db_configurations(&ctx).unwrap(), "/tmp/test.db");
     }
 
     #[test]
-    #[should_panic(expected = "GlobalVar Get didn't work")]
     fn test_get_variable_from_config_file_error_if_missing() {
-        let result = get_variable_from_config_file("missing", "key");
+        let ctx = empty_context();
+        let result = get_variable_from_config_file(&ctx, "missing", "key");
         assert!(result.is_err());
     }
 
     #[test]
-    #[should_panic(expected = "GlobalVar Get didn't work")]
     fn test_get_db_configurations_error_if_missing() {
-        let result = get_db_configurations();
+        let ctx = empty_context();
+        let result = get_db_configurations(&ctx);
         assert!(result.is_err());
     }
 }
