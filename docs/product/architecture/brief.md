@@ -142,6 +142,23 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
 | D-4 | Pre-usage tool-availability checks at orchestration layer. | [ADR-0004](adr-0004.md) |
 | D-5 | Coverage discipline via test seams + `coverage_nightly` gating. | [ADR-0005](adr-0005.md) |
 
+### Component Inventory — delivery status
+
+> Marked **delivered** by the DELIVER wave (feature `cv-variant-build`, v4.0.2).
+> See `docs/feature/cv-variant-build/roadmap.json` and
+> `docs/evolution/cv-variant-build-evolution.md`.
+
+| Component | Delivered by | Status |
+|-----------|--------------|--------|
+| `DbConnection` (diesel `MultiConnection`) | `6472189` | delivered |
+| `CommandRunner` port + `SystemRunner`/`FakeRunner` | `23fde25` | delivered |
+| Variant build flow (resolve → `compile_cv` → per-year filing + cleanup) | `beb5034` | delivered |
+| Pre-usage tool checks (`ensure_tools_available`/`tool_on_path`) | `beb5034` | delivered |
+| Coverage discipline (`coverage(off)` exclusions, 54%→84%) | `d34990e` | delivered |
+
+`list`/`update`/DB-filtering and `parse_date` wiring remain partial (carried
+forward as gaps — see evolution record).
+
 ### External integrations (contract-test annotation for DEVOPS handoff)
 
 The highest-risk boundary is the **CV template repository**

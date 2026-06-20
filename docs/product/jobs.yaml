@@ -1,0 +1,54 @@
+# Jobs-To-Be-Done SSOT — rusty_cv_creator
+# Retroactive backfill (LEAN). Job statement supplied as ground truth; no
+# DISCOVER/DIVERGE artifacts existed. Reverse-engineered against shipped code
+# (v4.0.2) and the DESIGN brief.
+schema_version: 1
+
+jobs:
+  - id: apply-with-tailored-cv
+    persona: job-seeker
+    one_liner: >-
+      When I apply for a specific role at a company, I want to produce the right
+      CV variant for that role quickly and keep a record of the application, so I
+      can apply faster and track where I've applied.
+
+    job_story:
+      when: I find a specific role at a specific company I want to apply to
+      i_want_to: generate the CV variant that matches that role and record the application
+      so_i_can: apply faster, send a role-appropriate CV, and track where I've applied
+
+    dimensions:
+      functional: >-
+        Select and build the correct of 4 role variants for the job, produce a
+        PDF in a predictable location, and (optionally) persist the application.
+      emotional: >-
+        Feel confident the CV is framed for the role (not a generic shape), and
+        relieved that applying is one command instead of manual LaTeX editing.
+      social: >-
+        Present as a serious, role-appropriate senior candidate; never send a
+        mis-framed CV to a hiring manager.
+
+    forces:
+      push: >-
+        Hand-editing a LaTeX template and running xelatex per application is slow
+        and error-prone; high risk of sending the wrong or generic CV shape.
+      pull: >-
+        One `insert` command resolves the variant, builds the PDF, files it in a
+        per-year folder, and can record the application.
+      anxiety: >-
+        Building the wrong variant for a title; losing track of applications;
+        a required tool (just/tectonic/viewer) not being installed.
+      habit: >-
+        The old flow: copy the template, run xelatex, edit a BLANKPOSITION
+        placeholder by hand.
+
+    opportunity_score:
+      method: ODI (Importance + max(Importance - Satisfaction, 0))
+      importance: 9   # core to the user's job-search throughput
+      satisfaction: 3 # pre-feature: manual, brittle, no tracking
+      score: 15       # high / underserved
+      note: >-
+        Single-user qualitative estimate; pre-feature satisfaction reflects the
+        manual xelatex + placeholder workflow replaced by ADR-0001.
+
+    stories: [US-01, US-02, US-03, US-04, US-05]
