@@ -1,99 +1,66 @@
-# [5.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.3...v5.0.0) (2026-06-20)
+## [5.1.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.0.0...v5.1.0) (2026-06-20)
 
 
 ### Features
 
-* variant-based CV generation — build one of 4 role variants from the CV template repo via `just build <variant>` (tectonic); variant chosen by `--variant`, inferred from job title, or configured default; config-driven output (ADR-0001)
-* `CommandRunner` + diesel `MultiConnection` seams (testable subprocess + DB) and pre-usage tool-availability checks (ADR-0002, ADR-0003, ADR-0004)
-* inject an immutable `AppContext`, removing the process-global `GLOBAL_VAR` `OnceCell` — threaded `cargo test` is now deterministic (ADR-0006)
+* **tui:** job-applications terminal UI (ratatui) ([#96](https://github.com/chess-seventh/rusty_cv_creator/issues/96)) ([05045bc](https://github.com/chess-seventh/rusty_cv_creator/commit/05045bc585457f6e8686316ca8b7bc21e8f5f191))
+
+## [5.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.2...v5.0.0) (2026-06-20)
 
 
-### Continuous Integration
+### ⚠ BREAKING CHANGES
 
-* enforce clippy `-D warnings`, add treefmt + threaded `cargo test` gates, consolidate to a single release mechanism (ADR-0007)
+* variant-based CV generation, injected config, hardened CI (v5.0.0) (#95)
 
+### Features
 
-### BREAKING CHANGES
-
-* **config**: the INI format changed — added `cv_file_prefix`, `[variant] default`, `[build] builder`/`recipe`, `[destination] output_pdf`; removed `cv_template_file` and `[to_replace]` (`BLANKPOSITION`/`BLANKQUOTE`). Point `cv_template_path` at the CV template repo.
-* **build**: CVs are built via the template repo's Justfile (`just build <variant>`, tectonic) instead of xelatex + placeholder replacement; `just` and `tectonic` are now required on PATH.
-
-> v5.0.0 supersedes the mis-versioned v4.0.3, which released these breaking changes as a patch; the release config has been corrected (ADR-0007).
-
-
-
-## [4.0.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.2...v4.0.3) (2026-06-20)
-
-
+* variant-based CV generation, injected config, hardened CI (v5.0.0) ([#95](https://github.com/chess-seventh/rusty_cv_creator/issues/95)) ([6f88425](https://github.com/chess-seventh/rusty_cv_creator/commit/6f884252b716be6beca06dd87b17fc0f6ff0b6f1))
 
 ## [4.0.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.1...v4.0.2) (2026-06-06)
 
-
-
 ## [4.0.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.0...v4.0.1) (2026-06-06)
 
+## [4.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v3.0.1...v4.0.0) (2026-05-14)
 
 
-# [4.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v3.0.1...v4.0.0) (2026-05-14)
-
-
-* feat!: Add Rust support and new git hooks in devenv.nix ([a407dd9](https://github.com/chess-seventh/rusty_cv_creator/commit/a407dd96c57e9779b0ae8e3704bb4b1f6ca7cd7d))
-
-
-### BREAKING CHANGES
+### ⚠ BREAKING CHANGES
 
 * Update Cargo.toml dependencies and fix tests to ensure
 project still works fine
 
+### Features
 
+* Add Rust support and new git hooks in devenv.nix ([a407dd9](https://github.com/chess-seventh/rusty_cv_creator/commit/a407dd96c57e9779b0ae8e3704bb4b1f6ca7cd7d))
 
 ## [3.0.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v3.0.0...v3.0.1) (2026-05-14)
 
+## [3.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.6...v3.0.0) (2026-02-12)
 
 
-# [3.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.6...v3.0.0) (2026-02-12)
-
-
-* feat!: Update dependencies and metadata in Cargo.toml ([29bfaf5](https://github.com/chess-seventh/rusty_cv_creator/commit/29bfaf5533e93e24125ece433ad7d969297b4791))
-
-
-### BREAKING CHANGES
+### ⚠ BREAKING CHANGES
 
 * update Cargo.toml dependencies
 
+### Features
 
+* Update dependencies and metadata in Cargo.toml ([29bfaf5](https://github.com/chess-seventh/rusty_cv_creator/commit/29bfaf5533e93e24125ece433ad7d969297b4791))
 
 ## [2.0.6](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.5...v2.0.6) (2025-09-17)
 
-
-
 ## [2.0.5](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.4...v2.0.5) (2025-09-12)
-
-
 
 ## [2.0.4](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.3...v2.0.4) (2025-09-12)
 
-
-
 ## [2.0.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.2...v2.0.3) (2025-09-12)
-
-
 
 ## [2.0.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.1...v2.0.2) (2025-09-12)
 
-
-
 ## [2.0.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v2.0.0...v2.0.1) (2025-09-12)
 
+## [2.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.10.1...v2.0.0) (2025-09-12)
 
 
-# [2.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.10.1...v2.0.0) (2025-09-12)
-
-
-* feat!: Expand devenv with rusty-commit-saver (#71) ([19ca679](https://github.com/chess-seventh/rusty_cv_creator/commit/19ca6796c3706c4782d5f76d2d88a30e42003a9f)), closes [#71](https://github.com/chess-seventh/rusty_cv_creator/issues/71)
-
-
-### BREAKING CHANGES
+### ⚠ BREAKING CHANGES
 
 * Add my own flake for saving my commits to Obsidian
 
@@ -115,13 +82,13 @@ feat: Enhance development environment setup
   evaluation
 - Display debug information with echoed messages in `enterShell` script
 
+### Features
 
+* Expand devenv with rusty-commit-saver ([#71](https://github.com/chess-seventh/rusty_cv_creator/issues/71)) ([19ca679](https://github.com/chess-seventh/rusty_cv_creator/commit/19ca6796c3706c4782d5f76d2d88a30e42003a9f))
 
 ## [1.10.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.10.0...v1.10.1) (2025-09-11)
 
-
-
-# [1.10.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.3...v1.10.0) (2025-09-01)
+## [1.10.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.3...v1.10.0) (2025-09-01)
 
 
 ### Features
@@ -129,21 +96,13 @@ feat: Enhance development environment setup
 * Enhance error handling across modules ([0620c9f](https://github.com/chess-seventh/rusty_cv_creator/commit/0620c9f48e4eec64f59eee601b4bf9584c82f882))
 * Improve error handling in pre-check script ([416f3a7](https://github.com/chess-seventh/rusty_cv_creator/commit/416f3a73b4f2bf53458bfb38e402486b36881a71))
 
-
-
 ## [1.9.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.2...v1.9.3) (2025-09-01)
-
-
 
 ## [1.9.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.1...v1.9.2) (2025-08-29)
 
-
-
 ## [1.9.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.9.0...v1.9.1) (2025-08-29)
 
-
-
-# [1.9.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.8.0...v1.9.0) (2025-08-29)
+## [1.9.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.8.0...v1.9.0) (2025-08-29)
 
 
 ### Features
@@ -154,28 +113,26 @@ feat: Enhance development environment setup
 * Refactor config and database interactions ([3d922e9](https://github.com/chess-seventh/rusty_cv_creator/commit/3d922e9a7a8eca4b9c1828161276535ea459e14a))
 * Revamp CLI structure and defaults for CV cmd ([ff2eb83](https://github.com/chess-seventh/rusty_cv_creator/commit/ff2eb83525e91fc1cb31d5e98234354e0169e343))
 
-
-
-# [1.8.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.7.0...v1.8.0) (2025-08-25)
+## [1.8.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.7.0...v1.8.0) (2025-08-25)
 
 
 ### Features
 
 * Enhance XeLaTeX CV compilation options ([#57](https://github.com/chess-seventh/rusty_cv_creator/issues/57)) ([680866a](https://github.com/chess-seventh/rusty_cv_creator/commit/680866a437e96e60a599feb3097ef7f906f5f699))
 
-
-
-# [1.7.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.1...v1.7.0) (2025-08-25)
+## [1.7.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.1...v1.7.0) (2025-08-25)
 
 
 ### Features
 
 * Enhance release workflow changelog generation ([#64](https://github.com/chess-seventh/rusty_cv_creator/issues/64)) ([5b380f7](https://github.com/chess-seventh/rusty_cv_creator/commit/5b380f733705cc666abf60d1321c421c4b2b3866))
 
-
-
 ## [1.6.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v1.6.0...v1.6.1) (2025-08-25)
 
+
+### ⚠ BREAKING CHANGES
+
+* refactor global-vars
 
 ### Features
 
@@ -193,21 +150,17 @@ feat: Enhance development environment setup
 * Enhance Rust project testing capabilities ([2ab6ea1](https://github.com/chess-seventh/rusty_cv_creator/commit/2ab6ea14d9f21720c0ba53fb9aabc51f81e356e4))
 * Implement semantic-release automation ([#55](https://github.com/chess-seventh/rusty_cv_creator/issues/55)) ([f16955d](https://github.com/chess-seventh/rusty_cv_creator/commit/f16955d677ef1c3bf8e991d3d349fa12a2c9cf5e))
 * Refactor directory paths in file tests ([590af8d](https://github.com/chess-seventh/rusty_cv_creator/commit/590af8df83aeb949aa2286258373277d26c097fd))
+* refactor global-vars ([537e64f](https://github.com/chess-seventh/rusty_cv_creator/commit/537e64f19ac6d76d6183db298a120311cb21614b))
 * Streamline CV tests and error handling ([fd05778](https://github.com/chess-seventh/rusty_cv_creator/commit/fd05778037e4bd1ee871b282fd31a13556ff4848))
 * Update .env for new DB server and API key ([9e28fd5](https://github.com/chess-seventh/rusty_cv_creator/commit/9e28fd5c064df601d1b9ce6fb63a9117d6c1c1fa))
 
+## [0.6.0](https://github.com/chess-seventh/rusty_cv_creator/compare/33aaf4502d9a765258aa715e581c6bfe2a8f934e...v0.6.0) (2025-01-29)
 
 
-# [0.6.0](https://github.com/chess-seventh/rusty_cv_creator/compare/33aaf4502d9a765258aa715e581c6bfe2a8f934e...v0.6.0) (2025-01-29)
+### ⚠ BREAKING CHANGES
 
-
-### Bug Fixes
-
-* **ci:** workflow not working ([2755f83](https://github.com/chess-seventh/rusty_cv_creator/commit/2755f8306b689768eb9f8701e3ea4cbea0978003))
-* **error_handling:** enhance error messages for directory removal ([dfbe71b](https://github.com/chess-seventh/rusty_cv_creator/commit/dfbe71bd2acf2bc6d709095727f2e16049bc7811))
-* shell.nix to have proper rust version and add direnv ignore ([1d36408](https://github.com/chess-seventh/rusty_cv_creator/commit/1d36408149962ef2c6be4c528e99bf36a843654d))
-* typo ([cca9e4e](https://github.com/chess-seventh/rusty_cv_creator/commit/cca9e4ed02200dfe06400bb87ade9cd199f490e0))
-
+* bump version
+* add postgresql support and improve global variable handling
 
 ### Features
 
@@ -217,6 +170,7 @@ feat: Enhance development environment setup
 * add empty package.json ([4824a9d](https://github.com/chess-seventh/rusty_cv_creator/commit/4824a9d3174cc6c2e62b0b3527b7d27cee7578c4))
 * add list to config parse and uncomment get db config ([7d6f92e](https://github.com/chess-seventh/rusty_cv_creator/commit/7d6f92ebfde1e57e519b44985e9d23ee5ac5e7da))
 * add npm token ([77c8dab](https://github.com/chess-seventh/rusty_cv_creator/commit/77c8dabf1bb1094ebc3c710141a009e9ee638223))
+* add postgresql support and improve global variable handling ([53ceda1](https://github.com/chess-seventh/rusty_cv_creator/commit/53ceda1436da69f1158f5b335bf27c4c7a7529ed))
 * add remove CV ([9ec1bc7](https://github.com/chess-seventh/rusty_cv_creator/commit/9ec1bc7fe58ddb67def13f53cc0a3dbd15318530))
 * add remove directory after creation and save to Obsidian ([7fd245e](https://github.com/chess-seventh/rusty_cv_creator/commit/7fd245e9edd828f190557a3a12a66758eedef99f))
 * add script ([c09e045](https://github.com/chess-seventh/rusty_cv_creator/commit/c09e0451d6d280420c3a377f575312b60f4e26e0))
@@ -224,6 +178,7 @@ feat: Enhance development environment setup
 * add the option to view the cv ([3c0af5d](https://github.com/chess-seventh/rusty_cv_creator/commit/3c0af5d2e8e369004f8b6f588aa1fe8c17afbcb3))
 * add zathura viewer for quick feedback ([d4877e1](https://github.com/chess-seventh/rusty_cv_creator/commit/d4877e1219adfb3627dd48b1f5a3b5c10af3f6ac))
 * bump new version and add logging ([5fb70f3](https://github.com/chess-seventh/rusty_cv_creator/commit/5fb70f3f4e395f9e5d2e0215e950b1a9f4920a6e))
+* bump version ([22f4ab1](https://github.com/chess-seventh/rusty_cv_creator/commit/22f4ab1f284fff5927fdab0ebc433d493400b7aa))
 * change some stuff in package.json ([fc1ba44](https://github.com/chess-seventh/rusty_cv_creator/commit/fc1ba441c604496510f8f334cb4653c557c8b607))
 * cleanup the string from variables ([f12441a](https://github.com/chess-seventh/rusty_cv_creator/commit/f12441ac51e59df0de1ed050d33dbe0bece4d3d2))
 * date parsing ([910bb3a](https://github.com/chess-seventh/rusty_cv_creator/commit/910bb3aba67499e6b572310edf10a30b4d467704))
@@ -248,4 +203,10 @@ feat: Enhance development environment setup
 * use proper naming for the config.ini file ([a248862](https://github.com/chess-seventh/rusty_cv_creator/commit/a248862515bb49a12dbc8368b229013dd5c9e36e))
 
 
+### Bug Fixes
+
+* **ci:** workflow not working ([2755f83](https://github.com/chess-seventh/rusty_cv_creator/commit/2755f8306b689768eb9f8701e3ea4cbea0978003))
+* **error_handling:** enhance error messages for directory removal ([dfbe71b](https://github.com/chess-seventh/rusty_cv_creator/commit/dfbe71bd2acf2bc6d709095727f2e16049bc7811))
+* shell.nix to have proper rust version and add direnv ignore ([1d36408](https://github.com/chess-seventh/rusty_cv_creator/commit/1d36408149962ef2c6be4c528e99bf36a843654d))
+* typo ([cca9e4e](https://github.com/chess-seventh/rusty_cv_creator/commit/cca9e4ed02200dfe06400bb87ade9cd199f490e0))
 
