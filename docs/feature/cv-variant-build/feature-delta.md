@@ -212,7 +212,8 @@ form + outcome KPIs in `docs/feature/cv-variant-build/discuss/user-stories.md`.
 - **Elevator Pitch** —
   - Before: built PDFs are scattered in the template working copy and hard to find
     when attaching to an application.
-  - After: run `insert` → sees `CV saved to: <output_pdf>/2026/2026-06-20-Senior-DevOps-ACME.pdf`;
+  - After: run `rusty_cv_creator insert --job-title "Senior DevOps" --company-name "ACME"`
+    → sees `CV saved to: <output_pdf>/2026/2026-06-20-Senior-DevOps-ACME.pdf`;
     the working directory is cleaned up.
   - Decision enabled: Francesco knows exactly which file to attach and which year's
     applications it belongs to.

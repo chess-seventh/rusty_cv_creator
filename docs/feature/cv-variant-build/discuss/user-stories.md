@@ -124,7 +124,7 @@ job_id: apply-with-tailored-cv
 ### Elevator Pitch
 
 - Before: built PDFs are scattered in the template working copy and hard to find.
-- After: run `insert` → sees `CV saved to: <output_pdf>/2026/2026-06-20-Senior-DevOps-ACME.pdf`; working dir cleaned up.
+- After: run `rusty_cv_creator insert --job-title "Senior DevOps" --company-name "ACME"` → sees `CV saved to: <output_pdf>/2026/2026-06-20-Senior-DevOps-ACME.pdf`; working dir cleaned up.
 - Decision enabled: Francesco knows exactly which file to attach.
 
 ### Problem
@@ -141,7 +141,7 @@ Copy the built PDF to `<output_pdf>/<year>/<date>-<job>-<company>.pdf` (and a si
 
 ### Domain Examples
 
-1. Happy path — application to ACME on 2026-06-20 → `.../2026/2026-06-20-ACME...pdf` (per actual sanitized naming).
+1. Happy path — application to ACME on 2026-06-20 for "Senior DevOps" → `.../2026/2026-06-20-Senior-DevOps-ACME.pdf`.
 2. Edge case — job title with spaces ("Senior DevOps") → spaces become dashes in the filename.
 3. Error/boundary — built PDF missing in the working dir → error, no copy.
 
