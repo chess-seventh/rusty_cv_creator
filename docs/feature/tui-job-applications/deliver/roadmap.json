@@ -1,0 +1,158 @@
+{
+  "project_id": "tui-job-applications",
+  "created_at": "2026-06-06T00:00:00Z",
+  "total_steps": 8,
+  "phases": [
+    {
+      "id": "01",
+      "name": "Walking Skeleton + Dependencies",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Wire TUI module and add ratatui/crossterm/ctrlc dependencies",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "Add `mod tui;` to src/main.rs binary crate",
+            "Add ratatui=\"0.30\", crossterm=\"0.28\", ctrlc=\"3.4\" to Cargo.toml",
+            "All tests in tui_job_applications_scenarios.rs compile (still #[ignore])",
+            "`cargo check` passes on Rust >=1.88 inside devenv shell"
+          ],
+          "test_file": "tests/tui_job_applications_scenarios.rs",
+          "scenario_name": "ws_01_list_command_detects_non_tty_and_exits_with_message",
+          "files_to_modify": ["Cargo.toml", "src/main.rs"],
+          "implementation_notes": "Run all cargo commands inside `devenv shell` (Rust >=1.88). The tui module is already declared in lib.rs; only main.rs needs the declaration for the binary crate. Existing scaffold stubs in src/tui/ must already compile."
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "name": "Table Display — Slice 01",
+      "steps": [
+        {
+          "id": "02-01",
+          "name": "Implement load_all_applications() database adapter",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "load_all_applications() returns Result<Vec<Cv>, Box<dyn Error>>",
+            "Uses establish_connection_postgres() + Diesel select on cvs table",
+            "us01_e01 passes: returns Err when DATABASE_URL is not set"
+          ],
+          "test_file": "tests/tui_job_applications_specifications.rs",
+          "scenario_name": "us01_e01_load_all_applications_returns_error_when_database_url_not_set",
+          "files_to_modify": ["src/database.rs"],
+          "deps": ["01-01"]
+        },
+        {
+          "id": "02-02",
+          "name": "Implement ApplicationRow, AppState::new(), From<Cv>",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "ApplicationRow has id, date, company, job_title, pdf_path fields (no quote)",
+            "From<Cv> maps all fields; date falls back to 'Unknown' when application_date is None",
+            "AppState::new(rows) starts at index 0, empty filter, Normal mode",
+            "is_empty() and status_text() work; us01_s01..s04 pass"
+          ],
+          "test_file": "tests/tui_job_applications_specifications.rs",
+          "scenario_name": "us01_s01_maps_all_fields_correctly",
+          "files_to_modify": ["src/tui/state.rs"],
+          "deps": ["02-01"]
+        },
+        {
+          "id": "02-03",
+          "name": "Implement TerminalGuard and startup probe",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TerminalGuard::new() enters raw mode and restores terminal on Drop",
+            "probe::run_startup_probe() returns Err with TTY message when stdin is not a TTY",
+            "ws_01 passes: non-TTY subprocess exits non-zero with terminal/tty message"
+          ],
+          "test_file": "tests/tui_job_applications_scenarios.rs",
+          "scenario_name": "ws_01_list_command_detects_non_tty_and_exits_with_message",
+          "files_to_modify": ["src/tui/terminal_guard.rs", "src/tui/probe.rs", "src/tui/mod.rs"],
+          "deps": ["02-02"]
+        },
+        {
+          "id": "02-04",
+          "name": "Implement App event loop, ui::render() table, quit key, full TUI wiring",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "tui::run() calls probe, loads applications via load_all_applications(), runs event loop",
+            "ui::render() draws applications table with ratatui Widget trait",
+            "q / Esc / Ctrl-C quit cleanly restoring terminal via TerminalGuard Drop",
+            "ws_02 and ws_03 pass: bad/missing DATABASE_URL exit non-zero with error message"
+          ],
+          "test_file": "tests/tui_job_applications_scenarios.rs",
+          "scenario_name": "ws_02_list_command_with_bad_database_url_exits_with_error",
+          "files_to_modify": [
+            "src/tui/mod.rs",
+            "src/tui/app.rs",
+            "src/tui/ui.rs",
+            "src/tui/events.rs"
+          ],
+          "deps": ["02-03"]
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "name": "Keyboard Navigation — Slice 02",
+      "steps": [
+        {
+          "id": "03-01",
+          "name": "Implement AppState navigation: move_down, move_up, move_to_first, move_to_last",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "move_down/up/to_first/to_last respect bounds; no panic on empty or filter-empty list",
+            "status_text() shows 'N of M applications' after navigation",
+            "us02_s01..s06, us02_e01..e02 pass; pbt_01 navigation invariant passes"
+          ],
+          "test_file": "tests/tui_job_applications_specifications.rs",
+          "scenario_name": "us02_s01_down_increments_selected_index",
+          "files_to_modify": ["src/tui/state.rs"],
+          "deps": ["02-04"]
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "name": "Real-Time Filter — Slice 03",
+      "steps": [
+        {
+          "id": "04-01",
+          "name": "Implement set_filter, clear_filter, filtered_count, Mode transitions",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "set_filter() filters by company and job_title case-insensitively using plain substring (no regex)",
+            "Whitespace-only filter treated as empty; special regex chars do not panic",
+            "clear_filter() restores full list and resets selected_index to 0",
+            "us03_s01..s05, us03_e01..e02 pass; pbt_02 and pbt_03 pass"
+          ],
+          "test_file": "tests/tui_job_applications_specifications.rs",
+          "scenario_name": "us03_s01_empty_filter_returns_all_rows",
+          "files_to_modify": ["src/tui/state.rs"],
+          "deps": ["03-01"]
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "name": "PDF Open Action — Slice 04",
+      "steps": [
+        {
+          "id": "05-01",
+          "name": "Implement open_pdf() and handle_enter() dispatch",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "open_pdf(path) returns Err('File not found: {path}') when file absent, empty, or a directory",
+            "handle_enter() dispatches only in Normal mode with non-empty filtered list",
+            "us04_s01..s04, us04_e01..e02 pass"
+          ],
+          "test_file": "tests/tui_job_applications_specifications.rs",
+          "scenario_name": "us04_s01_open_pdf_returns_error_for_nonexistent_path",
+          "files_to_modify": ["src/tui/events.rs", "src/tui/app.rs"],
+          "deps": ["04-01"]
+        }
+      ]
+    }
+  ]
+}

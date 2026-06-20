@@ -36,3 +36,66 @@ jobs:
       note: >-
         Single-user qualitative estimate; pre-feature satisfaction reflects the manual xelatex + placeholder workflow replaced by ADR-0001.
     stories: [US-01, US-02, US-03, US-04, US-05]
+  # --- feature: tui-job-applications (merged from feature/nw-wave-refactor) ---
+  - id: review-applications-in-tui
+    persona: job-seeker
+    feature: tui-job-applications
+    one_liner: >-
+      When I am actively job searching with multiple applications out, I want to see the full list of where I've applied (company, role, date, CV path) at a glance, so I can decide which companies to follow up with.
+    job_story:
+      when: I am job searching and have sent multiple applications
+      i_want_to: see a scrollable, filterable list of all my applications
+      so_i_can: decide which companies to follow up with and when
+    dimensions:
+      functional: >-
+        Display a scrollable, filterable table of applications (company, job title, date, CV path).
+      emotional: >-
+        Feel organised and in control during a stressful, unpredictable search.
+      social: >-
+        Never accidentally apply twice or forget a company's name.
+    forces:
+      push: >-
+        The `list` subcommand is broken — it prints a raw debug string instead of application data.
+      pull: >-
+        A fast terminal-native table that renders instantly without leaving the shell.
+      anxiety: >-
+        ratatui compile cost; behaviour on minimal / no-colour terminals.
+      habit: >-
+        Tracking applications in a spreadsheet or email search outside the tool.
+    opportunity_score:
+      method: ODI (Importance + max(Importance - Satisfaction, 0))
+      importance: 9
+      satisfaction: 1
+      score: 17
+      tier: HIGH
+  - id: check-duplicate-application
+    persona: job-seeker
+    feature: tui-job-applications
+    one_liner: >-
+      When I am about to apply somewhere new, I want to search my application history by company in seconds, so I can avoid a duplicate application.
+    job_story:
+      when: I am about to apply to a company
+      i_want_to: filter my application history by company or job title
+      so_i_can: avoid the embarrassment of a duplicate application
+    dimensions:
+      functional: >-
+        Free-text filter narrowing the list as I type.
+      emotional: >-
+        Feel confident before submitting a new application.
+      social: >-
+        Don't contact the same recruiter twice with the same CV.
+    forces:
+      push: >-
+        Currently requires grep on a mental spreadsheet or email search.
+      pull: >-
+        Real-time filter bar in the TUI.
+      anxiety: >-
+        Is the DB always up to date?
+      habit: >-
+        Checking the email 'Sent' folder or spreadsheet.
+    opportunity_score:
+      method: ODI (Importance + max(Importance - Satisfaction, 0))
+      importance: 7
+      satisfaction: 2
+      score: 12
+      tier: MEDIUM

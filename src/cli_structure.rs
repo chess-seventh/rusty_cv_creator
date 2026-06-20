@@ -82,10 +82,9 @@ pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
             println!("{out:?}");
             out
         }
-        UserAction::List(filters) => {
-            let out = format!("filter args for LIST: {filters:?}");
-            println!("{out:?}");
-            out
+        UserAction::List(_filters) => {
+            rusty_cv_creator::tui::run().unwrap_or_else(|e| panic!("{e:?}"));
+            String::from("tui: ok")
         }
         UserAction::Update(filters) => {
             let out = format!("filter args for UPDATE: {filters:?}");
@@ -169,15 +168,9 @@ mod tests {
         )
     }
 
-    #[test]
-    fn test_match_user_action_list_arm() {
-        let ctx = context_with(UserAction::List(FilterArgs::default()));
-        let out = match_user_action(
-            &ctx,
-            user_input_with(UserAction::List(FilterArgs::default())),
-        );
-        assert!(out.contains("LIST"));
-    }
+    // NOTE: the `list` arm now launches the interactive TUI (feature
+    // tui-job-applications), so it is exercised by the TUI's own subprocess
+    // tests (tests/tui_job_applications_*), not by an in-process unit test.
 
     #[test]
     fn test_match_user_action_update_arm() {
