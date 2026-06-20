@@ -35,6 +35,7 @@ jobs:
       # nextest's process-per-test model cannot catch.
       - name: 🧵 Run threaded cargo test
         run: cargo test
+  coverage:
     name: 📚 Collect test coverage
     runs-on: ubuntu-latest
     # nightly rust might break from time to time
