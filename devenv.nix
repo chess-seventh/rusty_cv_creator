@@ -16,6 +16,7 @@
     "${builtins.getEnv "HOME"}/devenv_shared/shared_pkgs.nix"
     "${builtins.getEnv "HOME"}/devenv_shared/rust_pkgs.nix"
     "${builtins.getEnv "HOME"}/devenv_shared/git_hooks.nix"
+    "${builtins.getEnv "HOME"}/devenv_shared/claude_code.nix"
   ];
 
   dotenv.enable = true;
@@ -64,36 +65,8 @@
     cargo-watch.exec = "cargo-watch";
   };
 
-  claude.code = {
-    enable = true;
-    hooks = {
-      # Protect sensitive files (PreToolUse hook)
-      protect-secrets = {
-        enable = true;
-        name = "Protect sensitive files";
-        hookType = "PreToolUse";
-        matcher = "^(Edit|MultiEdit|Write)$";
-        command = ''
-          # Read the JSON input from stdin
-          json=$(cat)
-          file_path=$(echo "$json" | jq -r '.file_path // empty')
-
-          if [[ "$file_path" =~ \.(env|secret)$ ]]; then
-            echo "Error: Cannot edit sensitive files"
-            exit 1
-          fi
-        '';
-      };
-
-      # Track completion (Stop hook)
-      track-completion = {
-        enable = true;
-        name = "Track when Claude finishes";
-        hookType = "Stop";
-        command = ''echo "Claude finished at $(date)" >> ./claude/claude-sessions.log'';
-      };
-    };
-  };
+  # claude.code is provided by the shared ~/devenv_shared/claude_code.nix module
+  # (imported above). Hooks there write logs to $XDG_STATE_HOME, not the repo.
 
   tasks = {
     "bash:source_env" = {
