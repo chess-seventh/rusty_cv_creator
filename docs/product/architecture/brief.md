@@ -141,6 +141,7 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
 | D-3 | diesel `MultiConnection` for backend-agnostic persistence. | [ADR-0003](adr-0003.md) |
 | D-4 | Pre-usage tool-availability checks at orchestration layer. | [ADR-0004](adr-0004.md) |
 | D-5 | Coverage discipline via test seams + `coverage_nightly` gating. | [ADR-0005](adr-0005.md) |
+| D-6 | Inject immutable `AppContext` (`&AppContext`) instead of `GLOBAL_VAR` `OnceCell`. | [ADR-0006](adr-0006-inject-appcontext.md) |
 
 ### Component Inventory — delivery status
 
@@ -172,11 +173,17 @@ HTTP contract tooling (Pact) does not apply. Recommended instead:
 - Postgres reachability (over Tailscale) is environment, not a versioned API;
   covered by the pre-usage `tailscale status` probe (ADR-0004).
 
+### Decided (was open)
+
+- **`GLOBAL_VAR` `OnceCell` → injected `AppContext`** — DECIDED. The process-global
+  config is to be replaced by an immutable `AppContext` value threaded by borrow
+  (`&AppContext`) through the use cases, making plain threaded `cargo test`
+  deterministic. See [ADR-0006](adr-0006-inject-appcontext.md) (forward refactor,
+  feature `config-injection`). **This supersedes the "GLOBAL_VAR OnceCell" open
+  item deferred in [ADR-0005](adr-0005.md).**
+
 ### Open questions / known smells
 
-- **`GLOBAL_VAR` `OnceCell`** — process-global mutable config. Flaky under
-  threaded `cargo test`; deterministic under `cargo-nextest` (process-per-test).
-  Candidate for refactor to an injected `Config` value threaded through use cases.
 - **`parse_date`** (`cli_structure.rs`) — `#[allow(dead_code)]`; intended for
   filter parsing, not yet wired.
 - **Filters not applied on DB** — `read_cv_from_db` / `show_cvs` carry

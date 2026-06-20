@@ -71,3 +71,34 @@ C4Component
   Rel(compile, runner, "invokes builder through")
   Rel(prepare, copyout, "6. finalizes via")
 ```
+
+## L3 — Config injection (feature `config-injection`, proposed — ADR-0006)
+
+> Forward-looking. L1/L2 above are unchanged; the only delta is that the `Config`
+> container stops being the process-global `GLOBAL_VAR` `OnceCell` and becomes an
+> immutable `AppContext` value built once in `main` and passed inward by borrow.
+> Contrast: **before**, every component reached the global getter; **after**,
+> `&AppContext` flows down the call chain alongside the already-injected
+> `CommandRunner` (ADR-0002) and `DbConnection` (ADR-0003).
+
+```mermaid
+C4Component
+  title Component Diagram — Config injection (after ADR-0006)
+  Person(user, "Job Seeker")
+  Component(main, "main", "main.rs", "Builds AppContext once; wires runner + connection")
+  Component(ctx, "AppContext", "app_context.rs", "Immutable {config, today, user_input}; read-only accessors")
+  Component(dispatch, "match_user_action", "cli_structure.rs", "Dispatch; takes &AppContext")
+  Component(insert, "insert_cv / prepare_cv", "cv_insert.rs + main.rs", "Build orchestration; takes &AppContext")
+  Component(files, "file_handlers", "file_handlers.rs", "BuildConfig::from_config / create_directory / copy-out; read &AppContext")
+  Component(remove, "remove_cv", "user_action.rs", "Resolves (engine,url) from &AppContext")
+  Component_Ext(db, "establish_connection", "database.rs", "Takes resolved (engine,url) — config-free")
+  Rel(user, main, "Runs CLI")
+  Rel(main, ctx, "Constructs once from parsed UserInput")
+  Rel(main, dispatch, "Passes &AppContext to")
+  Rel(dispatch, insert, "Calls with &AppContext")
+  Rel(dispatch, remove, "Calls with &AppContext")
+  Rel(insert, files, "Reads config/today via &AppContext")
+  Rel(insert, ctx, "Reads accessors (read-only)")
+  Rel(remove, db, "Resolves (engine,url) then opens via")
+```
+
