@@ -60,6 +60,12 @@ pub struct FilterArgs {
 
     #[arg(short, long)]
     pub date: Option<String>,
+
+    /// Which CV variant to build (senior-devops, senior-platform-engineer,
+    /// senior-sre, engineering-manager). When omitted, it is inferred from the
+    /// job title, falling back to the configured default.
+    #[arg(long)]
+    pub variant: Option<String>,
 }
 
 pub fn match_user_action(user_input: UserInput) -> String {
@@ -140,5 +146,29 @@ mod tests {
         assert!(args.company_name.is_none());
         assert!(args.quote.is_none());
         assert!(args.date.is_none());
+        assert!(args.variant.is_none());
+    }
+
+    fn user_input_with(action: UserAction) -> UserInput {
+        UserInput {
+            action,
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: String::new(),
+            engine: "sqlite".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_match_user_action_list_arm() {
+        let out = match_user_action(user_input_with(UserAction::List(FilterArgs::default())));
+        assert!(out.contains("LIST"));
+    }
+
+    #[test]
+    fn test_match_user_action_update_arm() {
+        let out = match_user_action(user_input_with(UserAction::Update(FilterArgs::default())));
+        assert!(out.contains("UPDATE"));
     }
 }

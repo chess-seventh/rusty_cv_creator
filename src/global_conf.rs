@@ -140,6 +140,10 @@ impl GlobalVars {
         }
     }
 
+    pub fn get_variant(&self) -> Option<String> {
+        self.get_user_input_action_filter_args().variant
+    }
+
     pub fn _get_date(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().date {
             Some(job) => Ok(job),
@@ -188,6 +192,7 @@ mod tests {
                 company_name: Some("Company".to_string()),
                 quote: Some("Quote".to_string()),
                 date: Some("2024-01-01".to_string()),
+                variant: Some("senior-devops".to_string()),
             }),
             save_to_database: true,
             view_generated_cv: false,
