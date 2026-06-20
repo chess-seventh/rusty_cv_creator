@@ -19,7 +19,22 @@ jobs:
       - uses: Swatinem/rust-cache@v2 # v2
       - name: 🛠️ Run nextests
         run: cargo nextest run --no-fail-fast
-  coverage:
+  threaded-test:
+    name: 🧵 Threaded cargo test (ADR-0006 determinism guard)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🛠️ Install correct toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          profile: minimal
+      - uses: Swatinem/rust-cache@v2
+      # Plain `cargo test` is multi-threaded / single-process — the condition the
+      # former GLOBAL_VAR OnceCell flaked under. Guards the ADR-0006 fix that
+      # nextest's process-per-test model cannot catch.
+      - name: 🧵 Run threaded cargo test
+        run: cargo test
     name: 📚 Collect test coverage
     runs-on: ubuntu-latest
     # nightly rust might break from time to time
@@ -47,7 +62,7 @@ jobs:
         run: |
           cargo llvm-cov --no-report nextest
           cargo llvm-cov --no-report --doc
-          cargo llvm-cov report --doctests --lcov --output-path lcov.info
+          cargo llvm-cov report --doctests --lcov --output-path lcov.info --ignore-filename-regex 'schema\.rs'
       - name: 💭 Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
         env:
@@ -70,23 +85,27 @@ jobs:
           components: clippy
       - name: ♻️ Cache
         uses: Swatinem/rust-cache@v2
-      - name: ✂️ Clippy
+      - name: ✂️ Clippy (deny warnings — failing gate)
+        run: cargo clippy --all-targets -- -D warnings
+      - name: ✂️ Clippy pedantic (advisory — never fails the build)
         run: cargo clippy --all-targets -- -W clippy::pedantic
-  # rustfmt:
-  #   name: ✂️ RustFMT
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: ♻️ Checkout repository
-  #       uses: actions/checkout@v4
-  #     - name: 🛠️ Install Rust
-  #       uses: dtolnay/rust-toolchain@stable
-  #       with:
-  #         toolchain: stable
-  #         profile: minimal
-  #         components: rustfmt
-  #     - name: 🛠️ Check formatting
-  #       run: |
-  #         cargo fmt --all -- --check
+        continue-on-error: true
+  treefmt:
+    name: ✂️ treefmt (format check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ❄️ Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+      - name: 🛠️ Install devenv
+        run: nix profile install nixpkgs#devenv
+      # Runs the SAME treefmt + formatter config as local (rustfmt edition 2024 +
+      # skip_children, nixfmt, toml-sort, yamlfmt) so local and CI never disagree.
+      - name: ✂️ treefmt (fail on change)
+        run: devenv shell -- treefmt --fail-on-change --no-cache
   cleanup-deps:
     name: 🧹 Cleanup Dependencies
     runs-on: ubuntu-latest

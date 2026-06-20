@@ -1,0 +1,114 @@
+{
+  "feature_id": "cv-variant-build",
+  "wave": "DELIVER",
+  "density": "LEAN",
+  "generated": "2026-06-20",
+  "note": "RETROACTIVE record, NOT a forward plan. The feature is already implemented, tested (80/80 green under cargo nextest, ~84% line coverage) and merged across 6 commits on branch feature/change-generation (v4.0.2). This roadmap maps the ACTUAL work delivered back to DISTILL scenarios and the commit SHA that delivered each step. DES-EXEMPT: no DES execution-log, no DES markers, no TDD cycle was run for this backfill (the 11-phase TDD was N/A; implementation pre-existed and was GREEN). Each step's tdd field is 'retroactive-backfill'.",
+  "des_enforcement": "exempt",
+  "branch": "feature/change-generation",
+  "version": "4.0.2",
+  "steps": [
+    {
+      "id": "01-01",
+      "name": "diesel MultiConnection (backend-agnostic persistence)",
+      "acceptance_criteria": [
+        "Persistence works against Postgres (prod) and SQLite (tests) through a single DbConnection enum.",
+        "CRUD functions take &mut DbConnection; default all-columns selection preserved.",
+        "Recorded applications can be saved and listed back."
+      ],
+      "files_to_modify": ["src/database.rs", "src/user_action.rs"],
+      "test_file": "src/database.rs",
+      "scenario_name": "Application recorded when saving opted in (#17, persistence.feature)",
+      "deps": [],
+      "status": "delivered",
+      "delivered_by_commit": "6472189",
+      "commit_message": "refactor(db): backend-agnostic queries via diesel MultiConnection",
+      "tdd": "retroactive-backfill",
+      "ddd": "D-3",
+      "adr": "adr-0003"
+    },
+    {
+      "id": "01-02",
+      "name": "CommandRunner seam for testable subprocesses",
+      "acceptance_criteria": [
+        "All subprocess effects flow through a CommandRunner port (status/output/spawn).",
+        "SystemRunner (prod) and FakeRunner (test) adapters exist.",
+        "compile_cv / view_cv_file / is_tailscale_connected accept an injected &dyn CommandRunner."
+      ],
+      "files_to_modify": ["src/command_runner.rs"],
+      "test_file": "src/command_runner.rs",
+      "scenario_name": "Connectivity confirmed when secure network up (#22, persistence.feature)",
+      "deps": ["01-01"],
+      "status": "delivered",
+      "delivered_by_commit": "23fde25",
+      "commit_message": "feat(command-runner): add CommandRunner seam for testable subprocesses",
+      "tdd": "retroactive-backfill",
+      "ddd": "D-2",
+      "adr": "adr-0002"
+    },
+    {
+      "id": "01-03",
+      "name": "Variant build via Justfile + configurable output + tool checks",
+      "acceptance_criteria": [
+        "Variant resolution precedence: valid --variant flag wins, else inference from job title, else configured default.",
+        "Build runs `<builder> <recipe> <variant>` (just/tectonic) in a dated working copy via the injected runner.",
+        "Output PDF filed under per-year output dir with deterministic <date>-<job>-<company>.pdf name; working dir cleaned up.",
+        "Pre-usage PATH tool checks fail fast with a devenv hint."
+      ],
+      "files_to_modify": [
+        "src/file_handlers.rs",
+        "src/main.rs",
+        "src/cli_structure.rs",
+        "src/cv_insert.rs",
+        "src/global_conf.rs",
+        "src/helpers.rs",
+        "rusty-cv-config-example.ini"
+      ],
+      "test_file": "src/file_handlers.rs",
+      "scenario_name": "Francesco generates a tailored CV end to end (#8, cv-build.feature, @walking_skeleton @driving_port)",
+      "deps": ["01-01", "01-02"],
+      "status": "delivered",
+      "delivered_by_commit": "beb5034",
+      "commit_message": "feat(cv): build variant via Justfile, configurable output, tool checks",
+      "tdd": "retroactive-backfill",
+      "ddd": "D-1, D-4",
+      "adr": "adr-0001, adr-0004"
+    },
+    {
+      "id": "01-04",
+      "name": "Coverage discipline / exclusions",
+      "acceptance_criteria": [
+        "llvm-cov coverage(off) exclusions applied; generated schema.rs ignored.",
+        "Coverage measurement is deterministic and reflects testable surface (54% -> 84%).",
+        "cargo nextest used for process-per-test determinism (GLOBAL_VAR OnceCell)."
+      ],
+      "files_to_modify": ["src/lib.rs", "Cargo.toml", ".github/workflows/rust-tests.yml"],
+      "test_file": "tests/integration-tests.rs",
+      "scenario_name": "Tool present on path reported available (#32, preview.feature)",
+      "deps": ["01-03"],
+      "status": "delivered",
+      "delivered_by_commit": "d34990e",
+      "commit_message": "chore(coverage): use llvm-cov coverage(off) exclusions, ignore schema.rs",
+      "tdd": "retroactive-backfill",
+      "ddd": "D-5",
+      "adr": "adr-0005"
+    }
+  ],
+  "supporting_commits": [
+    {
+      "sha": "865780d",
+      "message": "chore(env): update devenv configuration",
+      "role": "environment scaffolding (toolchain: just, tectonic, zathura, tailscale); not a feature step"
+    },
+    {
+      "sha": "c3807a7",
+      "message": "docs(nwave): backfill DESIGN wave for cv-variant-build",
+      "role": "documentation commit (DESIGN/brief/ADRs); not part of feature delivery"
+    },
+    {
+      "sha": "e5d95af",
+      "message": "chore(tooling): claude session logs and nix-store config symlinks",
+      "role": "non-feature tooling/logs; droppable"
+    }
+  ]
+}

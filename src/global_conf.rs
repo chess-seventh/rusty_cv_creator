@@ -4,63 +4,35 @@ use crate::{
 };
 use chrono::{DateTime, Local};
 use configparser::ini::Ini;
-use once_cell::sync::OnceCell;
 
-pub static GLOBAL_VAR: OnceCell<GlobalVars> = OnceCell::new();
-
-pub fn get_global_var() -> GlobalVars {
-    match GLOBAL_VAR.get() {
-        Some(gvar) => gvar.clone(),
-        None => panic!("GlobalVar Get didn't work"),
-    }
+/// Immutable, dependency-injected configuration value (ADR-0006).
+///
+/// Replaces the former process-global config cell (`OnceCell`): the parsed INI
+/// config, the run timestamp (`today`) and the parsed `UserInput` are captured
+/// once in `main` and threaded by shared borrow (`&AppContext`). It exposes
+/// **read accessors only** — no setters, no interior mutability — so "a `&self`
+/// method silently mutates shared config" is non-representable.
+#[derive(Debug, Clone)]
+pub struct AppContext {
+    config: Ini,
+    today: DateTime<Local>,
+    user_input: UserInput,
 }
 
-pub fn _get_global_var_config() -> Ini {
-    get_global_var().get_config().unwrap()
-}
-
-pub fn get_global_var_config_db_path() -> Result<String, Box<dyn std::error::Error>> {
-    let gvar = get_global_var();
-    gvar.get_user_input_vars("db", "db_path")
-}
-
-pub fn get_global_var_config_db_file() -> Result<String, Box<dyn std::error::Error>> {
-    let gvar = get_global_var();
-    gvar.get_user_input_vars("db", "db_file")
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct GlobalVars {
-    pub config: OnceCell<Ini>,
-    pub today: OnceCell<DateTime<Local>>,
-    pub user_input: OnceCell<UserInput>,
-}
-
-impl GlobalVars {
-    pub fn new() -> Self {
-        GlobalVars {
-            config: OnceCell::new(),
-            today: OnceCell::new(),
-            user_input: OnceCell::new(),
+impl AppContext {
+    pub fn new(config: Ini, today: DateTime<Local>, user_input: UserInput) -> Self {
+        AppContext {
+            config,
+            today,
+            user_input,
         }
     }
 
-    pub fn set_all(&self, config: Ini, today: DateTime<Local>, user_input: UserInput) -> &Self {
-        self.config
-            .set(config)
-            .expect("Coulnd't set config in GlobalVars");
-        self.today
-            .set(today)
-            .expect("Couldn't set today in GlobalVars");
-        self.user_input
-            .set(user_input)
-            .expect("Couldn't set user_input in GlobalVars");
-
-        self
-    }
-
-    pub fn get_config(&self) -> Result<Ini, &str> {
-        self.config.get().cloned().ok_or("Cnofig not initialized")
+    // Part of the read-only accessor surface preserved from `GlobalVars`
+    // (ADR-0006). Currently exercised by tests / kept for parity.
+    #[allow(dead_code)]
+    pub fn config(&self) -> &Ini {
+        &self.config
     }
 
     pub fn get_user_input_vars(
@@ -68,17 +40,13 @@ impl GlobalVars {
         section: &str,
         key: &str,
     ) -> Result<String, Box<dyn std::error::Error>> {
-        let conf = self
-            .config
-            .get()
-            .unwrap_or_else(|| panic!("Failed getting the Config INI"));
-
-        conf.get(section, key)
+        self.config
+            .get(section, key)
             .ok_or(format!("Could not get {section:} {key:}").into())
     }
 
     pub fn get_today(&self) -> &DateTime<Local> {
-        self.today.get().unwrap()
+        &self.today
     }
 
     pub fn get_today_str(&self) -> String {
@@ -94,14 +62,11 @@ impl GlobalVars {
     }
 
     pub fn get_user_input(&self) -> UserInput {
-        self.user_input
-            .get()
-            .expect("UserInput not initialized")
-            .clone()
+        self.user_input.clone()
     }
 
     pub fn get_user_input_action(&self) -> UserAction {
-        self.user_input.get().unwrap().clone().action
+        self.user_input.action.clone()
     }
 
     pub fn get_user_input_action_filter_args(&self) -> FilterArgs {
@@ -140,6 +105,10 @@ impl GlobalVars {
         }
     }
 
+    pub fn get_variant(&self) -> Option<String> {
+        self.get_user_input_action_filter_args().variant
+    }
+
     pub fn _get_date(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().date {
             Some(job) => Ok(job),
@@ -155,13 +124,10 @@ impl GlobalVars {
 
     pub fn get_user_input_db_engine(&self) -> Result<String, Box<dyn std::error::Error>> {
         self.get_user_input_vars("db", "engine")
-        // self.get_config().get("db", "engine")
-        // .expect("Could not get the database engine")
     }
 
     pub fn get_user_input_db_url(&self) -> Result<String, &str> {
-        self.get_config()
-            .unwrap()
+        self.config
             .get("db", "db_pg_host")
             .ok_or("Could not get the database engine")
     }
@@ -188,6 +154,7 @@ mod tests {
                 company_name: Some("Company".to_string()),
                 quote: Some("Quote".to_string()),
                 date: Some("2024-01-01".to_string()),
+                variant: Some("senior-devops".to_string()),
             }),
             save_to_database: true,
             view_generated_cv: false,
@@ -197,55 +164,48 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_globalvars_new_creates_empty_cells() {
-        let gvars = GlobalVars::new();
-        assert!(gvars.config.get().is_none());
-        assert!(gvars.today.get().is_none());
-        assert!(gvars.user_input.get().is_none());
+    fn context() -> AppContext {
+        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
+        AppContext::new(dummy_ini(), now, dummy_user_input())
     }
 
     #[test]
-    fn test_set_all_sets_cells() {
-        let gvars = GlobalVars::new();
-        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
-        let ui = dummy_user_input();
-        gvars.set_all(dummy_ini(), now, ui.clone());
-        assert!(gvars.config.get().is_some());
-        assert!(gvars.today.get().is_some());
-        assert!(gvars.user_input.get().is_some());
+    fn test_new_exposes_config_and_user_input() {
+        let ctx = context();
+        assert_eq!(ctx.config().get("test", "key").unwrap(), "value");
+        assert!(ctx.get_user_input_save_to_db());
     }
 
     #[test]
     fn test_get_user_input_vars_returns_value() {
-        let gvars = GlobalVars::new();
-        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
-        gvars.set_all(dummy_ini(), now, dummy_user_input());
-        let val = gvars.get_user_input_vars("test", "key");
+        let ctx = context();
+        let val = ctx.get_user_input_vars("test", "key");
         assert_eq!(val.unwrap(), "value");
     }
 
     #[test]
+    fn test_get_user_input_vars_errors_when_missing() {
+        let ctx = context();
+        assert!(ctx.get_user_input_vars("missing", "key").is_err());
+    }
+
+    #[test]
     fn test_get_today_str_and_year_str() {
-        let gvars = GlobalVars::new();
-        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
-        gvars.set_all(dummy_ini(), now, dummy_user_input());
-        assert!(gvars.get_today_str().contains("Aug"));
-        assert_eq!(gvars.get_year_str(), "2025");
+        let ctx = context();
+        assert!(ctx.get_today_str().contains("Aug"));
+        assert_eq!(ctx.get_year_str(), "2025");
+        assert_eq!(ctx.get_today_str_yyyy_mm_dd(), "2025-08-30");
     }
 
     #[test]
     #[allow(clippy::used_underscore_items)]
     fn test_get_job_company_quote_and_date() {
-        let gvars = GlobalVars::new();
-        let now = Local.with_ymd_and_hms(2025, 8, 30, 10, 0, 0).unwrap();
-        let ui = dummy_user_input();
-        gvars.set_all(dummy_ini(), now, ui.clone());
-
-        assert_eq!(gvars.get_job_title().unwrap(), "Dev");
-        assert_eq!(gvars.get_company_name().unwrap(), "Company");
-        assert_eq!(gvars.get_quote().unwrap(), "Quote");
-        assert_eq!(gvars._get_date().unwrap(), "2024-01-01");
-        assert!(gvars.get_user_input_save_to_db());
+        let ctx = context();
+        assert_eq!(ctx.get_job_title().unwrap(), "Dev");
+        assert_eq!(ctx.get_company_name().unwrap(), "Company");
+        assert_eq!(ctx.get_quote().unwrap(), "Quote");
+        assert_eq!(ctx._get_date().unwrap(), "2024-01-01");
+        assert_eq!(ctx.get_variant().unwrap(), "senior-devops");
+        assert!(ctx.get_user_input_save_to_db());
     }
 }

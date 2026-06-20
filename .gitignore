@@ -1,6 +1,11 @@
 /target
 .direnv
 
+# nWave DES local execution traces (machine-local; not source of truth)
+docs/feature/*/deliver/execution-log.json
+.nwave/des/deliver-session.json
+.nwave/des/des-task-active
+
 .idea/*
 .idea
 

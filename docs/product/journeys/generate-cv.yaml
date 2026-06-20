@@ -1,0 +1,56 @@
+# Journey SSOT — generate a tailored CV for one application (LEAN backfill)
+# Reverse-engineered from src/main.rs `prepare_cv` + src/cv_insert.rs `insert_cv`.
+schema_version: 1
+journey:
+  name: Generate a tailored CV for one application
+  goal: Produce the right CV variant for a role and (optionally) record the application
+  persona: job-seeker
+  job: apply-with-tailored-cv
+  emotional_arc:
+    start: Slight anxiety — "will this build the right variant and where will it land?"
+    middle: Focused — watches the variant get resolved and the build run
+    end: Confident — a correctly-named PDF is in the per-year folder, ready to attach
+steps:
+  - id: 1
+    name: Run insert with job + company
+    command: rusty_cv_creator insert --job-title "<title>" --company-name "<co>" [--variant <v>]
+    shared_artifacts:
+      - name: variant
+        source: "--variant flag | inference(job_title) | [variant] default"
+        consumers: ["driver file <prefix>-<variant>.tex", "PDF basename <prefix>-<variant>.pdf"]
+    emotional_state: {entry: anxious, exit: focused}
+  - id: 2
+    name: Resolve variant and pre-check tools
+    command: resolve_variant + ensure_tools_available(just, tectonic)
+    integration_checkpoint: >-
+      Variant resolved to one of the 4 valid variants; just + tectonic on PATH (devenv hint on failure, ADR-0004).
+    failure_modes:
+      - "Unknown --variant value -> warns, falls back to inference"
+      - "just/tectonic not installed -> fail fast with devenv hint"
+    emotional_state: {entry: focused, exit: focused}
+  - id: 3
+    name: Build the variant
+    command: just build <variant> (via CommandRunner, in dated working copy)
+    failure_modes:
+      - "Driver file <prefix>-<variant>.tex missing -> error"
+      - "Builder returns non-zero -> error"
+    emotional_state: {entry: focused, exit: focused}
+  - id: 4
+    name: File the PDF and clean up
+    command: copy to <output_pdf>/<year>/<date>-<job>-<company>.pdf + sibling; remove working dir
+    shared_artifacts:
+      - name: output_pdf_path
+        source: "[destination] output_pdf + chrono year/date"
+        consumers: ["stdout 'CV saved to: ...'", "DB record path (if --save-to-database)"]
+    emotional_state: {entry: focused, exit: confident}
+  - id: 5
+    name: Optional persist and/or view
+    command: --save-to-database (DB record) | --view-generated-cv (open in pdf_viewer)
+    failure_modes:
+      - "Viewer not on PATH -> fail fast with devenv hint"
+    emotional_state: {entry: confident, exit: confident}
+integration_validation:
+  shared_artifact_consistency:
+    - artifact: variant
+      must_match_across: [1, 2, 3, 4]
+      failure_message: "PDF basename / driver file / DB record must all reflect the resolved variant"

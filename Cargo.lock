@@ -2103,7 +2103,6 @@ dependencies = [
  "dotenvy",
  "env_logger",
  "log",
- "once_cell",
  "serial_test",
  "skim",
  "tempfile",

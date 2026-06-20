@@ -1,3 +1,4 @@
+use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand};
@@ -60,17 +61,23 @@ pub struct FilterArgs {
 
     #[arg(short, long)]
     pub date: Option<String>,
+
+    /// Which CV variant to build (senior-devops, senior-platform-engineer,
+    /// senior-sre, engineering-manager). When omitted, it is inferred from the
+    /// job title, falling back to the configured default.
+    #[arg(long)]
+    pub variant: Option<String>,
 }
 
-pub fn match_user_action(user_input: UserInput) -> String {
+pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
     match user_input.action {
-        UserAction::Insert(_insert_args) => match insert_cv() {
+        UserAction::Insert(_insert_args) => match insert_cv(ctx) {
             Ok(s) => s,
             Err(e) => panic!("{e:?}"),
         },
 
         UserAction::Remove(filters) => {
-            let _ = remove_cv(&filters);
+            let _ = remove_cv(ctx, &filters);
             let out = format!("filter args for LIST: {filters:?}");
             println!("{out:?}");
             out
@@ -140,5 +147,45 @@ mod tests {
         assert!(args.company_name.is_none());
         assert!(args.quote.is_none());
         assert!(args.date.is_none());
+        assert!(args.variant.is_none());
+    }
+
+    fn user_input_with(action: UserAction) -> UserInput {
+        UserInput {
+            action,
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: String::new(),
+            engine: "sqlite".to_string(),
+        }
+    }
+
+    fn context_with(action: UserAction) -> AppContext {
+        AppContext::new(
+            configparser::ini::Ini::new(),
+            chrono::Local::now(),
+            user_input_with(action),
+        )
+    }
+
+    #[test]
+    fn test_match_user_action_list_arm() {
+        let ctx = context_with(UserAction::List(FilterArgs::default()));
+        let out = match_user_action(
+            &ctx,
+            user_input_with(UserAction::List(FilterArgs::default())),
+        );
+        assert!(out.contains("LIST"));
+    }
+
+    #[test]
+    fn test_match_user_action_update_arm() {
+        let ctx = context_with(UserAction::Update(FilterArgs::default()));
+        let out = match_user_action(
+            &ctx,
+            user_input_with(UserAction::Update(FilterArgs::default())),
+        );
+        assert!(out.contains("UPDATE"));
     }
 }
