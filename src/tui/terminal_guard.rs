@@ -1,19 +1,24 @@
-// SCAFFOLD: true
-// RAII terminal state guard stub — no crossterm import yet.
-// DELIVER: add crossterm to Cargo.toml and implement enable_raw_mode + LeaveAlternateScreen.
-// DESIGN constraint: `terminal` field MUST be declared before `_guard` field in App struct.
+use crossterm::execute;
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
+use std::io;
 
-pub struct TerminalGuard;
+pub struct TerminalGuard {
+    _private: (),
+}
 
 impl TerminalGuard {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        panic!("Not yet implemented — RED scaffold");
+        enable_raw_mode()?;
+        execute!(io::stdout(), EnterAlternateScreen)?;
+        Ok(Self { _private: () })
     }
 }
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        // DELIVER: call crossterm::terminal::disable_raw_mode() + LeaveAlternateScreen here.
-        // Must not panic in Drop — use let _ = ... to swallow errors.
+        let _ = execute!(io::stdout(), LeaveAlternateScreen);
+        let _ = disable_raw_mode();
     }
 }

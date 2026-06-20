@@ -1,22 +1,42 @@
-// SCAFFOLD: true
-// App orchestrator — owns event loop. Replace in DELIVER slice-01 and slice-02.
-// DESIGN constraint: `terminal` field must be declared before `_guard` field.
-
+use crate::tui::events::handle_key_event;
 use crate::tui::state::AppState;
 use crate::tui::terminal_guard::TerminalGuard;
+use crossterm::event::{self, Event};
+use ratatui::backend::CrosstermBackend;
+use ratatui::Terminal;
+use std::io;
 
 pub struct App {
     pub state: AppState,
-    // `terminal` must be declared before `_guard` to ensure correct drop order.
+    // `terminal` declared before `_guard` — terminal drops before guard restores raw mode.
+    terminal: Terminal<CrosstermBackend<io::Stdout>>,
     _guard: TerminalGuard,
 }
 
 impl App {
-    pub fn new(_state: AppState) -> Result<Self, Box<dyn std::error::Error>> {
-        panic!("Not yet implemented — RED scaffold");
+    pub fn new(state: AppState) -> Result<Self, Box<dyn std::error::Error>> {
+        let guard = TerminalGuard::new()?;
+        let backend = CrosstermBackend::new(io::stdout());
+        let terminal = Terminal::new(backend)?;
+        Ok(Self {
+            state,
+            terminal,
+            _guard: guard,
+        })
     }
 
     pub fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        panic!("Not yet implemented — RED scaffold");
+        loop {
+            let App { state, terminal, .. } = self;
+            terminal.draw(|frame| {
+                crate::tui::ui::render(frame, state);
+            })?;
+
+            if let Event::Key(key) = event::read()? {
+                if handle_key_event(&mut self.state, key)? {
+                    return Ok(());
+                }
+            }
+        }
     }
 }

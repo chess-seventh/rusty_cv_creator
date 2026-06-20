@@ -21,7 +21,7 @@ ctrlc = "3.4"
 [dev-dependencies]
 serial_test = "3.5.0"
 tempfile = "3.27.0"
-# proptest added in DELIVER slice-02 (pending Rust ≥1.88 upgrade — see DISTILL upstream-changes)
+proptest = "1.6"
 
 [lib]
 doctest = false

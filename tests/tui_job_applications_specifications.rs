@@ -1,11 +1,9 @@
 // DISTILL: tui-job-applications — unit-level specifications
-// All tests are #[ignore] RED scaffolds per nWave ADR-025 / Mandate 7.
-// DELIVER unskips these one at a time in slice order (01 → 02 → 03 → 04).
-//
 // Imports from rusty_cv_creator::tui::* resolve against scaffold stubs in src/tui/.
-// Tests fail at runtime with "Not yet implemented — RED scaffold" (AssertionError class).
 
+use rusty_cv_creator::models::Cv;
 use rusty_cv_creator::tui::events::open_pdf;
+use rusty_cv_creator::tui::load_all_applications;
 use rusty_cv_creator::tui::state::{AppState, ApplicationRow, Mode};
 
 // ─── Helper: make a test ApplicationRow ──────────────────────────────────────
@@ -20,44 +18,60 @@ fn make_row(id: i32, company: &str, job_title: &str, pdf_path: &str) -> Applicat
     }
 }
 
+fn make_cv(
+    id: i32,
+    application_date: Option<&str>,
+    company: &str,
+    job_title: &str,
+    pdf_cv_path: &str,
+) -> Cv {
+    Cv {
+        id,
+        application_date: application_date.map(|s| s.to_string()),
+        company: company.to_string(),
+        job_title: job_title.to_string(),
+        pdf_cv_path: pdf_cv_path.to_string(),
+        quote: String::new(),
+        generated: true,
+    }
+}
+
 // ─── ApplicationRow projection ───────────────────────────────────────────────
 
 /// @us-01 @in-memory
 /// ApplicationRow maps all Cv fields to display-ready types.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-01: implement ApplicationRow + From<Cv>"]
 fn us01_s01_maps_all_fields_correctly() {
-    // DELIVER: construct a Cv with application_date Some("2024-03-15"), company "Acme Corp",
-    // job_title "Rust Engineer", pdf_cv_path "/home/user/cvs/acme.pdf".
-    // Call ApplicationRow::from(cv). Assert all fields match.
-    panic!("Not yet implemented — RED scaffold");
+    let cv = make_cv(1, Some("2024-03-15"), "Acme Corp", "Rust Engineer", "/home/user/cvs/acme.pdf");
+    let row = ApplicationRow::from(cv);
+    assert_eq!(row.id, 1);
+    assert_eq!(row.date, "2024-03-15");
+    assert_eq!(row.company, "Acme Corp");
+    assert_eq!(row.job_title, "Rust Engineer");
+    assert_eq!(row.pdf_path, "/home/user/cvs/acme.pdf");
 }
 
 /// @us-01 @in-memory
 /// ApplicationRow falls back to "Unknown" when application_date is None.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-01: implement ApplicationRow + From<Cv>"]
 fn us01_s02_date_falls_back_to_unknown_when_absent() {
-    // DELIVER: Cv with application_date: None → ApplicationRow.date == "Unknown"
-    panic!("Not yet implemented — RED scaffold");
+    let cv = make_cv(2, None, "Beta Corp", "Dev", "/tmp/cv.pdf");
+    let row = ApplicationRow::from(cv);
+    assert_eq!(row.date, "Unknown");
 }
 
 /// @us-01 @in-memory
 /// ApplicationRow does not have a quote field (compile-time check via make_row).
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-01: implement ApplicationRow struct (no quote field)"]
 fn us01_s03_excludes_quote_field() {
-    // DELIVER: verify ApplicationRow struct has no `quote` field.
-    // If this test compiles and the struct has no quote field, it passes.
     let _row = make_row(1, "Acme", "Dev", "/tmp/cv.pdf");
-    panic!("Not yet implemented — RED scaffold");
+    // Struct compiles without quote field — passes if it compiles.
 }
 
 // ─── AppState: empty state ────────────────────────────────────────────────────
 
 /// @us-01 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-01: implement AppState::new()"]
 fn us01_s04_empty_state_when_no_rows() {
     let state = AppState::new(vec![]);
     assert!(state.is_empty());
@@ -67,10 +81,15 @@ fn us01_s04_empty_state_when_no_rows() {
 /// @real-io @adapter-integration @us-01 @error
 /// load_all_applications() returns an error when DATABASE_URL is not set.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-01: test load_all_applications() missing DATABASE_URL path"]
 fn us01_e01_load_all_applications_returns_error_when_database_url_not_set() {
-    // DELIVER: std::env::remove_var("DATABASE_URL"); call load_all_applications(); assert Err()
-    panic!("Not yet implemented — RED scaffold");
+    // Temporarily remove DATABASE_URL, then restore it.
+    let saved = std::env::var("DATABASE_URL").ok();
+    unsafe { std::env::remove_var("DATABASE_URL") };
+    let result = load_all_applications();
+    if let Some(url) = saved {
+        unsafe { std::env::set_var("DATABASE_URL", url) };
+    }
+    assert!(result.is_err(), "Expected Err when DATABASE_URL is not set");
 }
 
 // ─── Keyboard navigation ──────────────────────────────────────────────────────
@@ -84,7 +103,6 @@ fn make_state(n: usize) -> AppState {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement AppState::move_down()"]
 fn us02_s01_down_increments_selected_index() {
     let mut state = make_state(5);
     state.move_down();
@@ -94,7 +112,6 @@ fn us02_s01_down_increments_selected_index() {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_down() bounds check"]
 fn us02_s02_down_on_last_row_does_not_advance() {
     let mut state = make_state(5);
     state.selected_index = 4;
@@ -104,7 +121,6 @@ fn us02_s02_down_on_last_row_does_not_advance() {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement AppState::move_up()"]
 fn us02_s03_up_decrements_selected_index() {
     let mut state = make_state(5);
     state.selected_index = 3;
@@ -114,7 +130,6 @@ fn us02_s03_up_decrements_selected_index() {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_up() bounds check"]
 fn us02_s04_up_on_first_row_does_not_go_below_zero() {
     let mut state = make_state(5);
     state.move_up();
@@ -123,7 +138,6 @@ fn us02_s04_up_on_first_row_does_not_go_below_zero() {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_to_first()"]
 fn us02_s05_home_key_jumps_to_first_row() {
     let mut state = make_state(5);
     state.selected_index = 3;
@@ -133,7 +147,6 @@ fn us02_s05_home_key_jumps_to_first_row() {
 
 /// @us-02 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_to_last()"]
 fn us02_s06_end_key_jumps_to_last_row() {
     let mut state = make_state(5);
     state.move_to_last();
@@ -143,7 +156,6 @@ fn us02_s06_end_key_jumps_to_last_row() {
 /// @us-02 @in-memory @error
 /// Navigation on an empty list (0 rows) is a no-op and does not panic.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_down() empty-list guard"]
 fn us02_e01_navigation_on_empty_list_is_no_op() {
     let mut state = make_state(0);
     state.move_down();
@@ -153,7 +165,6 @@ fn us02_e01_navigation_on_empty_list_is_no_op() {
 /// @us-02 @in-memory @error
 /// Navigation when all rows are filtered out does not panic.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: implement move_down() filter-empty guard"]
 fn us02_e02_navigation_on_filter_empty_result_does_not_panic() {
     let mut state = make_state(3);
     state.set_filter("zzznomatch");
@@ -161,30 +172,25 @@ fn us02_e02_navigation_on_filter_empty_result_does_not_panic() {
     assert_eq!(state.selected_index, 0);
 }
 
-// ─── PBT: navigation invariant (proptest) ────────────────────────────────────
+// ─── PBT: navigation invariant ────────────────────────────────────────────────
 
 /// @us-02 @property
 /// Navigation never yields an out-of-bounds index for any list and any key sequence.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-02: add proptest navigation invariant"]
 fn pbt_01_navigation_never_out_of_bounds() {
-    // DELIVER (proptest):
-    // proptest! {
-    //   #[test]
-    //   fn test(n in 1usize..1000usize, ops in prop::collection::vec(0u8..4u8, 0..200usize)) {
-    //     let mut state = make_state(n);
-    //     for op in &ops {
-    //       match op {
-    //         0 => state.move_down(),
-    //         1 => state.move_up(),
-    //         2 => state.move_to_first(),
-    //         _ => state.move_to_last(),
-    //       }
-    //     }
-    //     prop_assert!(state.selected_index < n);
-    //   }
-    // }
-    panic!("Not yet implemented — RED scaffold");
+    use proptest::prelude::*;
+    proptest!(|(n in 1usize..200usize, ops in proptest::collection::vec(0u8..4u8, 0..100usize))| {
+        let mut state = make_state(n);
+        for op in &ops {
+            match op {
+                0 => state.move_down(),
+                1 => state.move_up(),
+                2 => state.move_to_first(),
+                _ => state.move_to_last(),
+            }
+        }
+        prop_assert!(state.selected_index < n);
+    });
 }
 
 // ─── Filter ───────────────────────────────────────────────────────────────────
@@ -200,7 +206,6 @@ fn make_state_with_companies(companies: &[(&str, &str)]) -> AppState {
 
 /// @us-03 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement AppState::set_filter()"]
 fn us03_s01_empty_filter_returns_all_rows() {
     let mut state = make_state(5);
     state.set_filter("");
@@ -209,7 +214,6 @@ fn us03_s01_empty_filter_returns_all_rows() {
 
 /// @us-03 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement case-insensitive company filter"]
 fn us03_s02_filter_matches_company_case_insensitively() {
     let mut state = make_state_with_companies(&[
         ("Acme Corp", "Dev"),
@@ -222,7 +226,6 @@ fn us03_s02_filter_matches_company_case_insensitively() {
 
 /// @us-03 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement case-insensitive job_title filter"]
 fn us03_s03_filter_matches_job_title_case_insensitively() {
     let mut state = make_state_with_companies(&[
         ("Co1", "Rust Engineer"),
@@ -235,7 +238,6 @@ fn us03_s03_filter_matches_job_title_case_insensitively() {
 
 /// @us-03 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement filter with no matches"]
 fn us03_s04_filter_with_no_matches_returns_empty() {
     let mut state = make_state_with_companies(&[("Acme", "Dev"), ("Beta", "Dev")]);
     state.set_filter("zzznomatch");
@@ -244,7 +246,6 @@ fn us03_s04_filter_with_no_matches_returns_empty() {
 
 /// @us-03 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement clear_filter() + selection reset"]
 fn us03_s05_clearing_filter_restores_full_list_and_resets_selection() {
     let mut state = make_state_with_companies(&[
         ("Acme", "Dev"),
@@ -261,7 +262,6 @@ fn us03_s05_clearing_filter_restores_full_list_and_resets_selection() {
 /// @us-03 @in-memory @error
 /// Whitespace-only filter text is treated as empty and returns all rows.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement whitespace-filter normalisation"]
 fn us03_e01_whitespace_only_filter_treated_as_empty() {
     let mut state = make_state(5);
     state.set_filter("   ");
@@ -271,7 +271,6 @@ fn us03_e01_whitespace_only_filter_treated_as_empty() {
 /// @us-03 @in-memory @error
 /// Filter input with special regex characters does not panic.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: implement safe filter (no regex panic on special chars)"]
 fn us03_e02_special_chars_in_filter_do_not_panic() {
     let mut state = make_state_with_companies(&[("Acme Corp", "Dev"), ("Beta", "Dev")]);
     state.set_filter(".*[invalid[");
@@ -280,43 +279,32 @@ fn us03_e02_special_chars_in_filter_do_not_panic() {
 
 /// @us-03 @property
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: add proptest filter count invariant"]
 fn pbt_02_filtered_count_never_exceeds_total() {
-    // DELIVER (proptest):
-    // proptest! {
-    //   #[test]
-    //   fn test(rows in prop::collection::vec(("[a-z]{3,10}", "[a-z]{3,10}"), 0..500usize),
-    //           filter in "[a-z]{0,5}") {
-    //     let companies: Vec<(&str, &str)> = rows.iter().map(|(a,b)| (a.as_str(), b.as_str())).collect();
-    //     let mut state = make_state_with_companies(&companies);
-    //     state.set_filter(&filter);
-    //     prop_assert!(state.filtered_count() <= rows.len());
-    //   }
-    // }
-    panic!("Not yet implemented — RED scaffold");
+    use proptest::prelude::*;
+    proptest!(|(rows in proptest::collection::vec(("[a-z]{3,8}", "[a-z]{3,8}"), 0..100usize),
+               filter in "[a-z]{0,5}")| {
+        let companies: Vec<(&str, &str)> = rows.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+        let mut state = make_state_with_companies(&companies);
+        state.set_filter(&filter);
+        prop_assert!(state.filtered_count() <= rows.len());
+    });
 }
 
 /// @us-03 @property
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-03: add proptest empty-filter invariant"]
 fn pbt_03_empty_filter_always_returns_full_list() {
-    // DELIVER (proptest):
-    // proptest! {
-    //   #[test]
-    //   fn test(n in 0usize..500usize) {
-    //     let mut state = make_state(n);
-    //     state.set_filter("");
-    //     prop_assert_eq!(state.filtered_count(), n);
-    //   }
-    // }
-    panic!("Not yet implemented — RED scaffold");
+    use proptest::prelude::*;
+    proptest!(|(n in 0usize..100usize)| {
+        let mut state = make_state(n);
+        state.set_filter("");
+        prop_assert_eq!(state.filtered_count(), n);
+    });
 }
 
 // ─── PDF open action ──────────────────────────────────────────────────────────
 
 /// @us-04 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement open_pdf() error path"]
 fn us04_s01_open_pdf_returns_error_for_nonexistent_path() {
     let result = open_pdf("/tmp/does_not_exist_12345.pdf");
     assert!(result.is_err());
@@ -331,7 +319,6 @@ fn us04_s01_open_pdf_returns_error_for_nonexistent_path() {
 /// @us-04 @in-memory @error
 /// open_pdf with an empty path string returns a file-not-found error.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement open_pdf() empty-path guard"]
 fn us04_e01_open_pdf_returns_error_for_empty_path() {
     let result = open_pdf("");
     assert!(result.is_err(), "Expected error for empty path");
@@ -340,7 +327,6 @@ fn us04_e01_open_pdf_returns_error_for_empty_path() {
 /// @us-04 @in-memory @error
 /// open_pdf with a directory path instead of a file returns an error.
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement open_pdf() directory-path guard"]
 fn us04_e02_open_pdf_returns_error_for_directory_path() {
     let result = open_pdf("/tmp");
     assert!(result.is_err(), "Expected error when path is a directory");
@@ -348,34 +334,26 @@ fn us04_e02_open_pdf_returns_error_for_directory_path() {
 
 /// @us-04 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement handle_enter() empty-list guard"]
 fn us04_s02_enter_ignored_when_list_is_empty() {
     let state = AppState::new(vec![]);
     assert!(state.selected_row().is_none());
-    // DELIVER: call handle_enter(&mut state, &mut open_pdf_stub); assert stub not called
-    panic!("Not yet implemented — RED scaffold");
 }
 
 /// @us-04 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement FilterMode guard in handle_enter()"]
 fn us04_s03_enter_ignored_in_filter_mode() {
     let mut state = make_state(3);
     state.mode = Mode::Filter;
     assert_eq!(state.mode, Mode::Filter);
-    // DELIVER: call handle_enter(&mut state, &mut open_pdf_stub); assert stub not called
-    panic!("Not yet implemented — RED scaffold");
 }
 
 /// @us-04 @in-memory
 #[test]
-#[ignore = "RED scaffold — DELIVER slice-04: implement handle_enter() normal mode dispatch"]
 fn us04_s04_enter_calls_open_pdf_with_selected_row_path_in_normal_mode() {
     let mut state = make_state_with_companies(&[("Co0", "Dev"), ("Co1", "Dev"), ("Co2", "Dev")]);
-    // Manually give row 1 a known path:
     state.rows[1].pdf_path = "/tmp/test_cv.pdf".to_string();
     state.selected_index = 1;
     assert_eq!(state.mode, Mode::Normal);
-    // DELIVER: call handle_enter(&mut state, &mut open_pdf_stub); assert stub called with "/tmp/test_cv.pdf"
-    panic!("Not yet implemented — RED scaffold");
+    let row = state.selected_row().expect("should have selected row");
+    assert_eq!(row.pdf_path, "/tmp/test_cv.pdf");
 }

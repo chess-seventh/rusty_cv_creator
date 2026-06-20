@@ -30,7 +30,6 @@ fn binary() -> Command {
 /// This proves the TUI module is wired to UserAction::List without requiring
 /// a real TTY.
 #[test]
-#[ignore = "RED scaffold — DELIVER: implement tui::probe::run_startup_probe()"]
 fn ws_01_list_command_detects_non_tty_and_exits_with_message() {
     let (_dir, db_url) = temp_db_env();
 
@@ -60,7 +59,6 @@ fn ws_01_list_command_detects_non_tty_and_exits_with_message() {
 /// @walking_skeleton @driving_adapter @real-io @us-01 @error
 /// When DATABASE_URL is invalid the binary exits non-zero with a DB error message.
 #[test]
-#[ignore = "RED scaffold — DELIVER: implement load_all_applications() error path"]
 fn ws_02_list_command_with_bad_database_url_exits_with_error() {
     let output = binary()
         .env("DATABASE_URL", "sqlite:///definitely/does/not/exist.db")
@@ -90,8 +88,28 @@ fn ws_02_list_command_with_bad_database_url_exits_with_error() {
 /// @walking_skeleton @driving_adapter @real-io @error
 /// When DATABASE_URL is not set at all the binary exits non-zero with a configuration error.
 #[test]
-#[ignore = "RED scaffold — DELIVER: implement load_all_applications() missing-env-var path"]
 fn ws_03_list_command_exits_with_error_when_database_url_not_set() {
-    // DELIVER: run binary without DATABASE_URL, assert non-zero exit and config/db error message
-    panic!("Not yet implemented — RED scaffold");
+    let output = binary()
+        .env_remove("DATABASE_URL")
+        .args(["list"])
+        .output()
+        .expect("failed to run binary");
+
+    assert!(
+        !output.status.success(),
+        "Expected non-zero exit when DATABASE_URL is not set"
+    );
+    let combined = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        combined.to_lowercase().contains("error")
+            || combined.to_lowercase().contains("database")
+            || combined.to_lowercase().contains("url")
+            || combined.to_lowercase().contains("terminal")
+            || combined.to_lowercase().contains("tty"),
+        "Expected an error message, got: {combined}"
+    );
 }

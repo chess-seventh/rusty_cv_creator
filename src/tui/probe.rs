@@ -1,6 +1,9 @@
-// SCAFFOLD: true
-// Startup probe — validates terminal and DB before entering raw mode. Replace in DELIVER slice-01.
+use crossterm::tty::IsTty;
+use std::io;
 
 pub fn run_startup_probe() -> Result<(), String> {
-    panic!("Not yet implemented — RED scaffold");
+    if !io::stdin().is_tty() {
+        return Err("Error: terminal required — not a tty".to_string());
+    }
+    Ok(())
 }

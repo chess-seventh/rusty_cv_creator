@@ -76,7 +76,7 @@ pub fn match_user_action(user_input: UserInput) -> String {
             out
         }
         UserAction::List(_filters) => {
-            crate::tui::run().unwrap_or_else(|e| panic!("{e:?}"));
+            rusty_cv_creator::tui::run().unwrap_or_else(|e| panic!("{e:?}"));
             String::from("tui: ok")
         }
         UserAction::Update(filters) => {
