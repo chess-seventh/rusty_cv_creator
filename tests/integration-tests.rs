@@ -207,6 +207,7 @@ mod environment_variable_tests {
     use super::*;
 
     #[test]
+    #[serial]
     fn test_environment_variable_operations() {
         let test_key = "RUSTY_CV_TEST_VAR";
         let test_value = "test_value_12345";
@@ -230,6 +231,7 @@ mod environment_variable_tests {
     }
 
     #[test]
+    #[serial]
     fn test_database_url_environment() {
         let original = env::var("DATABASE_URL").ok();
 
