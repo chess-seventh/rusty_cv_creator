@@ -1,19 +1,17 @@
 # Environments — ci-release-hardening
 # DEVOPS wave, PROPOSE mode, SYSTEM/infrastructure scope, LEAN. DOCS-ONLY.
 # Outcome Collision Check: N/A (infra; no registry, jsonschema missing in this install).
-
 feature_id: ci-release-hardening
 mode: PROPOSE
 scope: SYSTEM/infrastructure
 density: LEAN
-
 target_environments:
   ci:
     name: GitHub Actions runner
     host: ubuntu-latest
     toolchain:
       default: dtolnay/rust-toolchain@stable
-      coverage_job: dtolnay/rust-toolchain@nightly  # llvm-cov --doc only
+      coverage_job: dtolnay/rust-toolchain@nightly # llvm-cov --doc only
       local_channel_note: project Cargo.toml pins nightly; CI uses stable for build/test/lint/fmt
     purpose: commit-stage quality gates (build, test, lint, fmt) + release automation
     caching: Swatinem/rust-cache@v2
@@ -22,7 +20,6 @@ target_environments:
     host: developer machine
     toolchain: nightly (devenv-provisioned)
     purpose: authoring + pre-commit/pre-push gates
-
 coexistence:
   must_keep_working:
     - prek / pre-commit hooks (devenv git-hooks, stages=[pre-commit])
@@ -34,38 +31,33 @@ coexistence:
     ci_rustfmt: uses `cargo fmt --all -- --check` (NOT treefmt) — nix-free CI gate; treefmt is a local superset
   known_tradeoff:
     rustfmt: treefmt uses edition 2024 + skip_children=true; `cargo fmt --check` uses Cargo.toml edition (2021) + descends children — can diverge; revisit only on drift
-
 platform_coverage:
   ci: ubuntu-latest
-  matrix: none  # single-target single-user CLI; no macOS/windows matrix required
+  matrix: none # single-target single-user CLI; no macOS/windows matrix required
   execution_models:
-    - cargo nextest run    # process-per-test (existing)
-    - cargo test           # threaded single-process (NEW, ADR-0006 guard)
-
+    - cargo nextest run # process-per-test (existing)
+    - cargo test # threaded single-process (NEW, ADR-0006 guard)
 deployment_assumptions:
-  hermetic_tests: true   # SQLite + FakeRunner via ADR-0002 CommandRunner + ADR-0003 DbConnection seams
+  hermetic_tests: true # SQLite + FakeRunner via ADR-0002 CommandRunner + ADR-0003 DbConnection seams
   no_external_services_in_ci:
     - postgres
     - tectonic
     - tailscale
     - just
     - zathura
-  idempotent_release: true   # GitHub Release via release.yml; re-tag-forward rollback
-  single_release_mechanism: release.yml (conventional-changelog-action)  # after CHANGE 4 deletes dormant .releaserc*
-
+  idempotent_release: true # GitHub Release via release.yml; re-tag-forward rollback
+  single_release_mechanism: release.yml (conventional-changelog-action) # after CHANGE 4 deletes dormant .releaserc*
 observability:
   runtime: env_logger + log (structured-ish stderr; single-user CLI)
   external_stack: deferred (no long-running service)
   ci: GitHub Actions run UI + Codecov (advisory, continue-on-error)
-
 mutation_testing:
   status: not_yet_wired
   intended_strategy: nightly-delta
   note: no tooling present; not added this pass; CLAUDE.md not edited
-
 apply_step_targets:
   edit:
-    - .github/workflows/rust-tests.yml   # CHANGE 1 clippy -D warnings, CHANGE 2 rustfmt, CHANGE 3 threaded-test
+    - .github/workflows/rust-tests.yml # CHANGE 1 clippy -D warnings, CHANGE 2 rustfmt, CHANGE 3 threaded-test
   delete:
-    - .releaserc.yml                     # CHANGE 4 dormant semantic-release config
-    - .releaserc                         # CHANGE 4 dormant semantic-release branches
+    - .releaserc.yml # CHANGE 4 dormant semantic-release config
+    - .releaserc # CHANGE 4 dormant semantic-release branches
