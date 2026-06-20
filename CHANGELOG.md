@@ -1,3 +1,27 @@
+# [5.0.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.3...v5.0.0) (2026-06-20)
+
+
+### Features
+
+* variant-based CV generation — build one of 4 role variants from the CV template repo via `just build <variant>` (tectonic); variant chosen by `--variant`, inferred from job title, or configured default; config-driven output (ADR-0001)
+* `CommandRunner` + diesel `MultiConnection` seams (testable subprocess + DB) and pre-usage tool-availability checks (ADR-0002, ADR-0003, ADR-0004)
+* inject an immutable `AppContext`, removing the process-global `GLOBAL_VAR` `OnceCell` — threaded `cargo test` is now deterministic (ADR-0006)
+
+
+### Continuous Integration
+
+* enforce clippy `-D warnings`, add treefmt + threaded `cargo test` gates, consolidate to a single release mechanism (ADR-0007)
+
+
+### BREAKING CHANGES
+
+* **config**: the INI format changed — added `cv_file_prefix`, `[variant] default`, `[build] builder`/`recipe`, `[destination] output_pdf`; removed `cv_template_file` and `[to_replace]` (`BLANKPOSITION`/`BLANKQUOTE`). Point `cv_template_path` at the CV template repo.
+* **build**: CVs are built via the template repo's Justfile (`just build <variant>`, tectonic) instead of xelatex + placeholder replacement; `just` and `tectonic` are now required on PATH.
+
+> v5.0.0 supersedes the mis-versioned v4.0.3, which released these breaking changes as a patch; the release config has been corrected (ADR-0007).
+
+
+
 ## [4.0.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v4.0.2...v4.0.3) (2026-06-20)
 
 

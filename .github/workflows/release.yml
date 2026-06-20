@@ -19,6 +19,11 @@ jobs:
         id: changelog
         uses: TriPSs/conventional-changelog-action@v5
         with:
+          # conventionalcommits preset honours the `!` breaking shorthand
+          # (feat!:, fix!:) and BREAKING CHANGE: footers → major bump. The
+          # default angular preset ignored `feat!:` and shipped a breaking
+          # change as a patch (v4.0.3); see ADR-0007.
+          preset: "conventionalcommits"
           git-user-name: "chess-seventh"
           git-user-email: "chess7th@pm.me"
           github-token: ${{ secrets.GITHUB_TOKEN }}
