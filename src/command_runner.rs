@@ -1,6 +1,19 @@
 use std::io;
 use std::process::{Command, Stdio};
 
+/// Captured outcome of a subprocess run (UC-1, feature `template-source`):
+/// success plus both streams, so a caller can classify a git failure from its
+/// stderr (auth vs network/offline vs bad-ref). Additive to the port; existing
+/// `status`/`output`/`spawn` call sites are unaffected.
+// SCAFFOLD: true
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct CommandOutcome {
+    pub success: bool,
+    pub stdout: String,
+    pub stderr: String,
+}
+
 /// Abstraction over running external programs so the build / view / Tailscale
 /// logic can be unit-tested with a fake instead of really shelling out.
 pub trait CommandRunner {
@@ -13,6 +26,22 @@ pub trait CommandRunner {
 
     /// Launch `program args...` detached (used for the PDF viewer).
     fn spawn(&self, program: &str, args: &[&str]) -> io::Result<()>;
+
+    /// UC-1 (feature `template-source`): run `program args...` (optionally in
+    /// `cwd`) capturing success + stdout + stderr, so a git failure can be
+    /// classified by inspecting stderr. Additive and backward-compatible — the
+    /// default body is a RED scaffold; existing implementors inherit it without
+    /// change and DELIVER provides the real captures.
+    // SCAFFOLD: true
+    #[allow(dead_code)]
+    fn run_capturing(
+        &self,
+        _program: &str,
+        _args: &[&str],
+        _cwd: Option<&str>,
+    ) -> io::Result<CommandOutcome> {
+        panic!("not yet implemented — RED scaffold (UC-1 stderr capture)")
+    }
 }
 
 /// The real runner, backed by `std::process::Command`.
@@ -132,5 +161,35 @@ pub mod testing {
     fn test_fake_runner_io_error() {
         let fake = FakeRunner::io_error();
         assert!(fake.spawn("zathura", &["a.pdf"]).is_err());
+    }
+}
+
+#[cfg(test)]
+mod uc1_specs {
+    //! DISTILL spec for UC-1 (feature `template-source`): the additive
+    //! stderr-capturing run. Pending DELIVER — calls the RED scaffold default
+    //! `run_capturing`, so it fails by `panic!` (RED), not by a compile error.
+    use super::CommandRunner;
+    use super::testing::FakeRunner;
+
+    /// @us-02 @in-memory
+    /// UC-1: a captured run exposes stderr so a git failure can be classified
+    /// into a distinct `TemplateSourceError` (auth vs network vs bad-ref).
+    #[test]
+    #[ignore = "pending DELIVER — UC-1"]
+    fn uc1_run_capturing_exposes_stderr() {
+        let runner = FakeRunner::failing();
+        let outcome = runner
+            .run_capturing(
+                "git",
+                &["clone", "git@github.com:chess-seventh/cv.git"],
+                None,
+            )
+            .expect("captured run should return an outcome, not an io error");
+        assert!(!outcome.success, "a failing clone reports success=false");
+        assert!(
+            !outcome.stderr.is_empty(),
+            "stderr must be captured so the failure can be classified"
+        );
     }
 }

@@ -230,7 +230,7 @@ is independently shippable and dogfoodable the same day.
 | Manual git commands to first CV on a fresh machine | ≥1 (`git clone`) + path config | **0** git commands (one config value) | Setup walkthrough on a clean checkout |
 | Stale-template incidents (CV built from out-of-date local copy) | possible & silent | **0** (canonical pull, pinnable) | TS-03 reproducibility test + log of resolved SHA |
 | Offline CV-generation success after first fetch | 0% (network-required) | **100%** | TS-04/AC1 test (cache reuse with network down) |
-| Per-run clone latency overhead after first fetch | n/a | **≈0** (cache hit, no re-clone on unchanged `repo@ref`) | Timed second run vs first run |
+| Per-run clone latency overhead after first fetch | ~3.5s cold clone | **≤1.7s** cache `fetch`+`checkout` (SPIKE-measured); **≤200ms** offline reuse with no `fetch` | Timed second run vs first run |
 
 ## Wave: DISCUSS / [REF] DoR validation (9 items)
 
@@ -399,3 +399,166 @@ No new crate is added; this stays within the existing std-only error idiom.
 - `ToolChecker` port extraction to drop `#[serial]` — deferred (TS-D4); candidate
   for a focused follow-up ADR.
 - A `--template-ref` CLI override — out-of-scope per DISCUSS (config-first).
+
+---
+
+## Wave: DISTILL / [REF] Authoring note
+
+> Scaffolded RED per ADR-025 (DISTILL is the canonical AT author). The four
+> `.feature` files under `tests/acceptance/template-source/` are the human-readable
+> scenario SSOT (the project has **no cucumber-rust harness**), mapped to concrete
+> Rust tests via the Traceability table below. The already-GREEN walking skeleton
+> (`src/file_handlers.rs::walking_skeleton_github_source_resolves_template_dir`) is
+> referenced, not duplicated or retagged. Density: **LEAN**. Reconciliation gate:
+> **passed — 0 contradictions** across DISCUSS / DESIGN (no DEVOPS wave exists).
+
+## Wave: DISTILL / [REF] Inherited commitments
+
+| Origin | Commitment | DDD | Impact |
+| --- | --- | --- | --- |
+| DISCUSS#D1 | Source is auto-detected from `cv_template_path` (readable dir → LOCAL, git URL → GITHUB). | n/a | Drives TS-01 detection scenarios; pure `is_git_url` property test. |
+| DISCUSS#D2 | Public + private access; token from env only, never the INI. | TS-D3 | TS-02 auth scenarios assert the token never reaches the git argv. |
+| DISCUSS#D3 | Ref pinning via `cv_template_ref`; unset → default branch. | n/a | TS-03 pinned-checkout + bad-ref-no-fallback scenarios. |
+| DISCUSS#D4 | On fetch failure reuse cache (warn); no cache → abort fast. | TS-D2 | TS-04 `CacheAction` matrix (reuse-vs-fetch-vs-abort). |
+| DESIGN#UC-1 | `CommandRunner` gains an additive stderr-capturing run. | ADR-0008 | Needed to classify auth vs network vs bad-ref; scaffolded as `run_capturing`. |
+| DESIGN#TS-D1 | Each failure is a distinct `TemplateSourceError` variant. | ADR-0008 | Hints are `match`-able, not string-matched; one variant per error path. |
+
+## Wave: DISTILL / [REF] Scenario list with tags
+
+16 scenarios across 4 documentation feature files. 9 error/edge (**56%**).
+
+| # | Feature file | Scenario | Tags |
+| --- | --- | --- | --- |
+| 1 | public-source | Francesco sources a public template by URL end to end | @walking_skeleton @driving_port @US-01 @real-io @contract-shape:bounded-change |
+| 2 | public-source | An existing local directory is used exactly as before | @US-01 @edge @real-io @contract-shape:unbounded-preservation |
+| 3 | public-source | A value that is neither a directory nor a git URL is refused | @US-01 @error @driving_adapter @real-io @contract-shape:pure-function |
+| 4 | public-source | Recognised URL forms are detected as git sources | @US-01 @property @contract-shape:pure-function |
+| 5 | public-source | A bare token or local path is not mistaken for a git URL | @US-01 @property @edge @contract-shape:pure-function |
+| 6 | private-source | A private SSH source clones over its git@ URL | @US-02 @in-memory @contract-shape:bounded-change |
+| 7 | private-source | A token is taken from the environment and never on the command line | @US-02 @error @in-memory @contract-shape:unbounded-preservation |
+| 8 | private-source | An authentication failure is reported with an auth-specific hint | @US-02 @error @in-memory @contract-shape:unbounded-preservation |
+| 9 | pinned-version | A pinned version is checked out and its resolved revision is logged | @US-03 @in-memory @contract-shape:bounded-change |
+| 10 | pinned-version | With no version pinned the default branch is used | @US-03 @contract-shape:bounded-change |
+| 11 | pinned-version | An unknown version is refused without falling back | @US-03 @error @in-memory @contract-shape:unbounded-preservation |
+| 12 | offline-cache | Offline, the most recent cached template is reused with a warning | @US-04 @error @in-memory @contract-shape:unbounded-preservation |
+| 13 | offline-cache | With no cache and no network the run aborts without a partial CV | @US-04 @error @in-memory @contract-shape:unbounded-preservation |
+| 14 | offline-cache | A successful fetch refreshes the cache for next time | @US-04 @in-memory @contract-shape:bounded-change |
+| 15 | offline-cache | The reuse-or-fetch-or-abort decision is total over cache and network state | @US-04 @property @contract-shape:pure-function |
+| 16 | offline-cache | A repository and version map to one deterministic cache entry | @US-04 @property @edge @contract-shape:pure-function |
+
+## Wave: DISTILL / [REF] Walking-Skeleton Strategy
+
+Per the Architecture of Reference, the driving port is the CLI (`insert`). The
+single `@walking_skeleton @driving_port` scenario (#1) maps to the **existing
+GREEN** in-crate skeleton, which performs a real `git clone` from a `file://`
+bare-repo fixture (real `SystemRunner`, real filesystem, real `copy_dir`) — no
+network, no mock of the git layer. DISTILL adds the next layer (auth, ref,
+offline, detection) on top; it does not rewrite the skeleton.
+
+## Wave: DISTILL / [REF] Adapter coverage table
+
+| Adapter (driven) | Treatment | Covered by | Real-IO boundary note |
+| --- | --- | --- | --- |
+| `CommandRunner` — git (`clone`/`fetch`/`checkout`/`-c core.askpass`) | `FakeRunner` @in-memory (asserts the exact git command string) **and** real `SystemRunner` @real-io | scenarios 6, 7, 9 (FakeRunner) + scenario 1 (real `file://` clone) | The `@real-io` git path uses a local bare repo via `file://` (real shell-out, no network), exactly the skeleton's trick. FakeRunner unit specs assert `git clone git@…` / `checkout v2.1` / `core.askpass` strings. |
+| Filesystem (cache dir + working copy) | **real I/O** via `tempfile::TempDir` | scenarios 1, 2 | Genuine real-IO adapter on an isolated tmp tree (capability-scoped to the cache dir). |
+| Environment (`GITHUB_TOKEN`) | read at execution; secret-handling asserted structurally | scenario 7 | Not faked; `auth_invocation_flags(Token, …)` is a pure fn asserted to route via `core.askpass` and to keep the token off the argv. |
+
+The `git` driven adapter therefore has **≥1 `@real-io` scenario** (scenario 1,
+real `file://` clone) **and** FakeRunner unit specs (scenarios 6/7/9) —
+satisfying Mandate 6.
+
+## Wave: DISTILL / [REF] Scaffolds
+
+RED scaffolds (Mandate 7, Rust): the crate **compiles** and every un-ignored new
+test is GREEN; every `#[ignore]`d pending spec fails by `panic!`, never by a
+compile/import error. Markers: `// SCAFFOLD: true`. ADDITIVE ONLY — the green
+skeleton signatures are untouched.
+
+| File | Symbol | Kind |
+| --- | --- | --- |
+| `src/command_runner.rs` | `CommandOutcome` | struct (UC-1 carrier) |
+| `src/command_runner.rs` | `CommandRunner::run_capturing` | additive trait method (default panics) |
+| `src/template_source.rs` | `AuthMode` (`Auto`/`Ssh`/`Token`) + `AuthMode::from_config` | enum + parser |
+| `src/template_source.rs` | `auth_invocation_flags` | pure fn (askpass plan) |
+| `src/template_source.rs` | `TemplateSourceError` (`Auth`/`NetworkOffline`/`BadRef`/`NoCache`/`BadValue`) + `Display`/`Error` | typed error enum (TS-D1) |
+| `src/template_source.rs` | `classify_git_stderr` | pure fn (UC-1 stderr → error class) |
+| `src/template_source.rs` | `CacheAction` (`Clone`/`FetchCheckout`/`ReuseStale`/`Abort`) | pure decision enum (TS-D2) |
+| `src/template_source.rs` | `TemplateCache` + `new`/`cache_key`/`decide` | cache collaborator |
+| `src/template_source.rs` | `GitHubRepository::with_ref`/`with_auth`/`resolve_classified` | additive builders + classified resolve |
+
+## Wave: DISTILL / [REF] Test placement
+
+- **Documentation SSOT**: `tests/acceptance/template-source/*.feature` (4 files) —
+  precedent: `tests/acceptance/cv-variant-build/`.
+- **Driving-adapter / subprocess scenarios**: `tests/template_source_scenarios.rs`
+  (external integration crate) — precedent: `tests/tui_job_applications_scenarios.rs`
+  - `tests/cli_smoke.rs` (`env!("CARGO_BIN_EXE_rusty_cv_creator")` + `tempfile`).
+- **Unit-level specifications**: **in-crate** `#[cfg(test)] mod distill_specs` in
+  `src/template_source.rs` and `mod uc1_specs` in `src/command_runner.rs`. They
+  live in-crate (NOT in a `tests/template_source_specifications.rs` file) because
+  `TemplateSource`, the scaffolds, and `command_runner::testing::FakeRunner` are
+  **binary-private** — they are not on the `lib.rs` facade (only
+  `database`/`models`/`schema`/`tui` are), and `helpers` (a transitive dependency)
+  references the `main.rs`-local `is_tailscale_connected`, so exposing them via the
+  library would cascade. This matches the existing green precedent: the skeleton's
+  own FakeRunner specs already live in `src/template_source.rs::tests`. Recorded in
+  `distill/upstream-issues.md`.
+
+## Wave: DISTILL / [REF] Driving Adapter coverage
+
+The sole driving adapter is the `insert` CLI subcommand (clap, D6 — sourcing is
+transparent). Scenario 3 (`ts01_ac3_bad_template_value_fails_fast_naming_the_value`)
+spawns the **built binary** and asserts a non-zero exit naming the offending
+value — a real subprocess driving-adapter test, not an orchestration-layer call.
+The git happy path is driven at the `create_directory` seam by the in-crate
+walking skeleton (binary-private symbols unreachable from an external crate).
+
+## Wave: DISTILL / [REF] Traceability (AC → scenario → test)
+
+| AC | Scenario | Test (file::name) | State |
+| --- | --- | --- | --- |
+| TS-01/AC1 | 1 | `src/file_handlers.rs::walking_skeleton_github_source_resolves_template_dir` | GREEN (skeleton) |
+| TS-01/AC2 | 2 | `src/template_source.rs::tests::test_detect_existing_dir_is_local` (+ `…test_local_directory_resolves_to_passthrough_path`) | GREEN |
+| TS-01/AC3 | 3 | `tests/template_source_scenarios.rs::ts01_ac3_bad_template_value_fails_fast_naming_the_value` (+ unit `…test_detect_unrecognised_value_errors_naming_value`) | GREEN |
+| TS-01/D1 | 4, 5 | `src/template_source.rs::distill_specs::ts01_is_git_url_classifies_known_forms` | GREEN (proptest) |
+| TS-02/AC1 | 6 | `…distill_specs::ts02_ac1_ssh_source_clones_via_git_at_url` | PENDING (RED) |
+| TS-02/AC2 | 7 | `…distill_specs::ts02_ac2_token_uses_askpass_and_never_on_argv` | PENDING (RED) |
+| TS-02/AC3 | 8 | `…distill_specs::ts02_ac3_auth_failure_stderr_classified_as_auth` (+ `command_runner.rs::uc1_specs::uc1_run_capturing_exposes_stderr` for UC-1) | PENDING (RED) |
+| TS-03/AC1 | 9 | `…distill_specs::ts03_ac1_pinned_ref_is_checked_out` | PENDING (RED) |
+| TS-03/AC2 | 10 | skeleton default-branch resolve (`…walking_skeleton…`) | GREEN (reference) |
+| TS-03/AC3 | 11 | `…distill_specs::ts03_ac3_bad_ref_classified_no_silent_fallback` | PENDING (RED) |
+| TS-04/AC1 | 12 | `…distill_specs::ts04_cache_action_matrix` (`ReuseStale`) | PENDING (RED) |
+| TS-04/AC2 | 13 | `…distill_specs::ts04_cache_action_matrix` (`Abort`) | PENDING (RED) |
+| TS-04/AC3 | 14, 15 | `…distill_specs::ts04_cache_action_matrix` (`Clone`/`FetchCheckout`) | PENDING (RED) |
+| TS-04 (key) | 16 | `…distill_specs::ts04_cache_key_is_deterministic` | PENDING (RED) |
+
+## Wave: DISTILL / [REF] Self-Completeness Audit (Phase 2.5)
+
+`nw-at-completeness-check` over the 16 scenarios. Verdict:
+**ACCEPTABLE_WITH_DOCUMENTED_GAPS** — happy/error/edge/property coverage for every
+AC; all four driven behaviours (detect, auth, ref, cache) have explicit error
+paths (56% error/edge). All gaps are `AT_GAP_IN_DELIVERY_SCOPE` (filled by the
+pending specs in DELIVER); **zero `SPECIFICATION_AMBIGUITY`** blockers — DISCUSS
+ACs and DESIGN ports/decisions fully determine every scenario.
+
+## Wave: DISTILL / [REF] Mandate-12 (SSOT) note — informational
+
+Rust + no cucumber-rust harness ⇒ no `pytest-bdd`-style step decorators; the
+DSL/step-reuse-ratio metric does not apply. Domain concepts ARE expressed once via
+the type system (criterion 1): `AuthMode`, `CacheAction`, `TemplateSourceError`,
+`TemplateCache` are typed enums/structs the specs reuse. Step-reuse-ratio is N/A
+for this harness shape (config/decision-shaped feature). Criteria 1–3 are met in
+spirit; criterion 4 (ratio) is not measured (no decorator surface).
+
+## Wave: DISTILL / [REF] Pre-requisites
+
+- DESIGN driving port (CLI `insert`) + driven ports (`TemplateSource`,
+  `CommandRunner` incl. UC-1, filesystem cache, environment) per the DESIGN [REF]
+  sections + ADR-0008.
+- `git`/`just`/`tectonic` on PATH (ADR-0004 pre-usage checks) for the subprocess
+  scenario — satisfied under `devenv shell`.
+- No DEVOPS environment matrix exists; sensible defaults applied (single-user local
+  CLI; `tempfile::TempDir`; `file://` bare repo for deterministic git real-IO). Not
+  a blocker.
+- Outcomes registry: **N/A — deferred** (no `docs/product/outcomes/registry.yaml`
+  in this project; not bootstrapped per orchestrator instruction).
