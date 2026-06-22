@@ -2,6 +2,7 @@ use crate::command_runner::CommandRunner;
 use crate::config_parse::get_variable_from_config_file;
 use crate::global_conf::AppContext;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
+use crate::template_source::detect_template_source;
 use chrono::{DateTime, Local};
 use log::{error, info, warn};
 use std::fs;
@@ -158,6 +159,7 @@ pub fn compile_cv(
 
 pub fn create_directory(
     ctx: &AppContext,
+    runner: &dyn CommandRunner,
     job_title: &str,
     company_name: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
@@ -176,14 +178,20 @@ pub fn create_directory(
         }
     }
 
-    let (cv_template_path, full_destination_path) =
-        match prepare_path_for_new_cv(ctx, job_title, company_name, &destination_folder, now) {
-            Ok(s) => s,
-            Err(e) => {
-                error!("{e:?}");
-                return Err(format!("{e:?}").to_string().into());
-            }
-        };
+    let (cv_template_path, full_destination_path) = match prepare_path_for_new_cv(
+        ctx,
+        runner,
+        job_title,
+        company_name,
+        &destination_folder,
+        now,
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("{e:?}");
+            return Err(format!("{e:?}").to_string().into());
+        }
+    };
 
     match copy_dir::copy_dir(cv_template_path, full_destination_path.clone()) {
         Ok(_) => info!("✅ Directory created & copied successfully"),
@@ -202,6 +210,7 @@ pub fn remove_cv_dir(path_to_remove: &Path) -> std::io::Result<()> {
 
 fn prepare_path_for_new_cv(
     ctx: &AppContext,
+    runner: &dyn CommandRunner,
     job_title: &str,
     company_name: &str,
     destination_folder: &str,
@@ -209,7 +218,14 @@ fn prepare_path_for_new_cv(
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     let var = get_variable_from_config_file(ctx, "cv", "cv_template_path")?;
 
-    let cv_template_path: String = fix_home_directory_path(&var);
+    let configured_template: String = fix_home_directory_path(&var);
+
+    // D1/D7: auto-detect a local dir vs a git URL and resolve to a local dir.
+    // For a git source this clones into the cache via the CommandRunner port; for
+    // a local dir it is an unchanged passthrough (backward compat, TS-01/AC2).
+    let cache_dir = resolve_template_cache_dir(ctx);
+    let source = detect_template_source(&configured_template, &cache_dir)?;
+    let cv_template_path = source.resolve(runner)?;
 
     let formatted_job_title = sanitize_for_path(job_title);
     let formatted_company_name = sanitize_for_path(company_name);
@@ -223,6 +239,14 @@ fn prepare_path_for_new_cv(
     info!("✅ Copying from: {}", cv_template_path.clone());
 
     Ok((cv_template_path, full_destination_path))
+}
+
+/// Resolve the template cache directory: the optional `[cv] cv_template_cache`
+/// key, or the default `~/.cache/rusty-cv-creator/templates`. Only consulted for
+/// a git source; a local-dir source ignores it.
+fn resolve_template_cache_dir(ctx: &AppContext) -> String {
+    get_variable_from_config_file(ctx, "cv", "cv_template_cache")
+        .unwrap_or_else(|_| fix_home_directory_path("~/.cache/rusty-cv-creator/templates"))
 }
 
 fn prepare_year_dir(destination_folder: &String, now: &DateTime<Local>) -> Result<String, Error> {
@@ -463,6 +487,122 @@ mod tests {
         assert!(!sub.exists());
     }
 
+    /// Run a git command in `dir`, asserting success. Used only to build the
+    /// local "remote" fixture repository for the walking-skeleton test. Hooks are
+    /// disabled (`core.hooksPath` pointed at an empty dir) so the developer's
+    /// global git hooks cannot interfere with the hermetic fixture.
+    fn git_in(dir: &Path, empty_hooks: &Path, args: &[&str]) {
+        let ok = std::process::Command::new("git")
+            .current_dir(dir)
+            .arg("-c")
+            .arg(format!("core.hooksPath={}", empty_hooks.display()))
+            .args(args)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?} failed");
+    }
+
+    // @walking_skeleton @driving_port
+    //
+    // Drives the new git-URL template path end-to-end through REAL layers: a real
+    // `SystemRunner` performs a real `git clone` from a local bare-ish repository
+    // exposed via a `file://` URL (deterministic, no network), real filesystem,
+    // real `copy_dir`. The substitution of a local repo for GitHub still exercises
+    // the genuine git shell-out mechanism — it is NOT a mock of the git layer.
+    //
+    // Observable outcome asserted: the git-sourced template's fixture files were
+    // resolved and copied into the dated working directory, ready to build. The
+    // costly LaTeX `just build` is intentionally NOT run here (pre-existing
+    // subsystem, out of scope for the skeleton's assertion).
+    //
+    // Serialized: the GitHub source's ADR-0004 git PATH check reads the global
+    // PATH, which the PATH-mutating test in `helpers` temporarily clobbers.
+    #[test]
+    #[serial_test::serial]
+    fn walking_skeleton_github_source_resolves_template_dir() {
+        let td = TempDir::new().unwrap();
+        let base = td.path();
+
+        // An empty hooks dir keeps the fixture repo isolated from global git hooks.
+        let empty_hooks = base.join("empty-hooks");
+        fs::create_dir_all(&empty_hooks).unwrap();
+
+        // 1) A local "remote" git repo holding the template fixture files.
+        let remote = base.join("remote-template");
+        fs::create_dir_all(&remote).unwrap();
+        fs::write(remote.join("TestCV-senior-devops.tex"), "template-body").unwrap();
+        fs::write(remote.join("Justfile"), "build:\n\techo build\n").unwrap();
+        git_in(&remote, &empty_hooks, &["init", "-q"]);
+        git_in(&remote, &empty_hooks, &["add", "."]);
+        git_in(
+            &remote,
+            &empty_hooks,
+            &[
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "user.name=test",
+                "commit",
+                "-q",
+                "-m",
+                "init",
+            ],
+        );
+
+        let cache = base.join("cache");
+        let dest = base.join("dest");
+        let out = base.join("out");
+        fs::create_dir_all(&dest).unwrap();
+
+        let remote_url = format!("file://{}", remote.display());
+        let ini = format!(
+            "[cv]\ncv_template_path = \"{url}\"\ncv_template_cache = \"{cache}\"\n\
+             cv_file_prefix = \"TestCV\"\n\
+             [destination]\ncv_path = \"{dest}\"\noutput_pdf = \"{out}\"\n\
+             [db]\nengine = \"sqlite\"\ndb_file = \"x.db\"\n",
+            url = remote_url,
+            cache = cache.display(),
+            dest = dest.display(),
+            out = out.display()
+        );
+        let ini_path = base.join("conf.ini");
+        fs::write(&ini_path, ini).unwrap();
+
+        let ui = crate::cli_structure::UserInput {
+            action: crate::cli_structure::UserAction::Insert(
+                crate::cli_structure::FilterArgs::default(),
+            ),
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: ini_path.to_str().unwrap().to_string(),
+            engine: "sqlite".to_string(),
+        };
+        let ctx = crate::config_parse::build_context(&ui);
+
+        // 2) Drive the real entry point: detect git URL -> real clone -> copy_dir.
+        let created = create_directory(
+            &ctx,
+            &crate::command_runner::SystemRunner,
+            "Senior DevOps",
+            "ACME",
+        )
+        .unwrap();
+
+        // 3) The git-sourced template landed in the working dir, ready to build.
+        assert!(
+            Path::new(&created)
+                .join("TestCV-senior-devops.tex")
+                .is_file(),
+            "cloned template .tex should be copied into the working dir"
+        );
+        assert!(
+            Path::new(&created).join("Justfile").is_file(),
+            "cloned template Justfile should be copied into the working dir"
+        );
+    }
+
     #[test]
     fn test_create_directory_and_remove_flow() {
         let td = TempDir::new().unwrap();
@@ -498,7 +638,8 @@ mod tests {
         let ctx = crate::config_parse::build_context(&ui);
 
         // create_directory copies the template into a dated dir under dest.
-        let created = create_directory(&ctx, "Senior DevOps", "ACME").unwrap();
+        let runner = crate::command_runner::testing::FakeRunner::ok();
+        let created = create_directory(&ctx, &runner, "Senior DevOps", "ACME").unwrap();
         assert!(
             Path::new(&created)
                 .join("TestCV-senior-devops.tex")

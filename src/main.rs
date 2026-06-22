@@ -14,6 +14,7 @@ mod cv_insert;
 mod file_handlers;
 mod global_conf;
 mod helpers;
+mod template_source;
 mod user_action;
 
 use crate::cli_structure::{UserAction, UserInput, match_user_action};
@@ -82,7 +83,7 @@ fn prepare_cv(
     // Pre-usage check: the builder (`just`) drives `tectonic` via the Justfile.
     ensure_tools_available(&[cfg.builder.as_str(), "tectonic"])?;
 
-    let created_cv_dir = match create_directory(ctx, job_title, company_name) {
+    let created_cv_dir = match create_directory(ctx, runner, job_title, company_name) {
         Ok(s) => s,
         Err(e) => {
             error!("Could not create directory for CV: {e:?}");
