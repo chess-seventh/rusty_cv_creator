@@ -13,7 +13,7 @@
 //! cache reuse / offline fallback (TS-04) are later slices and intentionally
 //! absent here.
 
-use crate::command_runner::CommandRunner;
+use crate::command_runner::{CommandOutcome, CommandRunner};
 use crate::helpers::ensure_tools_available;
 use log::info;
 use std::fs;
@@ -51,6 +51,7 @@ pub struct GitHubRepository {
     url: String,
     cache_dir: String,
     auth: AuthMode,
+    git_ref: Option<String>,
 }
 
 impl GitHubRepository {
@@ -59,6 +60,7 @@ impl GitHubRepository {
             url,
             cache_dir,
             auth: AuthMode::Auto,
+            git_ref: None,
         }
     }
 
@@ -361,10 +363,10 @@ impl TemplateCache {
 impl GitHubRepository {
     /// Pin the template to a branch/tag/SHA (TS-03). Additive builder; the
     /// skeleton's default-branch `new`/`resolve` are unchanged.
-    // SCAFFOLD: true
     #[allow(dead_code)]
-    pub fn with_ref(self, _git_ref: &str) -> Self {
-        panic!("not yet implemented — RED scaffold")
+    pub fn with_ref(mut self, git_ref: &str) -> Self {
+        self.git_ref = Some(git_ref.to_string());
+        self
     }
 
     /// Select the auth transport (TS-02). Additive builder; the skeleton's
@@ -379,11 +381,13 @@ impl GitHubRepository {
     /// (TS-02). Distinct from the skeleton's `resolve`, which stays the green
     /// default-branch happy path (TS-01/AC1).
     ///
-    /// Partial: cache reuse (TS-04) and ref pinning (TS-03) wiring lands in
-    /// later slices. Here it prepends the auth flags to the git invocation
-    /// through `CommandRunner` and classifies a clone failure from its captured
-    /// stderr. The SSH path adds no askpass flag — the agent is inherited.
-    // SCAFFOLD: true
+    /// Cache reuse (TS-04) wiring lands in a later slice. Here it prepends the
+    /// auth flags to the git invocation through `CommandRunner` and classifies a
+    /// clone failure from its captured stderr. The SSH path adds no askpass flag
+    /// — the agent is inherited. When a ref is pinned (TS-03) the cloned repo is
+    /// explicitly checked out at that ref and its resolved SHA logged; an
+    /// unresolvable ref aborts via `BadRef` with NO silent default-branch
+    /// fallback. An unset ref preserves the skeleton's default-branch resolve.
     #[allow(dead_code)]
     pub fn resolve_classified(
         &self,
@@ -407,7 +411,65 @@ impl GitHubRepository {
             return Err(classify_git_stderr(&outcome.stderr, &self.url, None));
         }
 
+        if let Some(git_ref) = &self.git_ref {
+            self.checkout_pinned_ref(runner, &destination, git_ref)?;
+        }
+
         Ok(destination)
+    }
+
+    /// Explicitly check out `git_ref` in the freshly cloned `destination`, then
+    /// log the resolved SHA via `git rev-parse HEAD` (detached-HEAD safe — a SHA
+    /// checkout leaves a detached HEAD, so branch state is never relied upon). A
+    /// failing checkout or rev-parse is classified from its captured stderr into
+    /// `BadRef` and aborts — never a silent fallback to the default branch
+    /// (TS-03/AC3).
+    fn checkout_pinned_ref(
+        &self,
+        runner: &dyn CommandRunner,
+        destination: &str,
+        git_ref: &str,
+    ) -> Result<(), TemplateSourceError> {
+        let checkout = self.run_in_clone(runner, &["checkout", git_ref], destination, git_ref)?;
+        if !checkout.success {
+            return Err(classify_git_stderr(
+                &checkout.stderr,
+                &self.url,
+                Some(git_ref),
+            ));
+        }
+
+        let resolved = self.run_in_clone(runner, &["rev-parse", "HEAD"], destination, git_ref)?;
+        if !resolved.success {
+            return Err(classify_git_stderr(
+                &resolved.stderr,
+                &self.url,
+                Some(git_ref),
+            ));
+        }
+
+        info!(
+            "✅ Pinned template to ref '{git_ref}' (resolved SHA: {})",
+            resolved.stdout.trim()
+        );
+        Ok(())
+    }
+
+    /// Run a git subcommand inside the cloned `destination`, mapping a captured
+    /// io failure to `BadRef` so a pinned-ref resolve never silently degrades.
+    fn run_in_clone(
+        &self,
+        runner: &dyn CommandRunner,
+        args: &[&str],
+        destination: &str,
+        git_ref: &str,
+    ) -> Result<CommandOutcome, TemplateSourceError> {
+        runner
+            .run_capturing("git", args, Some(destination))
+            .map_err(|_| TemplateSourceError::BadRef {
+                url: self.url.clone(),
+                git_ref: git_ref.to_string(),
+            })
     }
 }
 
@@ -616,7 +678,6 @@ mod distill_specs {
     /// logged — detached-HEAD safe).
     #[test]
     #[serial_test::serial]
-    #[ignore = "pending DELIVER — TS-03"]
     fn ts03_ac1_pinned_ref_is_checked_out() {
         let td = TempDir::new().unwrap();
         let cache = td.path().to_str().unwrap().to_string();
