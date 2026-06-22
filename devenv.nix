@@ -193,6 +193,12 @@
           tables = false;
         };
         MD041 = false;
+        # nWave wave-doc artifacts (docs/feature/**, docs/product/**) repeat
+        # per-story headings ("Elevator Pitch", "Acceptance criteria") by design,
+        # which conflicts with markdownlint defaults. Disable the two rules that
+        # structurally fight that format; prose still obeys MD013 (120 cols).
+        MD024 = false; # no-duplicate-heading — per-story sections repeat headings
+        MD036 = false; # no-emphasis-as-heading — bold section labels are intentional
       };
     };
   };
