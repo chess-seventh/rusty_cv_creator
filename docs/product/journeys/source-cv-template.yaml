@@ -1,0 +1,54 @@
+# Journey SSOT — source the CV template (local dir OR GitHub) before build
+# Feeds the existing `generate-cv` journey at its step 1 (before the working copy
+# is created). Authored in DISCUSS for feature `template-source`.
+schema_version: 1
+journey:
+  name: Source the CV template before building
+  goal: >-
+    Resolve the configured template source (local directory or GitHub repo), obtain a local copy at the chosen version, and hand it to the existing copy+build flow — without the user manually cloning the template.
+  persona: job-seeker
+  job: source-cv-template
+  feeds_journey: generate-cv # this journey precedes generate-cv step 1
+  emotional_arc:
+    start: Slight anxiety — "will it find/fetch the right template, and what if I'm offline?"
+    middle: Focused — watches the source get auto-detected and the clone (or cache hit) resolve
+    end: Confident — a correct template directory is staged; the familiar build proceeds unchanged
+steps:
+  - id: 1
+    name: Configure the template source (one-time)
+    command: 'set [cv] cv_template_path = <local-dir | git-url>; optional cv_template_ref, cv_template_auth, cv_template_cache'
+    shared_artifacts:
+      - name: template_source
+        source: "[cv] cv_template_path (auto-detected: local path vs git URL)"
+        consumers: ["source resolver", "clone/cache key"]
+    emotional_state: {entry: anxious, exit: focused}
+  - id: 2
+    name: Run insert (existing entry point) and auto-detect source type
+    command: rusty_cv_creator insert --job-title "<title>" --company-name "<co>" [--variant <v>]
+    integration_checkpoint: >-
+      cv_template_path classified as LOCAL (path exists / not a git URL) or GITHUB (git@... or https://....git). No new subcommand; sourcing is transparent.
+    failure_modes:
+      - "Value is neither a readable local dir nor a recognisable git URL -> fail fast with hint"
+    emotional_state: {entry: focused, exit: focused}
+  - id: 3
+    name: Obtain a local template directory
+    command: 'LOCAL -> use path directly | GITHUB -> clone/checkout <ref> into cache (or reuse cache)'
+    shared_artifacts:
+      - name: resolved_template_dir
+        source: "local path (LOCAL) | cache/<repo>@<ref> (GITHUB)"
+        consumers: ["copy_dir into dated working copy (existing prepare_path_for_new_cv)"]
+    failure_modes:
+      - "GITHUB fetch fails (offline/auth/bad-url) AND a cached clone exists -> reuse cache (warn)"
+      - "GITHUB fetch fails AND no cache -> abort with actionable hint (auth/network/url)"
+    emotional_state: {entry: focused, exit: focused}
+  - id: 4
+    name: Hand off to the existing build flow (unchanged downstream)
+    command: copy_dir(resolved_template_dir, dated working copy) -> just build <variant> -> file PDF
+    integration_checkpoint: >-
+      Downstream (variant resolve, build, per-year filing) is IDENTICAL to today; this feature only changes how resolved_template_dir is produced.
+    emotional_state: {entry: focused, exit: confident}
+integration_validation:
+  shared_artifact_consistency:
+    - artifact: resolved_template_dir
+      must_match_across: [3, 4]
+      failure_message: "The directory copied into the working copy must be the resolved (local or cached-git) template dir for the configured source+ref."
