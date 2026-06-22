@@ -5,7 +5,6 @@ use std::process::{Command, Stdio};
 /// success plus both streams, so a caller can classify a git failure from its
 /// stderr (auth vs network/offline vs bad-ref). Additive to the port; existing
 /// `status`/`output`/`spawn` call sites are unaffected.
-// SCAFFOLD: true
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CommandOutcome {
@@ -29,18 +28,23 @@ pub trait CommandRunner {
 
     /// UC-1 (feature `template-source`): run `program args...` (optionally in
     /// `cwd`) capturing success + stdout + stderr, so a git failure can be
-    /// classified by inspecting stderr. Additive and backward-compatible — the
-    /// default body is a RED scaffold; existing implementors inherit it without
-    /// change and DELIVER provides the real captures.
-    // SCAFFOLD: true
+    /// classified by inspecting stderr. Additive and backward-compatible —
+    /// implementors that capture stderr (e.g. `SystemRunner`) override this;
+    /// the default is a best-effort delegation to `output` with empty stderr,
+    /// so existing implementors keep compiling without change.
     #[allow(dead_code)]
     fn run_capturing(
         &self,
-        _program: &str,
-        _args: &[&str],
+        program: &str,
+        args: &[&str],
         _cwd: Option<&str>,
     ) -> io::Result<CommandOutcome> {
-        panic!("not yet implemented — RED scaffold (UC-1 stderr capture)")
+        let (success, stdout) = self.output(program, args)?;
+        Ok(CommandOutcome {
+            success,
+            stdout,
+            stderr: String::new(),
+        })
     }
 }
 
@@ -70,11 +74,30 @@ impl CommandRunner for SystemRunner {
             .spawn()?;
         Ok(())
     }
+
+    fn run_capturing(
+        &self,
+        program: &str,
+        args: &[&str],
+        cwd: Option<&str>,
+    ) -> io::Result<CommandOutcome> {
+        let mut cmd = Command::new(program);
+        cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+        if let Some(dir) = cwd {
+            cmd.current_dir(dir);
+        }
+        let out = cmd.output()?;
+        Ok(CommandOutcome {
+            success: out.status.success(),
+            stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        })
+    }
 }
 
 #[cfg(test)]
 pub mod testing {
-    use super::{CommandRunner, io};
+    use super::{CommandOutcome, CommandRunner, io};
     use std::cell::RefCell;
 
     /// A configurable fake runner for tests. Records the programs invoked and
@@ -147,6 +170,25 @@ pub mod testing {
             self.record(program, args);
             self.maybe_err(())
         }
+
+        fn run_capturing(
+            &self,
+            program: &str,
+            args: &[&str],
+            _cwd: Option<&str>,
+        ) -> io::Result<CommandOutcome> {
+            self.record(program, args);
+            let stderr = if self.succeed {
+                String::new()
+            } else {
+                "fatal: could not read from remote repository.".to_string()
+            };
+            self.maybe_err(CommandOutcome {
+                success: self.succeed,
+                stdout: self.stdout.clone(),
+                stderr,
+            })
+        }
     }
 
     #[test]
@@ -176,7 +218,6 @@ mod uc1_specs {
     /// UC-1: a captured run exposes stderr so a git failure can be classified
     /// into a distinct `TemplateSourceError` (auth vs network vs bad-ref).
     #[test]
-    #[ignore = "pending DELIVER — UC-1"]
     fn uc1_run_capturing_exposes_stderr() {
         let runner = FakeRunner::failing();
         let outcome = runner
