@@ -161,6 +161,25 @@ impl AuthMode {
     pub fn from_config(_value: &str) -> Result<AuthMode, TemplateSourceError> {
         panic!("not yet implemented — RED scaffold")
     }
+
+    /// Human-facing name used in error hints (never the secret token value).
+    #[allow(dead_code)]
+    fn hint_name(self) -> &'static str {
+        match self {
+            AuthMode::Auto => "auto",
+            AuthMode::Ssh => "ssh",
+            AuthMode::Token => "token",
+        }
+    }
+
+    /// Infer the transport from the URL scheme: an `git@…`/`ssh://…` remote uses
+    /// the SSH agent, anything else authenticates with a token.
+    fn inferred_from_url(url: &str) -> AuthMode {
+        if url.starts_with("git@") || url.starts_with("ssh://") {
+            return AuthMode::Ssh;
+        }
+        AuthMode::Token
+    }
 }
 
 /// Pure (TS-02/AC2): the extra `git -c` flags needed for `auth` against `url`.
@@ -190,9 +209,35 @@ pub enum TemplateSourceError {
 }
 
 impl std::fmt::Display for TemplateSourceError {
-    // SCAFFOLD: true
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        panic!("not yet implemented — RED scaffold")
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TemplateSourceError::Auth { url, mode } => write!(
+                formatter,
+                "authentication rejected for {url} (auth mode: {}) — \
+                 check your SSH key or that GITHUB_TOKEN is set and authorised",
+                mode.hint_name()
+            ),
+            TemplateSourceError::NetworkOffline { url } => write!(
+                formatter,
+                "could not reach {url} — the network appears offline and \
+                 no usable cached template is available"
+            ),
+            TemplateSourceError::BadRef { url, git_ref } => write!(
+                formatter,
+                "ref '{git_ref}' does not resolve in {url} — aborting \
+                 (no silent fallback to the default branch)"
+            ),
+            TemplateSourceError::NoCache { repo_ref } => write!(
+                formatter,
+                "no cached template for '{repo_ref}' and the fetch failed — \
+                 cannot proceed offline"
+            ),
+            TemplateSourceError::BadValue { value } => write!(
+                formatter,
+                "cv_template_path '{value}' is neither a readable local directory \
+                 nor a git URL"
+            ),
+        }
     }
 }
 
@@ -200,14 +245,44 @@ impl std::error::Error for TemplateSourceError {}
 
 /// Pure (UC-1): map git's stderr to a typed failure class, so auth vs
 /// network/offline vs bad-ref each get a distinct hint (TS-02/AC3, TS-03/AC3).
-// SCAFFOLD: true
 #[allow(dead_code)]
-pub fn classify_git_stderr(
-    _stderr: &str,
-    _url: &str,
-    _git_ref: Option<&str>,
-) -> TemplateSourceError {
-    panic!("not yet implemented — RED scaffold")
+pub fn classify_git_stderr(stderr: &str, url: &str, git_ref: Option<&str>) -> TemplateSourceError {
+    if is_auth_failure(stderr) {
+        return TemplateSourceError::Auth {
+            url: url.to_string(),
+            mode: AuthMode::inferred_from_url(url),
+        };
+    }
+    if is_bad_ref(stderr) {
+        return TemplateSourceError::BadRef {
+            url: url.to_string(),
+            git_ref: git_ref.unwrap_or_default().to_string(),
+        };
+    }
+    // Network/offline is the residual class: an unreachable host or an
+    // otherwise-unrecognised transport failure means the remote is unusable.
+    TemplateSourceError::NetworkOffline {
+        url: url.to_string(),
+    }
+}
+
+/// True when git's stderr signals an authentication rejection (SSH publickey or
+/// token/credential failure) — TS-02/AC3.
+fn is_auth_failure(stderr: &str) -> bool {
+    stderr.contains("Permission denied (publickey)")
+        || stderr.contains("Authentication failed")
+        || stderr.contains("could not read Username")
+        || stderr.contains("Invalid username or password")
+}
+
+/// True when git's stderr signals an unresolvable ref/pathspec — TS-03/AC3. The
+/// resolver aborts on this; it must never silently fall back to the default
+/// branch.
+fn is_bad_ref(stderr: &str) -> bool {
+    stderr.contains("couldn't find remote ref")
+        || stderr.contains("did not match any file(s) known to git")
+        || stderr.contains("Remote branch")
+        || stderr.contains("not found in upstream")
 }
 
 /// Pure reuse-vs-fetch-vs-abort decision (TS-D2, TS-04). A total function over
@@ -451,7 +526,6 @@ mod distill_specs {
     /// TS-02/AC3: an auth-failure stderr is classified as a distinct `Auth` error
     /// (separate from a network/offline error).
     #[test]
-    #[ignore = "pending DELIVER — TS-02"]
     fn ts02_ac3_auth_failure_stderr_classified_as_auth() {
         let err = classify_git_stderr(
             "git@github.com: Permission denied (publickey).",
@@ -492,7 +566,6 @@ mod distill_specs {
     /// TS-03/AC3: an unknown ref is classified as `BadRef` — the resolver aborts,
     /// it does NOT silently fall back to the default branch.
     #[test]
-    #[ignore = "pending DELIVER — TS-03"]
     fn ts03_ac3_bad_ref_classified_no_silent_fallback() {
         let err = classify_git_stderr(
             "fatal: couldn't find remote ref does-not-exist",
