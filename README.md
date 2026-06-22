@@ -9,7 +9,12 @@
 
 *✨ The blazingly fast, memory-safe CV generator that turns your LaTeX dreams into reality ✨*
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Configuration](#-configuration) • [Usage](#-usage) • [Contributing](#-contributing)
+[Features](#-features) •
+[Installation](#-installation) •
+[Quick Start](#-quick-start) •
+[Configuration](#-configuration) •
+[Usage](#-usage) •
+[Contributing](#-contributing)
 
 </div>
 
@@ -17,9 +22,12 @@
 
 ## 📖 Overview
 
-**Rusty CV Creator** is a powerful command-line tool written in Rust that automates the process of generating personalized CVs for job applications. Say goodbye to manually editing LaTeX templates for every application! 🎯
+**Rusty CV Creator** is a powerful command-line tool written in Rust that
+automates the process of generating personalized CVs for job applications.
+Say goodbye to manually editing LaTeX templates for every application! 🎯
 
 Instead of spending hours tweaking your CV for each position, Rusty CV Creator:
+
 - 📋 **Templates** your CV with placeholders
 - 🔄 **Replaces** job-specific information automatically
 - 🎨 **Compiles** LaTeX to beautiful PDFs
@@ -31,13 +39,15 @@ Perfect for job seekers who want to maintain consistency while customizing their
 ## ✨ Features
 
 ### 🚀 Core Functionality
+
 - **🎯 Smart CV Generation**: Automatically customize CVs for specific companies and positions
-- **📝 LaTeX Integration**: Full LaTeX/XeLaTeX compilation support for professional-quality output  
+- **📝 LaTeX Integration**: Full LaTeX/XeLaTeX compilation support for professional-quality output
 - **🗄️ Database Management**: Track all your applications with SQLite/PostgreSQL support
 - **📂 Intelligent Organization**: Automatic directory structure and file naming
 - **🔍 Application Search**: Filter and find previous applications with advanced queries
 
-### 🛠️ Technical Excellence  
+### 🛠️ Technical Excellence
+
 - **⚡ Blazingly Fast**: Written in Rust for maximum performance
 - **🛡️ Memory Safe**: Zero-cost abstractions with compile-time guarantees
 - **🔧 Configurable**: INI-based configuration system
@@ -45,6 +55,7 @@ Perfect for job seekers who want to maintain consistency while customizing their
 - **🎨 Template-driven**: Flexible placeholder-based template system
 
 ### 🎛️ Command-Line Interface
+
 - **🔧 CRUD Operations**: Create, read, update, and delete CV records
 - **📋 Interactive Selection**: Fuzzy-finding with skim integration
 - **👁️ Preview Support**: Optional PDF viewer integration
@@ -88,7 +99,7 @@ Create your configuration file at `~/.config/rusty-cv-creator/rusty-cv-config.in
 [destination]
 cv_path = "~/Documents/CVs"
 
-[cv]  
+[cv]
 cv_template_path = "~/Documents/cv-template"
 cv_template_file = "cv.tex"
 
@@ -130,11 +141,11 @@ rusty_cv_creator insert "ACME Corporation" "Senior Rust Developer" "Passionate a
 # View the generated CV
 rusty_cv_creator insert "TechCorp" "Software Engineer" "Love building reliable software" --view-generated-cv
 
-# Dry run (test without creating files)  
+# Dry run (test without creating files)
 rusty_cv_creator insert "StartupCo" "Backend Engineer" "Excited about scaling challenges" --dry-run
 ```
 
-## 🛠️ Configuration
+## 🔧 Configuration
 
 ### Database Setup
 
@@ -144,11 +155,12 @@ Set your database URL in your environment or `.env` file:
 # SQLite (recommended for single user)
 echo "DATABASE_URL=sqlite://$HOME/.config/rusty-cv-creator/applications.db" > .env
 
-# PostgreSQL (for advanced users)  
+# PostgreSQL (for advanced users)
 echo "DATABASE_URL=postgresql://user:password@localhost/cv_db" > .env
 ```
 
 Initialize the database:
+
 ```bash
 diesel setup
 diesel migration run
@@ -157,12 +169,47 @@ diesel migration run
 ### Template Structure
 
 Your CV template directory should contain:
-```
+
+```text
 cv-template/
 ├── cv.tex              # Main template file
 ├── assets/              # Images, fonts, etc.
 └── bibliography.bib     # References (optional)
 ```
+
+### Git Template Source
+
+`cv_template_path` accepts either a local directory (used as-is, the default
+behaviour) or a git URL, which is cloned into a local cache and reused on later
+runs. Three optional `[cv]` keys tune the git source:
+
+| Key | Values | Default | Purpose |
+| --- | --- | --- | --- |
+| `cv_template_ref` | branch / tag / SHA | default branch | Pin the template to a specific ref (no fallback). |
+| `cv_template_auth` | `auto` / `ssh` / `token` | `auto` | Select the clone transport. |
+| `cv_template_cache` | directory path | `~/.cache/rusty-cv-creator/templates` | Where clones are cached and reused offline. |
+
+```ini
+[cv]
+cv_template_path = "git@github.com:you/cv.git"
+cv_template_ref = "v2.1"
+cv_template_auth = "auto"
+cv_template_cache = "~/.cache/rusty-cv-creator/templates"
+```
+
+When `cv_template_auth = "token"` (or `auto` resolves to token for an HTTPS
+remote), the token is read **only** from the `GITHUB_TOKEN` environment
+variable and fed to git through an askpass helper. It is never written to the
+INI file, the git command line, or the cached repository:
+
+```bash
+export GITHUB_TOKEN="ghp_your_personal_access_token"
+```
+
+If the remote is unreachable and a cached clone exists, it is reused with a
+warning; if no cache exists, the run aborts rather than producing a partial CV.
+An unresolvable `cv_template_ref` also aborts — there is no silent fallback to
+the default branch.
 
 ## 📚 Usage
 
@@ -181,7 +228,7 @@ rusty_cv_creator list --company "ACME" --job "Engineer" --date "2024"
 # Remove an application (interactive selection)
 rusty_cv_creator remove --company "OldCorp"
 
-# Update application details  
+# Update application details
 rusty_cv_creator update --job "Senior Developer"
 ```
 
@@ -218,7 +265,7 @@ rusty_cv_creator list --date "2024-01"
 
 Rusty CV Creator automatically organizes your files:
 
-```
+```text
 ~/Documents/CVs/
 ├── 2024/
 │   ├── 2024-01-15_ACME-Corp_Senior-Rust-Developer.pdf
@@ -236,7 +283,7 @@ Run the comprehensive test suite:
 # Unit tests
 cargo test
 
-# Integration tests  
+# Integration tests
 cargo test --test integration_tests
 
 # With coverage
@@ -245,7 +292,7 @@ cargo tarpaulin --out Html
 
 ## 🏗️ Architecture
 
-```
+```text
 src/
 ├── main.rs              # Application entry point
 ├── cli_structure.rs     # Command-line interface definitions
@@ -264,12 +311,15 @@ src/
 We love contributions! Here's how you can help:
 
 ### 🐛 Found a Bug?
+
 Open an [issue](https://github.com/chess-seventh/rusty_cv_creator/issues) with:
+
 - Clear description of the problem
 - Steps to reproduce
 - Your environment details
 
 ### 💡 Have an Idea?
+
 - Check existing [issues](https://github.com/chess-seventh/rusty_cv_creator/issues) first
 - Open a new issue tagged with `enhancement`
 - Describe your use case and proposed solution
@@ -316,7 +366,7 @@ cargo test
 
 ## 🌟 Roadmap
 
-- [ ] **Web Interface**: Browser-based CV management 
+- [ ] **Web Interface**: Browser-based CV management
 - [ ] **Template Gallery**: Community-contributed templates
 - [ ] **Cloud Storage**: Google Drive/Dropbox integration
 - [ ] **Multiple Formats**: Support for Word, HTML, Markdown output
@@ -331,7 +381,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **[Diesel](https://diesel.rs)** - Safe, extensible ORM for Rust
-- **[Clap](https://clap.rs)** - Command line argument parser  
+- **[Clap](https://clap.rs)** - Command line argument parser
 - **[Skim](https://github.com/lotabout/skim)** - Fuzzy finder in Rust
 - **[Chrono](https://github.com/chronotope/chrono)** - Date and time library
 - **LaTeX Community** - For the amazing typesetting system

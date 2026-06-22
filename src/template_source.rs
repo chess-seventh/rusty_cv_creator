@@ -15,7 +15,7 @@
 
 use crate::command_runner::{CommandOutcome, CommandRunner};
 use crate::helpers::ensure_tools_available;
-use log::info;
+use log::{info, warn};
 use std::fs;
 use std::path::Path;
 
@@ -64,22 +64,11 @@ impl GitHubRepository {
         }
     }
 
-    /// Deterministic per-repository sub-directory of the cache dir. Cache keying
-    /// by ref and reuse-on-failure are later slices (TS-03 / TS-04); the skeleton
-    /// always clones fresh into this location.
+    /// Deterministic per-`repo@ref` sub-directory of the cache dir, shared with
+    /// [`TemplateCache::cache_key`] so a cache probe and a clone address the same
+    /// entry. An unset ref folds to the shared default-branch slot.
     fn clone_destination(&self) -> String {
-        let sanitized: String = self
-            .url
-            .chars()
-            .map(|character| {
-                if character.is_ascii_alphanumeric() {
-                    character
-                } else {
-                    '_'
-                }
-            })
-            .collect();
-        format!("{}/{sanitized}", self.cache_dir)
+        TemplateCache::new(self.cache_dir.clone()).entry_path(&self.url, self.git_ref.as_deref())
     }
 }
 
@@ -141,19 +130,48 @@ fn is_git_url(value: &str) -> bool {
         || (value.starts_with("https://") && value.ends_with(".git"))
 }
 
+/// Production resolver entry (step 04-02): resolve the configured
+/// `cv_template_path` to a local template directory, threading the optional
+/// `cv_template_ref` (TS-03), `cv_template_auth` (TS-02) and the cache dir
+/// (TS-04) for git sources. A local directory is an unchanged passthrough
+/// (TS-01/AC2); a git URL resolves through the cache executor (probe → decide →
+/// clone / fetch / reuse-stale / abort). Anything else is rejected by
+/// [`detect_template_source`], naming the offending value (TS-01/AC3).
+pub fn resolve_template_for_config(
+    value: &str,
+    cache_dir: &str,
+    git_ref: Option<&str>,
+    auth: AuthMode,
+    runner: &dyn CommandRunner,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Local-dir precedence matches `detect_template_source`: only a non-directory
+    // value that parses as a git URL takes the enriched (ref/auth/cache) path.
+    if !Path::new(value).is_dir() && is_git_url(value) {
+        // ADR-0004 pre-usage check: fail fast with a devenv hint if git is absent.
+        ensure_tools_available(&["git"])?;
+        let mut repository =
+            GitHubRepository::new(value.to_string(), cache_dir.to_string()).with_auth(auth);
+        if let Some(reference) = git_ref {
+            repository = repository.with_ref(reference);
+        }
+        let cache = TemplateCache::new(cache_dir.to_string());
+        return Ok(repository.resolve_cached(runner, &cache)?);
+    }
+    // Local-dir passthrough and the BadValue error stay with the classifier.
+    detect_template_source(value, cache_dir)?.resolve(runner)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// DISTILL RED scaffolds — slices TS-02 (auth), TS-03 (ref pinning),
-// TS-04 (cache/offline) and TS-D1 (typed errors). ADDITIVE ONLY: the green
-// skeleton above (`LocalDirectory`, `GitHubRepository::new`/`resolve`,
-// `detect_template_source`, `is_git_url`) is untouched. Every body `panic!`s so
-// the pending specs in `mod distill_specs` classify RED (not BROKEN). DELIVER
-// replaces these bodies. Detect markers: `// SCAFFOLD: true`.
+// Auth (TS-02), ref pinning (TS-03), cache / offline (TS-04) and typed errors
+// (TS-D1) — wired into the production resolver `resolve_template_for_config`
+// above (consumed by `file_handlers::prepare_path_for_new_cv`). The skeleton
+// happy path (`LocalDirectory`, `GitHubRepository::new`/`resolve`,
+// `detect_template_source`, `is_git_url`) is unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Auth transport (TS-D3, TS-02). Inferred from the URL scheme by default;
 /// `token` reads `GITHUB_TOKEN` from the environment and feeds git via
 /// `core.askpass` — never the INI, the argv, or the cache `.git/config`.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AuthMode {
     Auto,
@@ -165,7 +183,6 @@ impl AuthMode {
     /// Parse the optional `[cv] cv_template_auth` value (`auto|ssh|token`). An
     /// unknown value fails fast as a typed `TemplateSourceError::BadValue`
     /// naming the offending value — never a silent default (TS-02/AC3).
-    #[allow(dead_code)]
     pub fn from_config(value: &str) -> Result<AuthMode, TemplateSourceError> {
         match value {
             "auto" => Ok(AuthMode::Auto),
@@ -178,7 +195,6 @@ impl AuthMode {
     }
 
     /// Human-facing name used in error hints (never the secret token value).
-    #[allow(dead_code)]
     fn hint_name(self) -> &'static str {
         match self {
             AuthMode::Auto => "auto",
@@ -213,7 +229,6 @@ const ASKPASS_HELPER: &str = "git-askpass-from-env";
 ///   (SPIKE-proven against the real private repo).
 /// * `Token` routes through a `core.askpass` helper that reads `GITHUB_TOKEN`
 ///   from the environment; the secret VALUE never appears in the returned flags.
-#[allow(dead_code)]
 pub fn auth_invocation_flags(auth: AuthMode, url: &str) -> Vec<String> {
     match auth {
         AuthMode::Auto => auth_invocation_flags(AuthMode::inferred_from_url(url), url),
@@ -224,7 +239,6 @@ pub fn auth_invocation_flags(auth: AuthMode, url: &str) -> Vec<String> {
 
 /// Typed failure classes (TS-D1). Distinct variants so the resolver emits a
 /// distinct actionable hint per failure by `match`, never by string-compare.
-#[allow(dead_code)]
 #[derive(Debug)]
 pub enum TemplateSourceError {
     /// Auth rejected (e.g. SSH publickey / bad token) — TS-02/AC3.
@@ -276,7 +290,6 @@ impl std::error::Error for TemplateSourceError {}
 
 /// Pure (UC-1): map git's stderr to a typed failure class, so auth vs
 /// network/offline vs bad-ref each get a distinct hint (TS-02/AC3, TS-03/AC3).
-#[allow(dead_code)]
 pub fn classify_git_stderr(stderr: &str, url: &str, git_ref: Option<&str>) -> TemplateSourceError {
     if is_auth_failure(stderr) {
         return TemplateSourceError::Auth {
@@ -318,7 +331,6 @@ fn is_bad_ref(stderr: &str) -> bool {
 
 /// Pure reuse-vs-fetch-vs-abort decision (TS-D2, TS-04). A total function over
 /// (cache-entry-present, remote-reachable) — never panics once implemented.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CacheAction {
     /// No entry yet — full clone.
@@ -333,13 +345,11 @@ pub enum CacheAction {
 
 /// Owns cache-key derivation and the pure cache decision (TS-D2). Only the
 /// executor writes, and its write universe is bounded to the cache dir.
-#[allow(dead_code)]
 pub struct TemplateCache {
     cache_dir: String,
 }
 
 impl TemplateCache {
-    #[allow(dead_code)]
     pub fn new(cache_dir: String) -> Self {
         Self { cache_dir }
     }
@@ -349,7 +359,6 @@ impl TemplateCache {
     /// sanitised (non-alphanumerics fold to `_`) and joined with `@`; an unset
     /// ref folds to one shared default-branch slot, so every default-branch
     /// resolve of a repository addresses the same entry.
-    #[allow(dead_code)]
     pub fn cache_key(&self, url: &str, git_ref: Option<&str>) -> String {
         let repository = sanitize_key_component(url);
         let reference = git_ref
@@ -358,11 +367,17 @@ impl TemplateCache {
         format!("{repository}@{reference}")
     }
 
+    /// Absolute cache entry directory for `repo@ref`: the cache dir joined with
+    /// the deterministic [`cache_key`](Self::cache_key). A cache probe and a clone
+    /// address the same entry through this single derivation.
+    pub fn entry_path(&self, url: &str, git_ref: Option<&str>) -> String {
+        format!("{}/{}", self.cache_dir, self.cache_key(url, git_ref))
+    }
+
     /// Pure decision over (entry-exists, remote-reachable) — the TS-04 matrix.
     /// Total: every point of the 2×2 boolean universe maps to exactly one
     /// [`CacheAction`], so the decision is DATA (a value to act on later), never
     /// an in-line side effect.
-    #[allow(dead_code)]
     pub fn decide(&self, entry_exists: bool, remote_reachable: bool) -> CacheAction {
         match (entry_exists, remote_reachable) {
             (false, true) => CacheAction::Clone,
@@ -396,7 +411,6 @@ fn sanitize_key_component(value: &str) -> String {
 impl GitHubRepository {
     /// Pin the template to a branch/tag/SHA (TS-03). Additive builder; the
     /// skeleton's default-branch `new`/`resolve` are unchanged.
-    #[allow(dead_code)]
     pub fn with_ref(mut self, git_ref: &str) -> Self {
         self.git_ref = Some(git_ref.to_string());
         self
@@ -404,31 +418,98 @@ impl GitHubRepository {
 
     /// Select the auth transport (TS-02). Additive builder; the skeleton's
     /// default-branch `new`/`resolve` are unchanged.
-    #[allow(dead_code)]
     pub fn with_auth(mut self, auth: AuthMode) -> Self {
         self.auth = auth;
         self
     }
 
-    /// Resolve with auth-routed clone and typed failure classification
-    /// (TS-02). Distinct from the skeleton's `resolve`, which stays the green
-    /// default-branch happy path (TS-01/AC1).
+    /// Cache-aware resolution (TS-04, step 04-02 executor): probe remote
+    /// reachability, decide via [`TemplateCache::decide`], then perform the chosen
+    /// [`CacheAction`] against the cache entry:
     ///
-    /// Cache reuse (TS-04) wiring lands in a later slice. Here it prepends the
-    /// auth flags to the git invocation through `CommandRunner` and classifies a
-    /// clone failure from its captured stderr. The SSH path adds no askpass flag
-    /// — the agent is inherited. When a ref is pinned (TS-03) the cloned repo is
-    /// explicitly checked out at that ref and its resolved SHA logged; an
-    /// unresolvable ref aborts via `BadRef` with NO silent default-branch
-    /// fallback. An unset ref preserves the skeleton's default-branch resolve.
-    #[allow(dead_code)]
+    /// * `Clone`         — no entry yet: a fresh auth-routed clone + ref checkout.
+    /// * `FetchCheckout` — entry present and remote reachable: fetch then
+    ///   re-checkout the pinned ref (the perf lever).
+    /// * `ReuseStale`    — remote unreachable but a usable entry exists: reuse it
+    ///   offline with a warning.
+    /// * `Abort`         — remote unreachable and no entry: fail fast as `NoCache`
+    ///   (no partial CV).
+    pub fn resolve_cached(
+        &self,
+        runner: &dyn CommandRunner,
+        cache: &TemplateCache,
+    ) -> Result<String, TemplateSourceError> {
+        let entry = self.clone_destination();
+        let entry_exists = Path::new(&entry).is_dir();
+        let remote_reachable = self.remote_reachable(runner);
+
+        match cache.decide(entry_exists, remote_reachable) {
+            CacheAction::Clone => self.resolve_classified(runner),
+            CacheAction::FetchCheckout => self.fetch_existing_entry(runner, &entry),
+            CacheAction::ReuseStale => {
+                warn!("⚠️  Offline — reusing the cached template at {entry} (it may be stale)");
+                Ok(entry)
+            }
+            CacheAction::Abort => Err(TemplateSourceError::NoCache {
+                repo_ref: cache.cache_key(&self.url, self.git_ref.as_deref()),
+            }),
+        }
+    }
+
+    /// Probe whether the remote is reachable under the configured auth by listing
+    /// its refs. A captured io failure or a non-zero exit reads as unreachable, so
+    /// the cache decision falls back to reuse-or-abort (TS-04).
+    fn remote_reachable(&self, runner: &dyn CommandRunner) -> bool {
+        let flags = auth_invocation_flags(self.auth, &self.url);
+        let mut args: Vec<&str> = flags.iter().map(String::as_str).collect();
+        args.push("ls-remote");
+        args.push(&self.url);
+        runner
+            .run_capturing("git", &args, None)
+            .map(|outcome| outcome.success)
+            .unwrap_or(false)
+    }
+
+    /// Update an existing cache entry (remote reachable): fetch, then re-checkout
+    /// the pinned ref. A fetch or checkout failure is classified from its captured
+    /// stderr — never a silent fallback (TS-03/AC3).
+    fn fetch_existing_entry(
+        &self,
+        runner: &dyn CommandRunner,
+        entry: &str,
+    ) -> Result<String, TemplateSourceError> {
+        let fetch = runner
+            .run_capturing("git", &["fetch", "--prune", "--tags"], Some(entry))
+            .map_err(|_| TemplateSourceError::NetworkOffline {
+                url: self.url.clone(),
+            })?;
+        if !fetch.success {
+            return Err(classify_git_stderr(
+                &fetch.stderr,
+                &self.url,
+                self.git_ref.as_deref(),
+            ));
+        }
+        if let Some(git_ref) = &self.git_ref {
+            self.checkout_pinned_ref(runner, entry, git_ref)?;
+        }
+        Ok(entry.to_string())
+    }
+
+    /// Resolve with an auth-routed clone and typed failure classification (TS-02 /
+    /// TS-03). Prepares the destination (fresh parent dir, no stale clone), clones
+    /// with the auth flags through `CommandRunner`, classifies a failure from
+    /// captured stderr, then — when a ref is pinned — checks it out and logs the
+    /// resolved SHA, aborting via `BadRef` with NO silent default-branch fallback.
+    /// The SSH path adds no askpass flag — the agent is inherited.
     pub fn resolve_classified(
         &self,
         runner: &dyn CommandRunner,
     ) -> Result<String, TemplateSourceError> {
-        let flags = auth_invocation_flags(self.auth, &self.url);
         let destination = self.clone_destination();
+        self.prepare_destination(&destination)?;
 
+        let flags = auth_invocation_flags(self.auth, &self.url);
         let mut args: Vec<&str> = flags.iter().map(String::as_str).collect();
         args.push("clone");
         args.push(&self.url);
@@ -449,6 +530,22 @@ impl GitHubRepository {
         }
 
         Ok(destination)
+    }
+
+    /// Ensure the cache entry's parent exists and no stale clone occupies the
+    /// destination, so a fresh `git clone` into it always succeeds. A filesystem
+    /// failure maps to `NetworkOffline` — the clone cannot proceed.
+    fn prepare_destination(&self, destination: &str) -> Result<(), TemplateSourceError> {
+        let offline = || TemplateSourceError::NetworkOffline {
+            url: self.url.clone(),
+        };
+        if Path::new(destination).exists() {
+            fs::remove_dir_all(destination).map_err(|_| offline())?;
+        }
+        if let Some(parent) = Path::new(destination).parent() {
+            fs::create_dir_all(parent).map_err(|_| offline())?;
+        }
+        Ok(())
     }
 
     /// Explicitly check out `git_ref` in the freshly cloned `destination`, then

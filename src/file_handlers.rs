@@ -2,7 +2,7 @@ use crate::command_runner::CommandRunner;
 use crate::config_parse::get_variable_from_config_file;
 use crate::global_conf::AppContext;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
-use crate::template_source::detect_template_source;
+use crate::template_source::{AuthMode, resolve_template_for_config};
 use chrono::{DateTime, Local};
 use log::{error, info, warn};
 use std::fs;
@@ -221,11 +221,21 @@ fn prepare_path_for_new_cv(
     let configured_template: String = fix_home_directory_path(&var);
 
     // D1/D7: auto-detect a local dir vs a git URL and resolve to a local dir.
-    // For a git source this clones into the cache via the CommandRunner port; for
-    // a local dir it is an unchanged passthrough (backward compat, TS-01/AC2).
+    // A git source resolves through the cache executor (probe → decide →
+    // clone / fetch / reuse-stale / abort), threading the optional ref (TS-03)
+    // and auth (TS-02). A local dir is an unchanged passthrough (backward compat,
+    // TS-01/AC2). For token auth the secret is read from the GITHUB_TOKEN
+    // environment variable via the askpass indirection — never from the INI.
     let cache_dir = resolve_template_cache_dir(ctx);
-    let source = detect_template_source(&configured_template, &cache_dir)?;
-    let cv_template_path = source.resolve(runner)?;
+    let git_ref = get_variable_from_config_file(ctx, "cv", "cv_template_ref").ok();
+    let auth = resolve_template_auth(ctx)?;
+    let cv_template_path = resolve_template_for_config(
+        &configured_template,
+        &cache_dir,
+        git_ref.as_deref(),
+        auth,
+        runner,
+    )?;
 
     let formatted_job_title = sanitize_for_path(job_title);
     let formatted_company_name = sanitize_for_path(company_name);
@@ -247,6 +257,17 @@ fn prepare_path_for_new_cv(
 fn resolve_template_cache_dir(ctx: &AppContext) -> String {
     get_variable_from_config_file(ctx, "cv", "cv_template_cache")
         .unwrap_or_else(|_| fix_home_directory_path("~/.cache/rusty-cv-creator/templates"))
+}
+
+/// Resolve the auth transport from the optional `[cv] cv_template_auth` key
+/// (`auto|ssh|token`); an absent key defaults to `auto`. The secret token itself
+/// is never read from the INI — only from the `GITHUB_TOKEN` environment variable
+/// via the askpass indirection (ADR-0008).
+fn resolve_template_auth(ctx: &AppContext) -> Result<AuthMode, Box<dyn std::error::Error>> {
+    match get_variable_from_config_file(ctx, "cv", "cv_template_auth") {
+        Ok(value) => Ok(AuthMode::from_config(&value)?),
+        Err(_) => Ok(AuthMode::Auto),
+    }
 }
 
 fn prepare_year_dir(destination_folder: &String, now: &DateTime<Local>) -> Result<String, Error> {
