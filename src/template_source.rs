@@ -345,19 +345,52 @@ impl TemplateCache {
     }
 
     /// Deterministic sanitised cache key for `repo@ref`. Pure — same input maps
-    /// to the same key (PBT in `mod distill_specs`).
-    // SCAFFOLD: true
+    /// to the same key (PBT in `mod distill_specs`). The url and ref are each
+    /// sanitised (non-alphanumerics fold to `_`) and joined with `@`; an unset
+    /// ref folds to one shared default-branch slot, so every default-branch
+    /// resolve of a repository addresses the same entry.
     #[allow(dead_code)]
-    pub fn cache_key(&self, _url: &str, _git_ref: Option<&str>) -> String {
-        panic!("not yet implemented — RED scaffold")
+    pub fn cache_key(&self, url: &str, git_ref: Option<&str>) -> String {
+        let repository = sanitize_key_component(url);
+        let reference = git_ref
+            .map(sanitize_key_component)
+            .unwrap_or_else(|| DEFAULT_REF_SLOT.to_string());
+        format!("{repository}@{reference}")
     }
 
     /// Pure decision over (entry-exists, remote-reachable) — the TS-04 matrix.
-    // SCAFFOLD: true
+    /// Total: every point of the 2×2 boolean universe maps to exactly one
+    /// [`CacheAction`], so the decision is DATA (a value to act on later), never
+    /// an in-line side effect.
     #[allow(dead_code)]
-    pub fn decide(&self, _entry_exists: bool, _remote_reachable: bool) -> CacheAction {
-        panic!("not yet implemented — RED scaffold")
+    pub fn decide(&self, entry_exists: bool, remote_reachable: bool) -> CacheAction {
+        match (entry_exists, remote_reachable) {
+            (false, true) => CacheAction::Clone,
+            (true, true) => CacheAction::FetchCheckout,
+            (true, false) => CacheAction::ReuseStale,
+            (false, false) => CacheAction::Abort,
+        }
     }
+}
+
+/// Cache slot addressed when no explicit ref is pinned: every default-branch
+/// resolve of a repository folds to this one deterministic entry (TS-04 key).
+const DEFAULT_REF_SLOT: &str = "default";
+
+/// Fold an arbitrary url/ref fragment to a filesystem-safe, deterministic slug
+/// by replacing every non-alphanumeric character with `_`. Same input always
+/// yields the same slug — this is what makes [`TemplateCache::cache_key`] pure.
+fn sanitize_key_component(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() {
+                character
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 impl GitHubRepository {
@@ -716,7 +749,6 @@ mod distill_specs {
     /// TS-04/AC1+AC2+AC3: the reuse-vs-fetch-vs-abort decision is total over
     /// (cache-entry-present, remote-reachable).
     #[test]
-    #[ignore = "pending DELIVER — TS-04"]
     fn ts04_cache_action_matrix() {
         let cache = TemplateCache::new("/unused/cache".into());
         assert_eq!(cache.decide(false, true), CacheAction::Clone); // AC3: fresh clone
@@ -729,7 +761,6 @@ mod distill_specs {
     /// A repository and ref map to one deterministic cache entry (same input →
     /// same key).
     #[test]
-    #[ignore = "pending DELIVER — TS-04"]
     fn ts04_cache_key_is_deterministic() {
         use proptest::prelude::*;
         let cache = TemplateCache::new("/unused/cache".into());
