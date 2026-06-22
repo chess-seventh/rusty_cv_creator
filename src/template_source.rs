@@ -251,6 +251,9 @@ pub enum TemplateSourceError {
     NoCache { repo_ref: String },
     /// Value is neither a readable directory nor a git URL — TS-01/AC3.
     BadValue { value: String },
+    /// A local filesystem operation on the cache entry failed (permissions,
+    /// full disk, …) — distinct from a network failure so the hint is accurate.
+    Io { url: String, detail: String },
 }
 
 impl std::fmt::Display for TemplateSourceError {
@@ -282,6 +285,11 @@ impl std::fmt::Display for TemplateSourceError {
                 "cv_template_path '{value}' is neither a readable local directory \
                  nor a git URL"
             ),
+            TemplateSourceError::Io { url, detail } => write!(
+                formatter,
+                "could not prepare the local cache for {url}: {detail} — \
+                 check directory permissions and available disk space"
+            ),
         }
     }
 }
@@ -297,11 +305,18 @@ pub fn classify_git_stderr(stderr: &str, url: &str, git_ref: Option<&str>) -> Te
             mode: AuthMode::inferred_from_url(url),
         };
     }
-    if is_bad_ref(stderr) {
-        return TemplateSourceError::BadRef {
-            url: url.to_string(),
-            git_ref: git_ref.unwrap_or_default().to_string(),
-        };
+    // A bad-ref stderr only classifies as `BadRef` when a ref was actually
+    // pinned. A no-ref clone failing with a ref-ish message (e.g. a missing repo
+    // or access problem) is a bad-URL / network class, not a ref problem — so it
+    // falls through to `NetworkOffline` rather than emitting a confusing "ref ''"
+    // message (LOW 3).
+    if let Some(reference) = git_ref {
+        if is_bad_ref(stderr) {
+            return TemplateSourceError::BadRef {
+                url: url.to_string(),
+                git_ref: reference.to_string(),
+            };
+        }
     }
     // Network/offline is the residual class: an unreachable host or an
     // otherwise-unrecognised transport failure means the remote is unusable.
@@ -471,15 +486,20 @@ impl GitHubRepository {
     }
 
     /// Update an existing cache entry (remote reachable): fetch, then re-checkout
-    /// the pinned ref. A fetch or checkout failure is classified from its captured
+    /// the pinned ref. The fetch is auth-routed the same way as the clone/probe —
+    /// an HTTPS+token cache refresh would otherwise fail auth (the SSH agent path
+    /// adds no flags). A fetch or checkout failure is classified from its captured
     /// stderr — never a silent fallback (TS-03/AC3).
     fn fetch_existing_entry(
         &self,
         runner: &dyn CommandRunner,
         entry: &str,
     ) -> Result<String, TemplateSourceError> {
+        let flags = auth_invocation_flags(self.auth, &self.url);
+        let mut args: Vec<&str> = flags.iter().map(String::as_str).collect();
+        args.extend_from_slice(&["fetch", "--prune", "--tags"]);
         let fetch = runner
-            .run_capturing("git", &["fetch", "--prune", "--tags"], Some(entry))
+            .run_capturing("git", &args, Some(entry))
             .map_err(|_| TemplateSourceError::NetworkOffline {
                 url: self.url.clone(),
             })?;
@@ -522,7 +542,11 @@ impl GitHubRepository {
         })?;
 
         if !outcome.success {
-            return Err(classify_git_stderr(&outcome.stderr, &self.url, None));
+            return Err(classify_git_stderr(
+                &outcome.stderr,
+                &self.url,
+                self.git_ref.as_deref(),
+            ));
         }
 
         if let Some(git_ref) = &self.git_ref {
@@ -534,16 +558,18 @@ impl GitHubRepository {
 
     /// Ensure the cache entry's parent exists and no stale clone occupies the
     /// destination, so a fresh `git clone` into it always succeeds. A filesystem
-    /// failure maps to `NetworkOffline` — the clone cannot proceed.
+    /// failure (permissions, full disk, …) maps to a distinct `Io` error carrying
+    /// the real io detail — never the misleading `NetworkOffline` hint (LOW 1).
     fn prepare_destination(&self, destination: &str) -> Result<(), TemplateSourceError> {
-        let offline = || TemplateSourceError::NetworkOffline {
+        let io = |error: std::io::Error| TemplateSourceError::Io {
             url: self.url.clone(),
+            detail: error.to_string(),
         };
         if Path::new(destination).exists() {
-            fs::remove_dir_all(destination).map_err(|_| offline())?;
+            fs::remove_dir_all(destination).map_err(io)?;
         }
         if let Some(parent) = Path::new(destination).parent() {
-            fs::create_dir_all(parent).map_err(|_| offline())?;
+            fs::create_dir_all(parent).map_err(io)?;
         }
         Ok(())
     }
@@ -712,6 +738,69 @@ mod tests {
             Err(err) => assert!(err.to_string().contains("not-a-dir-nor-url")),
         }
     }
+
+    // ── Direct coverage of the PRODUCTION resolver `resolve_classified` ──────
+    // (the skeleton `resolve` above is auth/cache/ref-UNAWARE). These assert the
+    // auth-flag assembly and the stderr→TemplateSourceError classification that
+    // the production git path actually exercises.
+
+    /// Token auth assembles `-c core.askpass=…` into the recorded clone argv.
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_classified_token_auth_wires_askpass_into_clone() {
+        let td = TempDir::new().unwrap();
+        let cache = td.path().to_str().unwrap().to_string();
+        let source = GitHubRepository::new("https://github.com/chess-seventh/cv.git".into(), cache)
+            .with_auth(AuthMode::Token);
+        let runner = FakeRunner::ok();
+
+        source.resolve_classified(&runner).unwrap();
+
+        let recorded = &runner.calls.borrow()[0];
+        assert!(
+            recorded.contains("-c core.askpass=") && recorded.contains("clone"),
+            "token clone must carry the askpass flag: {recorded}"
+        );
+    }
+
+    /// An auth-failure stderr from the clone classifies as `Auth`.
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_classified_auth_failure_stderr_maps_to_auth_error() {
+        let td = TempDir::new().unwrap();
+        let cache = td.path().to_str().unwrap().to_string();
+        let source = GitHubRepository::new("https://github.com/chess-seventh/cv.git".into(), cache)
+            .with_auth(AuthMode::Token);
+        let runner = FakeRunner::failing_with_stderr(
+            "remote: Invalid username or password.\nfatal: Authentication failed",
+        );
+
+        let err = source.resolve_classified(&runner).unwrap_err();
+        assert!(
+            matches!(err, TemplateSourceError::Auth { .. }),
+            "auth-failure stderr must classify as Auth, got: {err:?}"
+        );
+    }
+
+    /// A bad-ref stderr from the clone, WITH a pinned ref, classifies as `BadRef`
+    /// (no silent fallback). Would regress to `NetworkOffline` if the clone-failure
+    /// path passed `None` instead of the pinned ref.
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_classified_bad_ref_stderr_with_pinned_ref_maps_to_bad_ref() {
+        let td = TempDir::new().unwrap();
+        let cache = td.path().to_str().unwrap().to_string();
+        let source = GitHubRepository::new("https://github.com/chess-seventh/cv.git".into(), cache)
+            .with_ref("does-not-exist");
+        let runner =
+            FakeRunner::failing_with_stderr("fatal: couldn't find remote ref does-not-exist");
+
+        let err = source.resolve_classified(&runner).unwrap_err();
+        assert!(
+            matches!(err, TemplateSourceError::BadRef { .. }),
+            "bad-ref stderr with a pinned ref must classify as BadRef, got: {err:?}"
+        );
+    }
 }
 
 #[cfg(test)]
@@ -773,24 +862,30 @@ mod distill_specs {
     }
 
     /// @us-02 @property
-    /// TS-02/AC2 (strengthened): secret-absence invariant. For ANY GITHUB_TOKEN
-    /// value and ANY https remote, the returned token-auth flags route through
-    /// `core.askpass` yet never embed the secret — the flags are computed
-    /// independently of the token, which stays in the environment and reaches
-    /// git only via the askpass indirection.
+    /// TS-02/AC2 (falsifiable): for ANY https remote where token auth applies, the
+    /// returned flags are non-empty AND contain `core.askpass=<fixed helper>`,
+    /// where the helper name is the fixed [`ASKPASS_HELPER`] constant, NOT derived
+    /// from the url input. This turns RED if `auth_invocation_flags` returned an
+    /// empty vec (no askpass wiring) or embedded an input-derived value in place of
+    /// the constant indirection.
     #[test]
-    fn ts02_ac2_secret_value_never_embedded_in_flags() {
+    fn ts02_ac2_token_flags_route_through_fixed_askpass_helper() {
         use proptest::prelude::*;
-        proptest!(|(token in "ghp_[A-Za-z0-9]{20,40}", name in "[a-z]{3,10}")| {
-            let url = format!("https://github.com/chess-seventh/{name}.git");
+        proptest!(|(host in "[a-z]{3,10}", tld in "[a-z]{2,4}", name in "[a-z]{3,10}")| {
+            let url = format!("https://{host}.{tld}/team/{name}.git");
             let flags = auth_invocation_flags(AuthMode::Token, &url);
             prop_assert!(
-                flags.iter().any(|f| f.contains("core.askpass")),
-                "token auth must route through core.askpass"
+                !flags.is_empty(),
+                "token auth must wire at least the askpass flag — never an empty vec"
+            );
+            let expected = format!("core.askpass={ASKPASS_HELPER}");
+            prop_assert!(
+                flags.iter().any(|f| f == &expected),
+                "token auth must point git at the fixed askpass helper constant"
             );
             prop_assert!(
-                !flags.iter().any(|f| f.contains(&token)),
-                "the generated token value must never appear in the returned flags"
+                !flags.iter().any(|f| f.contains(host.as_str()) || f.contains(name.as_str())),
+                "the helper name must be input-independent — no url fragment in the flags"
             );
         });
     }
@@ -861,17 +956,132 @@ mod distill_specs {
         assert_eq!(cache.decide(false, false), CacheAction::Abort); // AC2: hard abort
     }
 
-    /// @us-04 @property @edge
-    /// A repository and ref map to one deterministic cache entry (same input →
-    /// same key).
+    // ── TS-04 — cache executor arms (resolve_cached), not just decide() ──────
+
+    /// @us-04 @in-memory
+    /// TS-04/AC1: entry present + remote unreachable → ReuseStale → the existing
+    /// cache entry path is returned offline (no clone, no fetch).
     #[test]
-    fn ts04_cache_key_is_deterministic() {
+    #[serial_test::serial]
+    fn ts04_reuse_stale_arm_returns_existing_entry_offline() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = td.path().to_str().unwrap().to_string();
+        let url = "https://github.com/chess-seventh/cv.git";
+        let cache = TemplateCache::new(cache_dir.clone());
+        let entry = cache.entry_path(url, None);
+        fs::create_dir_all(&entry).unwrap();
+        let source = GitHubRepository::new(url.into(), cache_dir);
+        let runner = FakeRunner::failing(); // ls-remote probe fails → unreachable
+
+        let resolved = source.resolve_cached(&runner, &cache).unwrap();
+        assert_eq!(
+            resolved, entry,
+            "ReuseStale must return the cached entry path"
+        );
+    }
+
+    /// @us-04 @error
+    /// TS-04/AC2: no entry + remote unreachable → Abort → `NoCache` (fail fast,
+    /// never a partial CV).
+    #[test]
+    #[serial_test::serial]
+    fn ts04_abort_arm_no_entry_offline_errors_nocache() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = td.path().to_str().unwrap().to_string();
+        let url = "https://github.com/chess-seventh/cv.git";
+        let cache = TemplateCache::new(cache_dir.clone());
+        let source = GitHubRepository::new(url.into(), cache_dir);
+        let runner = FakeRunner::failing(); // ls-remote probe fails → unreachable
+
+        let err = source.resolve_cached(&runner, &cache).unwrap_err();
+        assert!(
+            matches!(err, TemplateSourceError::NoCache { .. }),
+            "Abort must classify as NoCache, got: {err:?}"
+        );
+    }
+
+    /// @us-04 @in-memory
+    /// TS-04/AC3: entry present + remote reachable → FetchCheckout → a `fetch
+    /// --prune --tags` is recorded against the entry (the perf lever, not a fresh
+    /// clone).
+    #[test]
+    #[serial_test::serial]
+    fn ts04_fetch_checkout_arm_records_fetch() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = td.path().to_str().unwrap().to_string();
+        let url = "https://github.com/chess-seventh/cv.git";
+        let cache = TemplateCache::new(cache_dir.clone());
+        let entry = cache.entry_path(url, None);
+        fs::create_dir_all(&entry).unwrap();
+        let source = GitHubRepository::new(url.into(), cache_dir);
+        let runner = FakeRunner::ok(); // ls-remote probe + fetch succeed
+
+        source.resolve_cached(&runner, &cache).unwrap();
+        assert!(
+            runner
+                .calls
+                .borrow()
+                .iter()
+                .any(|c| c.contains("fetch --prune --tags")),
+            "FetchCheckout must record a fetch against the cache entry"
+        );
+    }
+
+    /// @us-04 @property
+    /// BLOCKER: on the FetchCheckout path the fetch is auth-routed exactly like the
+    /// clone/probe — a Token-auth refresh of an HTTPS cache entry MUST carry the
+    /// `core.askpass` flag, otherwise the refresh fails auth and the cache never
+    /// updates. This test is RED if the fetch invocation drops the auth flags.
+    #[test]
+    #[serial_test::serial]
+    fn ts04_fetch_path_is_auth_routed_with_askpass() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = td.path().to_str().unwrap().to_string();
+        let url = "https://github.com/chess-seventh/cv.git";
+        let cache = TemplateCache::new(cache_dir.clone());
+        let entry = cache.entry_path(url, None);
+        fs::create_dir_all(&entry).unwrap();
+        let source = GitHubRepository::new(url.into(), cache_dir).with_auth(AuthMode::Token);
+        let runner = FakeRunner::ok();
+
+        source.resolve_cached(&runner, &cache).unwrap();
+
+        let calls = runner.calls.borrow();
+        let fetch_call = calls
+            .iter()
+            .find(|c| c.contains("fetch --prune --tags"))
+            .expect("FetchCheckout must record a fetch");
+        assert!(
+            fetch_call.contains("-c core.askpass="),
+            "the token fetch must carry the askpass auth flag: {fetch_call}"
+        );
+    }
+
+    /// @us-04 @property @edge
+    /// The cache key is deterministic (same input → same key) AND injective enough
+    /// to keep distinct repos and the pinned-vs-default slots apart: distinct repos
+    /// map to distinct keys, and a non-default pinned ref addresses a different
+    /// slot than the shared default-branch slot.
+    #[test]
+    fn ts04_cache_key_is_deterministic_and_injective() {
         use proptest::prelude::*;
         let cache = TemplateCache::new("/unused/cache".into());
-        proptest!(|(url in "[a-z]{3,12}",
-                    git_ref in proptest::option::of("[a-z0-9]{1,8}"))| {
-            let r = git_ref.as_deref();
-            prop_assert_eq!(cache.cache_key(&url, r), cache.cache_key(&url, r));
+        proptest!(|(name_a in "[a-z]{3,12}",
+                    name_b in "[a-z]{3,12}",
+                    git_ref in "[a-z0-9]{1,8}")| {
+            prop_assume!(name_a != name_b);
+            prop_assume!(git_ref != DEFAULT_REF_SLOT);
+            let url_a = format!("https://github.com/team/{name_a}.git");
+            let url_b = format!("https://github.com/team/{name_b}.git");
+            // determinism: same input → same key
+            prop_assert_eq!(cache.cache_key(&url_a, None), cache.cache_key(&url_a, None));
+            // injectivity: distinct repos must not collide on one cache slot
+            prop_assert_ne!(cache.cache_key(&url_a, None), cache.cache_key(&url_b, None));
+            // a pinned ref addresses a different slot than the default-branch slot
+            prop_assert_ne!(
+                cache.cache_key(&url_a, Some(git_ref.as_str())),
+                cache.cache_key(&url_a, None)
+            );
         });
     }
 

@@ -103,6 +103,7 @@ pub mod testing {
     pub struct FakeRunner {
         pub succeed: bool,
         pub stdout: String,
+        pub stderr: String,
         pub fail_io: bool,
         pub calls: RefCell<Vec<String>>,
     }
@@ -112,6 +113,7 @@ pub mod testing {
             Self {
                 succeed: true,
                 stdout: String::new(),
+                stderr: String::new(),
                 fail_io: false,
                 calls: RefCell::new(Vec::new()),
             }
@@ -120,6 +122,17 @@ pub mod testing {
         pub fn failing() -> Self {
             Self {
                 succeed: false,
+                ..Self::ok()
+            }
+        }
+
+        /// A failing runner whose captured `stderr` is the given string, so a
+        /// caller can assert the failure is classified by its stderr content
+        /// (auth vs bad-ref vs network) rather than by the single canned default.
+        pub fn failing_with_stderr(stderr: &str) -> Self {
+            Self {
+                succeed: false,
+                stderr: stderr.to_string(),
                 ..Self::ok()
             }
         }
@@ -178,8 +191,10 @@ pub mod testing {
             self.record(program, args);
             let stderr = if self.succeed {
                 String::new()
-            } else {
+            } else if self.stderr.is_empty() {
                 "fatal: could not read from remote repository.".to_string()
+            } else {
+                self.stderr.clone()
             };
             self.maybe_err(CommandOutcome {
                 success: self.succeed,
