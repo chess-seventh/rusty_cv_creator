@@ -270,3 +270,132 @@ this codebase — recommend `/nw-spike template-source` before `/nw-design`).
 zero-manual-git, reproducibility) for instrumentation.
 **Recommended next command:** `/nw-spike template-source` (de-risk git
 mechanism), then `/nw-design template-source`.
+
+---
+
+## Wave: DESIGN / [REF] Bounded context and ubiquitous language
+
+Single **supporting** bounded context — *template sourcing* — feeding the core
+job `apply-with-tailored-cv`. It has no DB aggregate: the only persistent state
+is the on-disk **cache** (a side-effect universe, not a domain entity). Language:
+*source* (local dir or git URL), *resolve* (produce a local template dir),
+*ref* / *pin* (branch/tag/SHA), *cache entry* (`repo@ref`), *fetch-vs-clone*,
+*reuse* (offline), *auth mode* (`auto|ssh|token`). The context boundary is the
+`TemplateSource::resolve` call inside `prepare_path_for_new_cv`; everything
+downstream (`copy_dir` → build → filing) is unchanged (D5).
+
+## Wave: DESIGN / [REF] Component decomposition
+
+| Component | Path | Responsibility | Contract shape |
+| --- | --- | --- | --- |
+| `TemplateSource` (trait, port) | `src/template_source.rs` | Resolve a source to a local template dir | return-only |
+| `LocalDirectory` (adapter) | `src/template_source.rs` | Passthrough of an existing local dir (backward compat) | pure (return-only) |
+| `GitHubRepository` (adapter) | `src/template_source.rs` | Clone/fetch/checkout a git URL at a ref into the cache | bounded-change: cache dir only |
+| `TemplateCache` (collaborator) | `src/template_source.rs` | Cache-key derivation + reuse-vs-fetch-vs-abort decision + offline fallback | decision pure; executor bounded to cache dir |
+| `TemplateSourceError` (enum) | `src/template_source.rs` | Typed failure classes → distinct actionable hints | return-only |
+| `AuthMode` / auth resolution | `src/template_source.rs` | Map `auto/ssh/token` + URL → git invocation plan | pure (return-only) |
+| `detect_template_source` / `is_git_url` (use case) | `src/template_source.rs` | Auto-detect LOCAL vs GITHUB (D1); build the source | pure (return-only) |
+| `CommandRunner` (port, EXTEND) | `src/command_runner.rs` | Subprocess effects + new stderr-capturing run | effect boundary |
+| `ensure_tools_available` (REUSE) | `src/helpers.rs` | Pre-usage `git` PATH gate (ADR-0004) | effect (read PATH) |
+
+## Wave: DESIGN / [REF] Driving and driven ports
+
+- **Driving (inbound):** unchanged CLI `insert` (D6); sourcing runs transparently
+  inside `prepare_path_for_new_cv`. Config (INI) is the second driving surface:
+  reused `cv_template_path` plus optional `cv_template_ref`, `cv_template_auth`,
+  `cv_template_cache`, read via the immutable `AppContext` (ADR-0006).
+- **Driven (outbound):** `TemplateSource` (new driven port — resolve to a local
+  dir); `CommandRunner` (EXTENDED — `git` shell-out, now also capturing stderr to
+  classify failures); filesystem (cache dir, capability-scoped to
+  `cv_template_cache`); environment (`GITHUB_TOKEN`, read only at execution).
+- **Effect isolation (principle 12):** the resolver core is split so decisions are
+  pure values — `is_git_url`, cache `CacheAction` (Clone | FetchCheckout |
+  ReuseStale | Abort), auth plan, and error classification are return-only pure
+  functions; only `GitHubRepository::resolve` and the cache executor perform
+  effects, and their mutation universe is **bounded to the cache dir**. A
+  read-only source (`LocalDirectory`) exposes no write path. The git driven
+  dependency is probed presence-first via `ensure_tools_available(["git"])`
+  (ADR-0004); its real failure stderr is the substrate that the classifier must
+  survive, enforced by gold-tests (catalogued git stderr strings) plus the
+  existing real-`git` acceptance test against a `file://` fixture.
+
+## Wave: DESIGN / [REF] Technology choices
+
+| Choice | Selection | Rationale | License |
+| --- | --- | --- | --- |
+| Git mechanism | System `git` via `CommandRunner` (ADR-0008) | SPIKE-proven; zero new crate; fake-able | n/a (runtime tool) |
+| Error model | Hand-rolled `TemplateSourceError` enum (std only) | Distinct hints must be structural, not strings; no new dep | n/a |
+| Token transport | `GITHUB_TOKEN` env via `git -c core.askpass=…` | Secret never in INI / argv / cache `.git/config` | n/a |
+| Cache strategy | `fetch`+`checkout` keyed by `repo@ref`; no shallow | Real perf lever (1.7s vs 3.5s); assets dominate size | n/a |
+
+No new crate is added; this stays within the existing std-only error idiom.
+
+## Wave: DESIGN / [REF] Reuse analysis (HARD GATE)
+
+| Component | Verdict | Justification |
+| --- | --- | --- |
+| `TemplateSource` trait | EXTEND | Skeleton exists; change `Result` error type to `TemplateSourceError`; signature otherwise stable |
+| `LocalDirectory` | EXTEND | Behaviour unchanged; only the error type changes |
+| `GitHubRepository` | EXTEND | Add ref pinning (TS-03), cache reuse/offline (TS-04), auth (TS-02), failure classification |
+| `detect_template_source` / `is_git_url` | EXTEND | Thread `cv_template_ref` + `cv_template_auth` into construction; signature grows |
+| `CommandRunner` port | EXTEND | Add a stderr-capturing method (additive, backward-compatible) to classify git failures |
+| `SystemRunner` / `FakeRunner` | EXTEND | Implement the new method; `FakeRunner` gains canned stderr for gold-tests |
+| `ensure_tools_available` (ADR-0004) | REUSE | `git` already gated in the skeleton; no change |
+| `resolve_template_cache_dir` (file_handlers) | REUSE | Already reads `cv_template_cache` with the default path |
+| `prepare_path_for_new_cv` wiring | EXTEND | Read the two new INI keys and pass them into `detect_template_source` |
+| `AppContext` / `get_variable_from_config_file` | REUSE | New INI keys read via the existing accessor; no new API |
+| `TemplateCache` | CREATE NEW | No existing cache-lifecycle component; SRP-isolated, fake-able |
+| `TemplateSourceError` | CREATE NEW | No existing typed error; required for distinct hints |
+| `AuthMode` / auth resolution | CREATE NEW | No existing auth modelling |
+
+## Wave: DESIGN / [REF] Decisions table
+
+> All four decisions below were **CONFIRMED by the user on 2026-06-22**
+> (recommended option accepted in each case).
+
+| ID | Decision | Choice (confirmed) — alternative considered | ADR |
+| --- | --- | --- | --- |
+| TS-D1 | Error model | `TemplateSourceError` enum, std-only (vs `thiserror`, vs `Box<dyn Error>` strings) | ADR-0008 |
+| TS-D2 | Cache responsibility | Separate `TemplateCache` collaborator with a pure decision fn (vs all-in-`resolve`) | ADR-0008 |
+| TS-D3 | Auth transport | `GITHUB_TOKEN` env + `core.askpass` helper (vs URL-embedded token) | ADR-0008 |
+| TS-D4 | ADR-0004 PATH-check injectability | DEFER; keep `#[serial]`, record smell (vs inject a `ToolChecker` port now) | ADR-0004 |
+
+## Wave: DESIGN / [REF] Confirmed decisions (user-approved 2026-06-22)
+
+> Status: all four **CONFIRMED** (recommended option accepted). Rationale and the
+> alternatives weighed are retained below for DELIVER traceability.
+
+1. **Error model — Confirmed: a std-only `TemplateSourceError` enum** (vs
+   `thiserror`, vs keeping `Box<dyn Error>` + `format!`). The ACs demand
+   *distinct* hints for auth vs network/offline vs bad-ref vs no-cache; that
+   distinction must be a structural `match`-able value, not a string. Hand-rolling
+   keeps the repo's zero-error-crate idiom; adopt `thiserror` only if boilerplate
+   grows. **Note:** classification requires git's stderr, which forces the
+   `CommandRunner` extension below.
+2. **Cache responsibility — Confirmed: a `TemplateCache` collaborator whose
+   reuse-vs-fetch-vs-abort decision is a pure `CacheAction` function** (vs
+   everything inside `GitHubRepository::resolve`). Keeps `resolve` thin, makes the
+   four cache behaviours (clone-fresh, fetch-reuse, offline-reuse-stale,
+   no-cache-abort) independently fake-testable, and renders "a preview silently
+   wrote to disk" non-representable (the decision returns data).
+3. **Auth transport — Confirmed: `auto` inferred from URL scheme; `token` reads
+   `GITHUB_TOKEN` from env and feeds git via `git -c core.askpass=<helper>`** (vs
+   embedding the token in the `https://x-access-token:…@…` URL). The askpass route
+   keeps the secret off the argv (`ps`), out of the INI, and out of the cache
+   repo's persisted `.git/config` remote URL. SSH (`git@…`) inherits the agent
+   with no flags (SPIKE-proven).
+4. **ADR-0004 PATH-check injectability — Confirmed: DEFER; keep `#[serial]` on
+   the git-touching tests and record the coupling as a known smell** (vs
+   introducing a `ToolChecker` port now). A port is a cross-cutting refactor that
+   also touches the DB/Tailscale path — a >50% solution for a <10% problem and
+   scope-creep beyond template-source; the skeleton already proves `#[serial]`
+   works. Cheap upgrade path if friction appears: a module-local injection seam
+   (a `tool_check` closure parameter defaulting to `ensure_tools_available`).
+
+## Wave: DESIGN / [REF] Open questions / deferred
+
+- Cache GC/eviction policy (unbounded growth) — out-of-scope per DISCUSS; future
+  concern.
+- `ToolChecker` port extraction to drop `#[serial]` — deferred (TS-D4); candidate
+  for a focused follow-up ADR.
+- A `--template-ref` CLI override — out-of-scope per DISCUSS (config-first).
