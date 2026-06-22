@@ -50,11 +50,16 @@ impl TemplateSource for LocalDirectory {
 pub struct GitHubRepository {
     url: String,
     cache_dir: String,
+    auth: AuthMode,
 }
 
 impl GitHubRepository {
     pub fn new(url: String, cache_dir: String) -> Self {
-        Self { url, cache_dir }
+        Self {
+            url,
+            cache_dir,
+            auth: AuthMode::Auto,
+        }
     }
 
     /// Deterministic per-repository sub-directory of the cache dir. Cache keying
@@ -155,11 +160,19 @@ pub enum AuthMode {
 }
 
 impl AuthMode {
-    /// Parse the optional `[cv] cv_template_auth` value (`auto|ssh|token`).
-    // SCAFFOLD: true
+    /// Parse the optional `[cv] cv_template_auth` value (`auto|ssh|token`). An
+    /// unknown value fails fast as a typed `TemplateSourceError::BadValue`
+    /// naming the offending value — never a silent default (TS-02/AC3).
     #[allow(dead_code)]
-    pub fn from_config(_value: &str) -> Result<AuthMode, TemplateSourceError> {
-        panic!("not yet implemented — RED scaffold")
+    pub fn from_config(value: &str) -> Result<AuthMode, TemplateSourceError> {
+        match value {
+            "auto" => Ok(AuthMode::Auto),
+            "ssh" => Ok(AuthMode::Ssh),
+            "token" => Ok(AuthMode::Token),
+            other => Err(TemplateSourceError::BadValue {
+                value: other.to_string(),
+            }),
+        }
     }
 
     /// Human-facing name used in error hints (never the secret token value).
@@ -182,13 +195,29 @@ impl AuthMode {
     }
 }
 
-/// Pure (TS-02/AC2): the extra `git -c` flags needed for `auth` against `url`.
-/// For `Token` this is a `core.askpass` helper invocation; the secret value
-/// itself never appears in the returned flags (asserted by the specs).
-// SCAFFOLD: true
+/// Name of the askpass helper git is pointed at for token auth. The helper reads
+/// `GITHUB_TOKEN` from the environment and prints it on stdout when git asks for
+/// a password, so the secret value never reaches the argv, the INI, or the cache
+/// repo's `.git/config` (TS-D3 / ADR-0008). The resolver materialises this
+/// executable on disk (step 04-02); only the indirection is named here.
+const ASKPASS_HELPER: &str = "git-askpass-from-env";
+
+/// Pure total fn (TS-02/AC2) over (`AuthMode` × url-scheme): the extra `git -c`
+/// flags needed for `auth` against `url`.
+///
+/// * `Auto`  infers the transport from the url scheme (a `git@…`/`ssh://…`
+///   remote inherits the SSH agent; anything else uses a token).
+/// * `Ssh`   adds no flags — the agent is inherited from the ambient environment
+///   (SPIKE-proven against the real private repo).
+/// * `Token` routes through a `core.askpass` helper that reads `GITHUB_TOKEN`
+///   from the environment; the secret VALUE never appears in the returned flags.
 #[allow(dead_code)]
-pub fn auth_invocation_flags(_auth: AuthMode, _url: &str) -> Vec<String> {
-    panic!("not yet implemented — RED scaffold")
+pub fn auth_invocation_flags(auth: AuthMode, url: &str) -> Vec<String> {
+    match auth {
+        AuthMode::Auto => auth_invocation_flags(AuthMode::inferred_from_url(url), url),
+        AuthMode::Ssh => Vec::new(),
+        AuthMode::Token => vec!["-c".to_string(), format!("core.askpass={ASKPASS_HELPER}")],
+    }
 }
 
 /// Typed failure classes (TS-D1). Distinct variants so the resolver emits a
@@ -338,23 +367,47 @@ impl GitHubRepository {
         panic!("not yet implemented — RED scaffold")
     }
 
-    /// Select the auth transport (TS-02). Additive.
-    // SCAFFOLD: true
+    /// Select the auth transport (TS-02). Additive builder; the skeleton's
+    /// default-branch `new`/`resolve` are unchanged.
     #[allow(dead_code)]
-    pub fn with_auth(self, _auth: AuthMode) -> Self {
-        panic!("not yet implemented — RED scaffold")
+    pub fn with_auth(mut self, auth: AuthMode) -> Self {
+        self.auth = auth;
+        self
     }
 
-    /// Resolve with cache reuse, ref pinning, auth, and typed failure
-    /// classification (TS-02/03/04). Distinct from the skeleton's `resolve`,
-    /// which stays the green default-branch happy path (TS-01/AC1).
+    /// Resolve with auth-routed clone and typed failure classification
+    /// (TS-02). Distinct from the skeleton's `resolve`, which stays the green
+    /// default-branch happy path (TS-01/AC1).
+    ///
+    /// Partial: cache reuse (TS-04) and ref pinning (TS-03) wiring lands in
+    /// later slices. Here it prepends the auth flags to the git invocation
+    /// through `CommandRunner` and classifies a clone failure from its captured
+    /// stderr. The SSH path adds no askpass flag — the agent is inherited.
     // SCAFFOLD: true
     #[allow(dead_code)]
     pub fn resolve_classified(
         &self,
-        _runner: &dyn CommandRunner,
+        runner: &dyn CommandRunner,
     ) -> Result<String, TemplateSourceError> {
-        panic!("not yet implemented — RED scaffold")
+        let flags = auth_invocation_flags(self.auth, &self.url);
+        let destination = self.clone_destination();
+
+        let mut args: Vec<&str> = flags.iter().map(String::as_str).collect();
+        args.push("clone");
+        args.push(&self.url);
+        args.push(&destination);
+
+        let outcome = runner.run_capturing("git", &args, None).map_err(|_| {
+            TemplateSourceError::NetworkOffline {
+                url: self.url.clone(),
+            }
+        })?;
+
+        if !outcome.success {
+            return Err(classify_git_stderr(&outcome.stderr, &self.url, None));
+        }
+
+        Ok(destination)
     }
 }
 
@@ -484,7 +537,6 @@ mod distill_specs {
     /// askpass / token machinery on the SSH path.
     #[test]
     #[serial_test::serial]
-    #[ignore = "pending DELIVER — TS-02"]
     fn ts02_ac1_ssh_source_clones_via_git_at_url() {
         let td = TempDir::new().unwrap();
         let cache = td.path().to_str().unwrap().to_string();
@@ -506,7 +558,6 @@ mod distill_specs {
     /// TS-02/AC2: the token is taken from the environment and fed via
     /// `core.askpass`; it never appears on the git command line.
     #[test]
-    #[ignore = "pending DELIVER — TS-02"]
     fn ts02_ac2_token_uses_askpass_and_never_on_argv() {
         let flags =
             auth_invocation_flags(AuthMode::Token, "https://github.com/chess-seventh/cv.git");
@@ -520,6 +571,29 @@ mod distill_specs {
                 .any(|f| f.contains("x-access-token") || f.contains("ghp_")),
             "the token value must never appear in the git argv"
         );
+    }
+
+    /// @us-02 @property
+    /// TS-02/AC2 (strengthened): secret-absence invariant. For ANY GITHUB_TOKEN
+    /// value and ANY https remote, the returned token-auth flags route through
+    /// `core.askpass` yet never embed the secret — the flags are computed
+    /// independently of the token, which stays in the environment and reaches
+    /// git only via the askpass indirection.
+    #[test]
+    fn ts02_ac2_secret_value_never_embedded_in_flags() {
+        use proptest::prelude::*;
+        proptest!(|(token in "ghp_[A-Za-z0-9]{20,40}", name in "[a-z]{3,10}")| {
+            let url = format!("https://github.com/chess-seventh/{name}.git");
+            let flags = auth_invocation_flags(AuthMode::Token, &url);
+            prop_assert!(
+                flags.iter().any(|f| f.contains("core.askpass")),
+                "token auth must route through core.askpass"
+            );
+            prop_assert!(
+                !flags.iter().any(|f| f.contains(&token)),
+                "the generated token value must never appear in the returned flags"
+            );
+        });
     }
 
     /// @us-02 @error
