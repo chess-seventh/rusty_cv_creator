@@ -1106,4 +1106,183 @@ mod distill_specs {
             prop_assert!(!is_git_url(&local_path)); // local path
         });
     }
+
+    // ── Mutation hardening (Phase 5) ─────────────────────────────────────────
+    // Targeted tests that distinguish each surviving predicate from its mutant.
+    // The marker sets are finite + enumerable, so per the PBT falsifier-gate
+    // these are table-style example tests, not proptest cases.
+
+    /// @us-02 @error @mutation
+    /// Each auth-failure marker, ALONE, classifies as `Auth`. Kills the
+    /// `is_auth_failure` `||`→`&&` mutants: under `&&` a stderr carrying only ONE
+    /// of the four markers would stop classifying as auth and fall through.
+    #[test]
+    fn ts02_each_auth_marker_alone_classifies_as_auth() {
+        let url = "git@github.com:chess-seventh/cv.git";
+        for marker in [
+            "Permission denied (publickey)",
+            "Authentication failed",
+            "could not read Username",
+            "Invalid username or password",
+        ] {
+            let err = classify_git_stderr(marker, url, None);
+            assert!(
+                matches!(err, TemplateSourceError::Auth { .. }),
+                "auth marker {marker:?} alone must classify as Auth, got: {err:?}"
+            );
+        }
+    }
+
+    /// @us-03 @error @mutation
+    /// Each bad-ref marker ALONE (with a pinned ref) classifies as `BadRef`,
+    /// killing the `is_bad_ref` `||`→`&&` mutants; AND an UNRELATED stderr (still
+    /// with a pinned ref) classifies as `NetworkOffline`, killing the
+    /// `is_bad_ref -> true` mutant (which would coerce anything to `BadRef`).
+    #[test]
+    fn ts03_each_bad_ref_marker_alone_and_unrelated_stays_network() {
+        let url = "https://github.com/chess-seventh/cv.git";
+        for marker in [
+            "couldn't find remote ref",
+            "did not match any file(s) known to git",
+            "Remote branch",
+            "not found in upstream",
+        ] {
+            let err = classify_git_stderr(marker, url, Some("v9"));
+            assert!(
+                matches!(err, TemplateSourceError::BadRef { .. }),
+                "bad-ref marker {marker:?} alone must classify as BadRef, got: {err:?}"
+            );
+        }
+        let unrelated = classify_git_stderr(
+            "fatal: unable to access: Could not resolve host",
+            url,
+            Some("v9"),
+        );
+        assert!(
+            matches!(unrelated, TemplateSourceError::NetworkOffline { .. }),
+            "an unrelated stderr must stay NetworkOffline, got: {unrelated:?}"
+        );
+    }
+
+    /// @us-02 @mutation
+    /// `AuthMode::Auto` infers the transport from the URL scheme: both `git@…` and
+    /// `ssh://…` remotes infer SSH (→ NO askpass flags), anything else infers Token
+    /// (→ askpass flags present). Asserting BOTH ssh-scheme forms yield empty flags
+    /// kills the `inferred_from_url` `||`→`&&` mutant (under `&&` no url matches
+    /// both schemes → always Token → non-empty flags).
+    #[test]
+    fn ts02_auto_infers_ssh_for_both_ssh_schemes() {
+        assert!(
+            auth_invocation_flags(AuthMode::Auto, "git@github.com:chess-seventh/cv.git").is_empty(),
+            "a git@ remote infers SSH — no askpass flags"
+        );
+        assert!(
+            auth_invocation_flags(AuthMode::Auto, "ssh://git@github.com/chess-seventh/cv.git")
+                .is_empty(),
+            "an ssh:// remote infers SSH — no askpass flags"
+        );
+        assert!(
+            !auth_invocation_flags(AuthMode::Auto, "https://github.com/chess-seventh/cv.git")
+                .is_empty(),
+            "an https remote infers Token — askpass flags present"
+        );
+    }
+
+    /// @us-02 @error @mutation
+    /// The `Auth` error Display embeds the EXACT auth-mode hint name, so the
+    /// operator hint is accurate. Kills the `hint_name -> "" / "xyzzy"` mutant: a
+    /// replaced body would drop the real "auto"/"ssh"/"token" text.
+    #[test]
+    fn ts02_auth_error_display_contains_exact_mode_hint() {
+        for (mode, hint) in [
+            (AuthMode::Auto, "auto"),
+            (AuthMode::Ssh, "ssh"),
+            (AuthMode::Token, "token"),
+        ] {
+            let err = TemplateSourceError::Auth {
+                url: "https://github.com/chess-seventh/cv.git".to_string(),
+                mode,
+            };
+            let rendered = err.to_string();
+            assert!(
+                rendered.contains(&format!("auth mode: {hint}")),
+                "Auth Display must name the {hint:?} mode, got: {rendered}"
+            );
+        }
+    }
+
+    /// @us-04 @mutation
+    /// `entry_path` returns a real path UNDER the cache dir whose final component is
+    /// the sanitised `repo@ref` cache key — not an arbitrary string. Kills the
+    /// `entry_path -> "xyzzy".into()` mutant.
+    #[test]
+    fn ts04_entry_path_is_under_cache_dir_with_sanitised_key() {
+        let cache = TemplateCache::new("/var/cache/cv".into());
+        let url = "https://github.com/chess-seventh/cv.git";
+        let path = cache.entry_path(url, Some("v2.1"));
+        let key = cache.cache_key(url, Some("v2.1"));
+        assert!(
+            path.starts_with("/var/cache/cv/"),
+            "entry_path must live under the cache dir, got: {path}"
+        );
+        assert!(
+            path.ends_with(&key),
+            "entry_path must end with the sanitised cache key, got: {path}"
+        );
+    }
+
+    /// @us-02 @mutation
+    /// `resolve_classified` must actually prepare the destination — creating the
+    /// cache entry's parent directory so the clone can land. With a non-existent
+    /// nested cache dir, that directory is created as an observable side effect.
+    /// Kills the `prepare_destination -> Ok(())` mutant, which would skip the work.
+    #[test]
+    #[serial_test::serial]
+    fn ts02_resolve_classified_prepares_missing_cache_parent_dir() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = format!("{}/nested/cache", td.path().display());
+        assert!(
+            !Path::new(&cache_dir).exists(),
+            "precondition: nested cache dir must be absent"
+        );
+        let source = GitHubRepository::new(
+            "https://github.com/chess-seventh/cv.git".into(),
+            cache_dir.clone(),
+        );
+        let runner = FakeRunner::ok();
+
+        source.resolve_classified(&runner).unwrap();
+
+        assert!(
+            Path::new(&cache_dir).is_dir(),
+            "prepare_destination must create the cache entry's parent dir"
+        );
+    }
+
+    /// @us-01 @us-04 @mutation
+    /// The production resolver routes a (non-dir) git URL through the cache-aware
+    /// git path — which probes the remote with `ls-remote` before deciding — NOT
+    /// through the skeleton passthrough. Kills the `resolve_template_for_config`
+    /// `delete !` mutant, which would force EVERY value (git URL included) down the
+    /// passthrough branch where no `ls-remote` probe happens.
+    #[test]
+    #[serial_test::serial]
+    fn ts04_config_resolver_routes_git_url_through_cache_probe() {
+        let td = TempDir::new().unwrap();
+        let cache_dir = td.path().to_str().unwrap().to_string();
+        let url = "https://github.com/chess-seventh/cv.git";
+        let runner = FakeRunner::ok();
+
+        resolve_template_for_config(url, &cache_dir, None, AuthMode::Token, &runner).unwrap();
+
+        assert!(
+            runner
+                .calls
+                .borrow()
+                .iter()
+                .any(|c| c.contains("ls-remote")),
+            "a git URL must go through the cache-aware path (ls-remote probe), calls: {:?}",
+            runner.calls.borrow()
+        );
+    }
 }
