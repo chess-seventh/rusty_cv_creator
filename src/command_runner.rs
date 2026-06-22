@@ -5,7 +5,6 @@ use std::process::{Command, Stdio};
 /// success plus both streams, so a caller can classify a git failure from its
 /// stderr (auth vs network/offline vs bad-ref). Additive to the port; existing
 /// `status`/`output`/`spawn` call sites are unaffected.
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CommandOutcome {
     pub success: bool,
@@ -32,7 +31,6 @@ pub trait CommandRunner {
     /// implementors that capture stderr (e.g. `SystemRunner`) override this;
     /// the default is a best-effort delegation to `output` with empty stderr,
     /// so existing implementors keep compiling without change.
-    #[allow(dead_code)]
     fn run_capturing(
         &self,
         program: &str,

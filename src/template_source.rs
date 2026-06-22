@@ -560,29 +560,36 @@ impl GitHubRepository {
         destination: &str,
         git_ref: &str,
     ) -> Result<(), TemplateSourceError> {
-        let checkout = self.run_in_clone(runner, &["checkout", git_ref], destination, git_ref)?;
-        if !checkout.success {
-            return Err(classify_git_stderr(
-                &checkout.stderr,
-                &self.url,
-                Some(git_ref),
-            ));
-        }
-
-        let resolved = self.run_in_clone(runner, &["rev-parse", "HEAD"], destination, git_ref)?;
-        if !resolved.success {
-            return Err(classify_git_stderr(
-                &resolved.stderr,
-                &self.url,
-                Some(git_ref),
-            ));
-        }
-
+        self.run_in_clone_checked(runner, &["checkout", git_ref], destination, git_ref)?;
+        let resolved =
+            self.run_in_clone_checked(runner, &["rev-parse", "HEAD"], destination, git_ref)?;
         info!(
             "✅ Pinned template to ref '{git_ref}' (resolved SHA: {})",
             resolved.stdout.trim()
         );
         Ok(())
+    }
+
+    /// Run a git subcommand inside the cloned `destination` and require success,
+    /// classifying a non-zero exit from its captured stderr (the pinned-ref
+    /// context means a failure aborts as `BadRef` — never a silent default-branch
+    /// fallback, TS-03/AC3). A captured io failure is mapped by [`run_in_clone`].
+    fn run_in_clone_checked(
+        &self,
+        runner: &dyn CommandRunner,
+        args: &[&str],
+        destination: &str,
+        git_ref: &str,
+    ) -> Result<CommandOutcome, TemplateSourceError> {
+        let outcome = self.run_in_clone(runner, args, destination, git_ref)?;
+        if !outcome.success {
+            return Err(classify_git_stderr(
+                &outcome.stderr,
+                &self.url,
+                Some(git_ref),
+            ));
+        }
+        Ok(outcome)
     }
 
     /// Run a git subcommand inside the cloned `destination`, mapping a captured
