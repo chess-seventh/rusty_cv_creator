@@ -71,8 +71,8 @@ impl AppContext {
 
     pub fn get_user_input_action_filter_args(&self) -> FilterArgs {
         match self.get_user_input_action() {
-            UserAction::Insert(filter_args)
-            | UserAction::Remove(filter_args)
+            UserAction::Insert(insert_args) => insert_args.into(),
+            UserAction::Remove(filter_args)
             | UserAction::List(filter_args)
             | UserAction::Update(filter_args) => filter_args,
         }
@@ -149,7 +149,7 @@ mod tests {
 
     fn dummy_user_input() -> UserInput {
         UserInput {
-            action: UserAction::Insert(FilterArgs {
+            action: UserAction::List(FilterArgs {
                 job_title: Some("Dev".to_string()),
                 company_name: Some("Company".to_string()),
                 quote: Some("Quote".to_string()),

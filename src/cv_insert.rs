@@ -88,7 +88,7 @@ mod tests {
 
     fn context_without_job_title() -> AppContext {
         let ui = UserInput {
-            action: UserAction::Insert(FilterArgs::default()),
+            action: UserAction::Update(FilterArgs::default()),
             save_to_database: false,
             view_generated_cv: false,
             dry_run: false,
@@ -114,6 +114,8 @@ mod tests {
     fn test_insert_cv_errors_when_job_title_missing() {
         // A FilterArgs without a job_title cannot drive a CV build: insert_cv
         // surfaces the error instead of relying on a (now removed) global panic.
+        // clap now ALSO guards this at the CLI boundary for `insert` (required
+        // job_title/company_name); this remains a defensive check on insert_cv.
         let ctx = context_without_job_title();
         assert!(insert_cv(&ctx).is_err());
     }

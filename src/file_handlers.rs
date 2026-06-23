@@ -486,7 +486,7 @@ mod tests {
         fs::write(&ini_path, ini).unwrap();
 
         let ui = crate::cli_structure::UserInput {
-            action: crate::cli_structure::UserAction::Insert(
+            action: crate::cli_structure::UserAction::List(
                 crate::cli_structure::FilterArgs::default(),
             ),
             save_to_database: false,

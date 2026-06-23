@@ -37,7 +37,7 @@ pub struct UserInput {
 #[derive(Subcommand, Debug, Clone)]
 pub enum UserAction {
     #[command(about = "Insert CV", long_about = None)]
-    Insert(FilterArgs),
+    Insert(InsertArgs),
 
     #[command(about = "Update CV", long_about = None)]
     Update(FilterArgs),
@@ -47,6 +47,40 @@ pub enum UserAction {
 
     #[command(about = "List CVs", long_about = None)]
     List(FilterArgs),
+}
+
+/// Required arguments for `insert`: a CV cannot be built without a job title and
+/// a company name, so clap enforces them at the CLI boundary (non-`Option`).
+/// `quote`/`variant` stay optional. `Default` is for tests only — clap still
+/// requires the non-`Option` fields at parse time.
+#[derive(Args, Debug, Clone, Default)]
+pub struct InsertArgs {
+    #[arg(short, long)]
+    pub job_title: String,
+
+    #[arg(short, long)]
+    pub company_name: String,
+
+    #[arg(short, long)]
+    pub quote: Option<String>,
+
+    /// Which CV variant to build (senior-devops, senior-platform-engineer,
+    /// senior-sre, engineering-manager). When omitted, it is inferred from the
+    /// job title, falling back to the configured default.
+    #[arg(long)]
+    pub variant: Option<String>,
+}
+
+impl From<InsertArgs> for FilterArgs {
+    fn from(args: InsertArgs) -> Self {
+        FilterArgs {
+            job_title: Some(args.job_title),
+            company_name: Some(args.company_name),
+            quote: args.quote,
+            date: None,
+            variant: args.variant,
+        }
+    }
 }
 
 #[derive(Args, Debug, Clone, Default)]
@@ -70,27 +104,27 @@ pub struct FilterArgs {
     pub variant: Option<String>,
 }
 
-pub fn match_user_action(ctx: &AppContext, user_input: UserInput) -> String {
+pub fn match_user_action(
+    ctx: &AppContext,
+    user_input: UserInput,
+) -> Result<String, Box<dyn std::error::Error>> {
     match user_input.action {
-        UserAction::Insert(_insert_args) => match insert_cv(ctx) {
-            Ok(s) => s,
-            Err(e) => panic!("{e:?}"),
-        },
+        UserAction::Insert(_) => insert_cv(ctx),
 
         UserAction::Remove(filters) => {
             let _ = remove_cv(ctx, &filters);
             let out = format!("filter args for LIST: {filters:?}");
             println!("{out:?}");
-            out
+            Ok(out)
         }
         UserAction::List(_filters) => {
-            run_list_tui(ctx).unwrap_or_else(|e| panic!("{e:?}"));
-            String::from("tui: ok")
+            run_list_tui(ctx)?;
+            Ok(String::from("tui: ok"))
         }
         UserAction::Update(filters) => {
             let out = format!("filter args for UPDATE: {filters:?}");
             println!("{out:?}");
-            out
+            Ok(out)
         }
     }
 }
@@ -190,7 +224,8 @@ mod tests {
         let out = match_user_action(
             &ctx,
             user_input_with(UserAction::Update(FilterArgs::default())),
-        );
+        )
+        .unwrap();
         assert!(out.contains("UPDATE"));
     }
 }

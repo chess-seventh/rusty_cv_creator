@@ -36,6 +36,24 @@ fn test_insert_help_lists_variant_flag() {
 }
 
 #[test]
+fn test_insert_without_required_args_errors_with_help() {
+    let out = bin().arg("insert").output().expect("failed to run insert");
+    assert!(
+        !out.status.success(),
+        "insert with no args should exit non-zero"
+    );
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("required") || stderr.contains("Usage"),
+        "should print a usage/required-args helper, got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("panicked"),
+        "must not panic, got: {stderr}"
+    );
+}
+
+#[test]
 fn test_no_subcommand_is_an_error() {
     // A subcommand is required; clap should reject invocation with no action
     // and exit non-zero before any side effects.
