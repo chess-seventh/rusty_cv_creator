@@ -562,3 +562,113 @@ spirit; criterion 4 (ratio) is not measured (no decorator surface).
   a blocker.
 - Outcomes registry: **N/A — deferred** (no `docs/product/outcomes/registry.yaml`
   in this project; not bootstrapped per orchestrator instruction).
+
+---
+
+## Wave: DELIVER / [REF] Implementation summary
+
+Six DES-instrumented TDD steps (3-phase RED → GREEN → COMMIT, every step with a
+complete DES trace, integrity verified, exit 0) shipped the local-or-GitHub
+template source behind the unchanged `insert` entry point and reused
+`[cv] cv_template_path` key:
+
+| Step | SHA | What landed |
+| --- | --- | --- |
+| 01-01 | `c144d40` | UC-1 `CommandRunner::run_capturing` stderr seam (`CommandOutcome`). |
+| 01-02 | `037c778` | `TemplateSourceError` enum + `classify_git_stderr`. |
+| 02-01 | `361b466` | `AuthMode` + `auth_invocation_flags` (SSH agent / token via `core.askpass`). |
+| 03-01 | `8887c2f` | Ref pinning (`with_ref` + checkout + resolved-SHA log; bad ref aborts, no fallback). |
+| 04-01 | `07f7831` | `TemplateCache::decide` (2×2 cache/network matrix) + deterministic `cache_key`. |
+| 04-02 | `52457d1` | Final wiring into `prepare_path_for_new_cv` + scaffold removal. |
+
+Hardening: `710f111` (L1/L3 refactor), `e9327e1` (adversarial-review fix —
+BLOCKER `fetch` missing auth flags, plus 3 closed coverage gaps on
+`resolve_classified` / `resolve_cached`), `3b12340` (mutation hardening).
+
+## Wave: DELIVER / [REF] Files modified
+
+- **Production**: `src/command_runner.rs` (UC-1 `run_capturing` + `CommandOutcome`),
+  `src/template_source.rs` (`TemplateSource`/`LocalDirectory`/`GitHubRepository`,
+  `TemplateCache`, `TemplateSourceError`, `AuthMode`, `classify_git_stderr`,
+  `auth_invocation_flags`, `detect_template_source`/`is_git_url`),
+  `src/file_handlers.rs` (`prepare_path_for_new_cv` wiring + cache-dir resolve),
+  `src/main.rs` (read the new INI keys into the source construction).
+- **Tests**: in-crate `mod distill_specs` (`src/template_source.rs`) + `mod uc1_specs`
+  (`src/command_runner.rs`); `tests/template_source_scenarios.rs` (subprocess
+  driving-adapter); `tests/acceptance/template-source/*.feature` (4 scenario SSOT
+  files); the existing `src/file_handlers.rs` walking skeleton (referenced, not
+  rewritten).
+- **Docs**: `rusty-cv-config-example.ini` + `README` (new keys
+  `cv_template_ref` / `cv_template_auth` / `cv_template_cache`; secret env-only via
+  `GITHUB_TOKEN`); `docs/product/architecture/adr-0008-template-source.md`;
+  `docs/product/architecture/brief.md` (Template sourcing subsection +
+  Component Inventory).
+
+## Wave: DELIVER / [REF] Scenarios green
+
+Full `cargo test` is **156 passed / 0 failed / 0 ignored** across 7 binaries
+(`lib` 9, `main` 89, `cli_smoke` 3, `integration-tests` 20,
+`template_source_scenarios` 1, `tui_*_scenarios` 3, `tui_*_specifications` 31).
+All 16 DISTILL scenarios (9 error/edge, 56%) map to GREEN Rust tests per the
+DISTILL Traceability table; every PENDING (RED) entry there is now GREEN.
+
+## Wave: DELIVER / [REF] DoD check (9-item, verified)
+
+> Itemized against the DISCUSS Definition of Done above. 8 PASS, 1 PARTIAL.
+
+| # | DoD item | Verdict | Evidence |
+| --- | --- | --- | --- |
+| 1 | All four slices' ACs covered by executable acceptance tests | ✅ PASS | 16 scenarios mapped to GREEN tests (DISTILL Traceability); every prior RED now GREEN. |
+| 2 | Backward-compat regression (local-dir path unchanged) green | ✅ PASS | `test_detect_existing_dir_is_local` + `LocalDirectory` passthrough; full `cargo test` 156/156. |
+| 3 | `TemplateSource` trait + `LocalDirectory` + `GitHubRepository` landed | ✅ PASS | `src/template_source.rs`, steps 01-01..04-02. |
+| 4 | Per-feature mutation testing on the new module | ✅ PASS | `cargo-mutants` on `src/template_source.rs`: 51 caught / 1 missed / 9 unviable = 98.1% kill (gate ≥ 80%). |
+| 5 | Config keys documented in `rusty-cv-config-example.ini` + README | ✅ PASS | `cv_template_ref` / `cv_template_auth` / `cv_template_cache` documented in both. |
+| 6 | No secret read from / written to INI; token path env-only (verified by test) | ⚠️ PARTIAL | Negative guarantee done + tested: token never in INI/argv, routed via `core.askpass`, secret-absence handled (scenario 7, `auth_invocation_flags`). DEFERRED: the askpass helper **executable** that reads `GITHUB_TOKEN` is not materialized and no hermetic real private-HTTPS token clone test exists (TS-02/AC2). SSH path fully works. See follow-up 1. |
+| 7 | Fetch-failure paths (cache reuse, hard abort) have explicit tests | ✅ PASS | `TemplateCache::decide` `CacheAction` matrix (`ReuseStale` / `Abort`); `classify_git_stderr`; gaps closed in `e9327e1`. |
+| 8 | `git` pre-usage check (ADR-0004) wired for the GITHUB source | ✅ PASS | `ensure_tools_available(["git"])` reused at the orchestration layer. |
+| 9 | ADR records the deferred git-mechanism choice | ✅ PASS | ADR-0008 records system `git` shell-out via `CommandRunner` (vs `git2`/`gitoxide`). |
+
+## Wave: DELIVER / [REF] Demo evidence (test-based)
+
+The live LaTeX + DB PDF demo was intentionally not run — the downstream build is
+pre-existing and untouched (D5). Demo evidence is test-based: the DISTILL walking
+skeleton performs a real `file://` `git clone` → `copy_dir` (real `SystemRunner`,
+real filesystem, no network, no git mock); `tests/cli_smoke.rs` spawns the built
+binary and asserts the driving-adapter contract (bad template value fails fast
+naming the offending value).
+
+## Wave: DELIVER / [REF] Quality gates
+
+- **Refactor**: L1/L3 pass (`710f111`), clippy `-D warnings` + pedantic + treefmt clean.
+- **Adversarial review**: `needs_revision` → all 7 findings resolved → approved;
+  BLOCKER (`fetch` missing auth flags) fixed with RED-without-fix proof (`e9327e1`).
+- **Mutation**: 98.1% kill on `src/template_source.rs` (`3b12340`); lone survivor
+  `is_git_url` `&&` → `||` (minor).
+- **DES integrity**: all 6 steps have complete RED/GREEN/COMMIT traces, exit 0.
+
+## Wave: DELIVER / [REF] KPI baselines (inline)
+
+`docs/product/kpi-contracts.yaml` is absent and was **not** bootstrapped; KPI
+baselines are recorded inline (no new registry file created):
+
+- **Zero-manual-git to first CV on a fresh machine**: **achieved** — one config
+  value, 0 git commands.
+- **Offline CV-generation after first fetch**: **implemented** — TS-04 cache-reuse
+  path (`CacheAction::ReuseStale`) with the network down.
+- **Per-run clone latency overhead**: **SPIKE-measured** ~3.5s cold clone vs ~1.7s
+  cache `fetch`+`checkout`.
+
+## Wave: DELIVER / [WHY] Upstream Issues
+
+Two follow-ups recorded honestly (no silent debt):
+
+1. **Askpass helper executable (TS-02/AC2 HTTPS-token mode)** — the
+   `core.askpass=git-askpass-from-env` flag wiring and the secret-absence path are
+   done and tested, but the helper **executable** that reads `GITHUB_TOKEN` is not
+   materialized, and no hermetic test exercises a real private-HTTPS token clone.
+   SSH (the user's real workflow) fully works. Follow-up: add the helper + an
+   integration test. (Drives the DoD-6 PARTIAL above.)
+2. **Dual `TemplateCache` derivation** — `resolve_cached` and `clone_destination`
+   derive the cache-entry path in two spots from the same `cache_dir` (correct
+   today; could diverge if a future change splits them). Scoped refactor: have
+   `resolve_cached` use the injected `cache.entry_path(...)`.

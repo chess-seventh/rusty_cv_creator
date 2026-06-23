@@ -205,6 +205,24 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
 `list`/`update`/DB-filtering and `parse_date` wiring remain partial (carried
 forward as gaps — see evolution record).
 
+> Marked **delivered** by the DELIVER wave (feature `template-source`, branch
+> `feature/template-source-skeleton`). See
+> `docs/feature/template-source/feature-delta.md` and
+> `docs/evolution/template-source-evolution.md`.
+
+| Component | Delivered by | Status |
+| --- | --- | --- |
+| `CommandRunner::run_capturing` (UC-1 stderr seam) + `CommandOutcome` | `c144d40` | delivered |
+| `TemplateSourceError` enum + `classify_git_stderr` | `037c778` | delivered |
+| `AuthMode` + `auth_invocation_flags` (SSH / token via `core.askpass`) | `361b466` | delivered |
+| Ref pinning (`with_ref` + checkout + resolved-SHA log) | `8887c2f` | delivered |
+| `TemplateCache` (`decide` / `CacheAction` matrix + deterministic `cache_key`) | `07f7831` | delivered |
+| `TemplateSource` / `LocalDirectory` / `GitHubRepository` wired into `prepare_path_for_new_cv` | `52457d1` | delivered |
+
+Mutation: 98.1% kill on `src/template_source.rs`. DoD item 6 (HTTPS-token askpass
+helper executable) is **partial/deferred** — SSH path fully works; see the
+`template-source` evolution record for the two follow-ups.
+
 ### External integrations (contract-test annotation for DEVOPS handoff)
 
 The highest-risk boundary is the **CV template repository**
