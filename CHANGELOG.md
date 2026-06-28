@@ -1,3 +1,10 @@
+## [5.1.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.1.0...v5.1.1) (2026-06-28)
+
+
+### Bug Fixes
+
+* **cli:** require insert args and replace panics with clean errors ([#101](https://github.com/chess-seventh/rusty_cv_creator/issues/101)) ([e17a37b](https://github.com/chess-seventh/rusty_cv_creator/commit/e17a37b57675f195d7888a54657da901e6aea4da))
+
 ## [5.1.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.0.0...v5.1.0) (2026-06-20)
 
 
