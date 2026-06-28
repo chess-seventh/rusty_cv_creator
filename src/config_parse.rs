@@ -100,7 +100,7 @@ mod tests {
 
     fn empty_context() -> AppContext {
         let ui = UserInput {
-            action: UserAction::Insert(FilterArgs::default()),
+            action: UserAction::List(FilterArgs::default()),
             save_to_database: false,
             view_generated_cv: false,
             dry_run: false,
@@ -122,7 +122,7 @@ mod tests {
         let mut f = NamedTempFile::new().unwrap();
         writeln!(f, "[db]\ndb_path = \"/tmp\"\ndb_file = \"test.db\"").unwrap();
         let ui = UserInput {
-            action: UserAction::Insert(FilterArgs::default()),
+            action: UserAction::List(FilterArgs::default()),
             save_to_database: false,
             view_generated_cv: false,
             dry_run: false,

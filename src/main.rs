@@ -39,7 +39,13 @@ fn main() {
 
     let _action: UserAction = ctx.get_user_input_action();
 
-    let cv_full_path = match_user_action(&ctx, user_input.clone());
+    let cv_full_path = match match_user_action(&ctx, user_input.clone()) {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    };
 
     if !cv_full_path.is_empty() {
         if user_input.view_generated_cv {
@@ -157,7 +163,7 @@ mod tests {
         std::fs::write(&ini_path, ini).unwrap();
 
         let ui = UserInput {
-            action: UserAction::Insert(cli_structure::FilterArgs::default()),
+            action: UserAction::List(cli_structure::FilterArgs::default()),
             save_to_database: false,
             view_generated_cv: false,
             dry_run: false,
