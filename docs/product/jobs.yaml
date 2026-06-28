@@ -99,3 +99,38 @@ jobs:
       satisfaction: 2
       score: 12
       tier: MEDIUM
+  # --- feature: template-source (DISCUSS 2026-06-22) ---
+  - id: source-cv-template
+    persona: job-seeker
+    feature: template-source
+    one_liner: >-
+      When my CV template lives in a GitHub repo (or I set the tool up on a new machine), I want the tool to pull the template directly from a local directory OR a GitHub repo at a chosen version, so I can generate CVs anywhere without manually cloning and babysitting a local template copy.
+    job_story:
+      when: I run the tool on a machine without my template checked out, or I want a specific version of the canonical template
+      i_want_to: have the tool fetch the template from its GitHub repo (or use a local dir) automatically, at a pinned version, and keep working offline
+      so_i_can: generate CVs anywhere without manual git clone / path wrangling, always from the canonical template, even with no network
+    dimensions:
+      functional: >-
+        Auto-detect the configured source (local path vs git URL); for GitHub, clone/checkout an optional pinned ref (branch/tag/SHA) using public-anon or private auth; cache the result; on fetch failure reuse the cache; hand a local directory to the existing copy+build flow.
+      emotional: >-
+        Confident the right template version is used; relieved at not maintaining a manual clone; trusting that offline still works after the first fetch.
+      social: >-
+        Always builds from the canonical, version-controlled template — never a silently stale local copy sent to a hiring manager.
+    forces:
+      push: >-
+        Today the template MUST be pre-cloned to a local path; a new machine or sharing the tool means manual `git clone` + config, and a stale local copy can silently produce an out-of-date CV.
+      pull: >-
+        One config value (a git URL) and the tool pulls the canonical template itself, at a pinned version, cached for offline reuse.
+      anxiety: >-
+        Network/auth failures blocking CV generation; private-repo authentication; pulling the wrong version; clone latency on every run.
+      habit: >-
+        Manually `git clone`-ing the cv repo and pointing `cv_template_path` at the local checkout.
+    opportunity_score:
+      method: ODI (Importance + max(Importance - Satisfaction, 0))
+      importance: 7 # quality-of-life + portability enabler on top of the already-served core job
+      satisfaction: 3 # pre-feature: manual clone, no version control, breaks on a fresh machine
+      score: 11
+      tier: MEDIUM-HIGH
+      note: >-
+        Enabler for apply-with-tailored-cv: removes the manual pre-clone precondition and the stale-template risk. Single-user qualitative estimate.
+    stories: [TS-01, TS-02, TS-03, TS-04]

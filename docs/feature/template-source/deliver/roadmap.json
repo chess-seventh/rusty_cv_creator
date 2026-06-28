@@ -1,0 +1,168 @@
+{
+  "roadmap": {
+    "project_id": "template-source",
+    "created_at": "2026-06-22",
+    "total_steps": 6,
+    "schema_version": "1.0",
+    "goal": "Make the 8 pending RED specs GREEN by implementing the scaffolded template-sourcing surface (UC-1 stderr capture, typed errors + classification, auth, ref pinning, cache/offline) and final-wiring it into prepare_path_for_new_cv, removing every // SCAFFOLD: true marker. The TS-01 walking skeleton is already GREEN and is the Phase-1 anchor; do not rebuild it.",
+    "notes": "Schema check: conformed to ~/.claude/templates/roadmap-schema.json (step required field is `criteria`; dependencies expressed as `deps`). Paradigm: Rust/OOP (traits=ports, structs=adapters, free fns=use cases). CommandRunner is the ONLY subprocess seam (no new git crate, ADR-0008). proptest for properties; secrets env-only (GITHUB_TOKEN); downstream build flow (D5) untouched. config_parse.rs::get_variable_from_config_file is a generic accessor and needs NO change to read the new keys."
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Foundations: capture and classify",
+      "description": "Pure/foundation cores the slices depend on: the additive UC-1 stderr-capturing run, and the typed error model plus git-stderr classification (TS-D1).",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "UC-1 stderr-capturing run",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TS-02/AC3 enabler (UC-1): run_capturing returns success plus captured stdout and stderr for a subprocess.",
+            "A failing git clone reports success=false with non-empty stderr available to the caller.",
+            "Additive only: existing status/output/spawn call sites and the whole green suite stay unchanged."
+          ],
+          "deps": [],
+          "test_file": "src/command_runner.rs (mod uc1_specs)",
+          "scenario_name": "uc1_run_capturing_exposes_stderr",
+          "files_to_modify": [
+            "src/command_runner.rs"
+          ],
+          "implementation_notes": "Replace the panicking default `CommandRunner::run_capturing` scaffold: implement it for real in `SystemRunner` (std::process::Command with Stdio::piped on both streams, capture into CommandOutcome) and in `testing::FakeRunner` (record the call, return CommandOutcome{ success: self.succeed, stdout, stderr: canned non-empty failure text when !succeed }). Remove the `// SCAFFOLD: true` markers on CommandOutcome and run_capturing. CommandRunner stays the only subprocess seam (ADR-0002/0008). TEST PARADIGM: this is a wiring/effect-boundary seam \u2014 EXEMPT FROM PARADIGM (single-example: a captured failing run exposes non-empty stderr). Compensate with the property-based decision tests at unit level in 01-02/04-01."
+        },
+        {
+          "id": "01-02",
+          "name": "Typed error model and classification",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TS-02/AC3: an auth-failure stderr (publickey/token) classifies as a distinct Auth error.",
+            "TS-03/AC3: an unresolvable-ref stderr classifies as BadRef, never a silent default fallback.",
+            "TS-D1: network/offline, no-cache and bad-value paths each map to a distinct typed variant.",
+            "Each TemplateSourceError variant renders a distinct, value-naming Display hint."
+          ],
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "src/template_source.rs (mod distill_specs); tests/acceptance/template-source/private-source.feature; pinned-version.feature",
+          "scenario_name": "ts02_ac3_auth_failure_stderr_classified_as_auth, ts03_ac3_bad_ref_classified_no_silent_fallback",
+          "files_to_modify": [
+            "src/template_source.rs"
+          ],
+          "implementation_notes": "Implement `TemplateSourceError` Display (std-only, no thiserror per TS-D1/ADR-0008) so each variant (Auth/NetworkOffline/BadRef/NoCache/BadValue) renders a distinct actionable hint naming the offending url/ref/value. Implement pure `classify_git_stderr(stderr, url, git_ref)` consuming the UC-1 capture from 01-01: match git's real stderr substrings -> 'Permission denied (publickey)'/'Authentication failed' -> Auth; 'couldn't find remote ref'/'pathspec ... did not match' -> BadRef; 'Could not resolve host'/'unable to access'/network -> NetworkOffline. Classification is structural match-able, never string-compared by callers. Remove the `// SCAFFOLD: true` on Display and classify_git_stderr. TEST PARADIGM: classification of catalogued git stderr is a gold-test mapping (exact substrings) \u2014 EXEMPT FROM PARADIGM (golden-string -> typed-variant). Compensate with the proptest properties in 04-01."
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "name": "Auth (TS-02)",
+      "description": "Private-repo access: SSH inherits the agent; token mode reads GITHUB_TOKEN from env and routes via core.askpass, never on argv/INI/.git/config.",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "02-01",
+          "name": "Auth modes and askpass routing",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TS-02/AC1: a git@ SSH source clones over its URL via the agent, with no askpass on the path.",
+            "TS-02/AC2: token auth reads GITHUB_TOKEN from env and routes via core.askpass; the secret never reaches argv.",
+            "cv_template_auth parses auto|ssh|token; an unknown value fails fast as a typed error."
+          ],
+          "deps": [
+            "01-02"
+          ],
+          "test_file": "src/template_source.rs (mod distill_specs); tests/acceptance/template-source/private-source.feature",
+          "scenario_name": "ts02_ac1_ssh_source_clones_via_git_at_url, ts02_ac2_token_uses_askpass_and_never_on_argv",
+          "files_to_modify": [
+            "src/template_source.rs"
+          ],
+          "implementation_notes": "Implement `AuthMode::from_config` (auto|ssh|token -> Ok, else TemplateSourceError). Implement pure `auth_invocation_flags(auth, url)`: Auto infers from url scheme (git@ -> SSH, no flags; https -> anon); Ssh -> no flags (agent, SPIKE-proven); Token -> `-c core.askpass=<helper>` so GITHUB_TOKEN is fed via askpass \u2014 the token value NEVER appears in the returned flags (TS-D3/ADR-0008). Implement `GitHubRepository::with_auth` (additive builder) and begin the real `resolve_classified`: prepend auth flags to the git invocation through CommandRunner, returning Result<String, TemplateSourceError>; on clone failure use 01-02 classify on the captured stderr. SSH path asserts no 'askpass' substring. Remove `// SCAFFOLD: true` on AuthMode::from_config, auth_invocation_flags, with_auth (resolve_classified scaffold marker stays until 04-02 completes its wiring). TEST PARADIGM: auth_invocation_flags is a pure total fn over (AuthMode x url-scheme) \u2014 prefer a proptest asserting the secret-absence invariant across generated urls; the ssh-clone seam is integration (FakeRunner asserts the exact git argv) and EXEMPT FROM PARADIGM. Secret-handling asserted structurally (no token on argv)."
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "name": "Ref pinning (TS-03)",
+      "description": "Pin the template to a branch/tag/SHA via cv_template_ref; checkout and log the resolved SHA; unset -> default branch; bad ref aborts with no silent fallback.",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "03-01",
+          "name": "Ref pinning and checkout",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TS-03/AC1: a pinned branch/tag/SHA is explicitly checked out and its resolved SHA is logged.",
+            "TS-03/AC2: with no ref set the default branch HEAD is used (skeleton behaviour preserved).",
+            "TS-03/AC3: a bad ref aborts via BadRef with no silent fallback to the default branch."
+          ],
+          "deps": [
+            "02-01"
+          ],
+          "test_file": "src/template_source.rs (mod distill_specs); tests/acceptance/template-source/pinned-version.feature",
+          "scenario_name": "ts03_ac1_pinned_ref_is_checked_out",
+          "files_to_modify": [
+            "src/template_source.rs"
+          ],
+          "implementation_notes": "Implement `GitHubRepository::with_ref` (additive builder storing the optional ref). Extend `resolve_classified`: when a ref is pinned, after clone/fetch run `git checkout <ref>` via CommandRunner, then `git rev-parse HEAD` (run_capturing) and log the resolved SHA (detached-HEAD safe). On a checkout/rev failure, classify the captured stderr via 01-02 into BadRef and abort \u2014 NEVER fall back to the default branch (TS-03/AC3). Unset ref preserves the skeleton's default-branch resolve (TS-03/AC2). Remove `// SCAFFOLD: true` on with_ref. TEST PARADIGM: the pinned-checkout assertion is integration (FakeRunner asserts a `checkout v2.1` call) \u2014 EXEMPT FROM PARADIGM (single-shot wiring of a git seam). bad-ref classification is already covered as a property-of-mapping in 01-02."
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "name": "Cache/offline (TS-04) and final wiring",
+      "description": "Pure reuse-vs-fetch-vs-abort decision plus deterministic cache key, then thread the new INI keys through prepare_path_for_new_cv into resolve_classified and remove every scaffold marker.",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "04-01",
+          "name": "Cache decision and key",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "TS-04/AC3: no entry -> Clone; entry present and remote reachable -> FetchCheckout.",
+            "TS-04/AC1: entry present but remote unreachable -> ReuseStale (offline reuse).",
+            "TS-04/AC2: no entry and remote unreachable -> Abort, no partial CV.",
+            "TS-04 key: a repository and ref map deterministically to one cache-entry key."
+          ],
+          "deps": [
+            "01-02"
+          ],
+          "test_file": "src/template_source.rs (mod distill_specs); tests/acceptance/template-source/offline-cache.feature",
+          "scenario_name": "ts04_cache_action_matrix, ts04_cache_key_is_deterministic",
+          "files_to_modify": [
+            "src/template_source.rs"
+          ],
+          "implementation_notes": "Implement `TemplateCache::decide(entry_exists, remote_reachable)` as the total TS-04 matrix: (F,T)=Clone, (T,T)=FetchCheckout, (T,F)=ReuseStale, (F,F)=Abort. Implement `TemplateCache::cache_key(url, git_ref)` as a deterministic sanitised `repo@ref` key (same input -> same key; ref None folds to the default-branch slot). Both are PURE return-only values (TS-D2/principle 12): the decision is data, so 'a preview silently wrote to disk' is non-representable. Remove `// SCAFFOLD: true` on decide and cache_key. TEST PARADIGM (mandatory): unit tests here are property-based via proptest \u2014 cache_key determinism is already a proptest (ts04_cache_key_is_deterministic); strengthen decide with an exhaustive/quantified property over the 2x2 (entry_exists x remote_reachable) universe rather than only the 4 example asserts. State-delta framing: a pure decision has an empty mutation universe (returns CacheAction)."
+        },
+        {
+          "id": "04-02",
+          "name": "Final wiring and scaffold removal",
+          "agent": "nw-software-crafter",
+          "criteria": [
+            "cv_template_ref/cv_template_auth/cv_template_cache are read in prepare_path_for_new_cv and threaded into resolution.",
+            "Git sources resolve via resolve_classified (cache reuse/offline/ref/auth); local-dir passthrough unchanged (TS-01/AC2).",
+            "Every // SCAFFOLD: true marker is removed and the full suite stays green.",
+            "New config keys documented in rusty-cv-config-example.ini and README; secrets remain env-only."
+          ],
+          "deps": [
+            "02-01",
+            "03-01",
+            "04-01"
+          ],
+          "test_file": "tests/acceptance/template-source/offline-cache.feature; public-source.feature; src/template_source.rs (mod tests regression: walking_skeleton + detect tests)",
+          "scenario_name": "regression: walking_skeleton_github_source_resolves_template_dir, test_detect_existing_dir_is_local, ts01_ac3_bad_template_value_fails_fast_naming_the_value",
+          "files_to_modify": [
+            "src/file_handlers.rs",
+            "src/template_source.rs",
+            "rusty-cv-config-example.ini",
+            "README.md"
+          ],
+          "implementation_notes": "Final integration: in `prepare_path_for_new_cv` read the optional new keys via the existing `get_variable_from_config_file(ctx, \"cv\", ...)` accessor (NO change needed in config_parse.rs) \u2014 cv_template_ref, cv_template_auth (parse via AuthMode::from_config), cv_template_cache (already read by resolve_template_cache_dir). Grow `detect_template_source` to accept ref+auth and build the GitHubRepository via with_ref/with_auth, then route git sources through `resolve_classified` (cache reuse-vs-fetch-vs-abort from 04-01 executor bounded to the cache dir, offline ReuseStale warning, NoCache hard-abort). LocalDirectory passthrough stays byte-for-byte unchanged (TS-01/AC2 regression guard). Wire the TemplateCache executor (clone/fetch+checkout/reuse-stale) behind decide. Downstream copy_dir->build->filing untouched (D5). Remove ALL remaining `// SCAFFOLD: true` markers across src/template_source.rs and src/command_runner.rs. Document the three keys in rusty-cv-config-example.ini and README.md, stating the token is env-only (GITHUB_TOKEN), never the INI (DoD item 6). TEST PARADIGM: this step is integration/E2E wiring (config -> resolver -> existing build) and a backward-compat regression \u2014 EXEMPT FROM PARADIGM (single-example: verifies wiring, not an invariant). The behavioural invariants live in 01-02/02-01/04-01."
+        }
+      ]
+    }
+  ]
+}

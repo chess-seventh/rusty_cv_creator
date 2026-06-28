@@ -27,7 +27,7 @@ C4Container
   Person(user, "Job Seeker")
   System_Boundary(cvc, "rusty_cv_creator (single binary)") {
     Container(cli, "CLI / Orchestrator", "Rust, clap", "Parses input, dispatches actions, orchestrates prepare_cv")
-    Container(build, "Build Subsystem", "Rust (file_handlers)", "Resolves variant, copies template, runs builder, copies out PDF")
+    Container(build, "Build Subsystem", "Rust (file_handlers)", "Resolves variant, copies template, builds, files PDF")
     Container(runner, "CommandRunner Port", "Rust trait", "SystemRunner (prod) / FakeRunner (test) for subprocesses")
     Container(persist, "Persistence", "Rust, diesel MultiConnection", "DbConnection over Postgres/SQLite; Cv CRUD")
     Container(config, "Config", "Rust, configparser + OnceCell", "INI-driven settings in GLOBAL_VAR")
@@ -102,3 +102,70 @@ C4Component
   Rel(remove, db, "Resolves (engine,url) then opens via")
 ```
 
+## Template sourcing — feature `template-source` (ADR-0008)
+
+### L1 — System Context (delta)
+
+```mermaid
+C4Context
+  title System Context — template sourcing
+  Person(user, "Job Seeker", "Sets cv_template_path to a local dir or a git URL")
+  System(cvc, "rusty_cv_creator", "Resolves the template before building")
+  System_Ext(github, "GitHub template repo", "git over SSH/HTTPS at a chosen ref")
+  System_Ext(cache, "Template cache", "~/.cache/rusty-cv-creator/templates (repo@ref)")
+  Rel(user, cvc, "Runs insert with a git-URL or local cv_template_path")
+  Rel(cvc, github, "Clones / fetches / checks out ref via system git")
+  Rel(cvc, cache, "Caches per repo@ref; reuses offline on fetch failure")
+```
+
+### L2 — Container (delta)
+
+```mermaid
+C4Container
+  title Container Diagram — template sourcing
+  Person(user, "Job Seeker")
+  System_Boundary(cvc, "rusty_cv_creator (single binary)") {
+    Container(build, "Build Subsystem", "Rust (file_handlers)", "prepare_path_for_new_cv resolves the template before copy_dir")
+    Container(tsrc, "Template Sourcing", "Rust (template_source)", "TemplateSource port + adapters + cache")
+    Container(runner, "CommandRunner Port", "Rust trait", "SystemRunner runs git; stderr captured for hints")
+    Container(config, "Config", "Rust, AppContext", "cv_template_path/_ref/_auth/_cache (INI)")
+  }
+  System_Ext(git, "system git", "clone/fetch/checkout, gated by ADR-0004 PATH check")
+  System_Ext(github, "GitHub template repo", "SSH/HTTPS remote")
+  ContainerDb(cache, "Template cache", "filesystem", "repo@ref working trees")
+  Rel(user, build, "Invokes insert")
+  Rel(build, tsrc, "Resolves template via")
+  Rel(build, config, "Reads sourcing keys from")
+  Rel(tsrc, runner, "Runs git through")
+  Rel(runner, git, "Executes")
+  Rel(git, github, "Talks to")
+  Rel(tsrc, cache, "Reads & writes (bounded to cache dir)")
+```
+
+### L3 — Component: TemplateSource subsystem
+
+```mermaid
+C4Component
+  title Component Diagram — TemplateSource subsystem
+  Container_Boundary(tsrc, "Template Sourcing") {
+    Component(detect, "detect_template_source / is_git_url", "template_source.rs", "Auto-detect LOCAL vs GITHUB (D1)")
+    Component(port, "TemplateSource", "trait (port)", "resolve(runner) -> local dir | TemplateSourceError")
+    Component(local, "LocalDirectory", "adapter", "Passthrough of an existing dir (pure, no write)")
+    Component(gh, "GitHubRepository", "adapter", "Clone/fetch/checkout at ref; write bounded to cache dir")
+    Component(cache, "TemplateCache", "collaborator", "Cache key + pure CacheAction decision + executor")
+    Component(auth, "AuthMode / auth plan", "value", "auto|ssh|token -> git invocation plan (pure)")
+    Component(err, "TemplateSourceError", "enum", "auth | network/offline | bad-ref | no-cache -> hint")
+  }
+  Component_Ext(runner, "CommandRunner", "port", "runs git, captures stderr for classification")
+  Component_Ext(tools, "ensure_tools_available", "helpers.rs", "ADR-0004 git PATH gate (probe)")
+  Component_Ext(env, "GITHUB_TOKEN", "environment", "Read only at execution; never in INI/argv/.git/config")
+  Rel(detect, port, "Constructs a")
+  Rel(local, port, "Implements")
+  Rel(gh, port, "Implements")
+  Rel(gh, tools, "Pre-checks git via")
+  Rel(gh, cache, "Asks for CacheAction from")
+  Rel(gh, auth, "Builds git args from")
+  Rel(gh, runner, "Runs git through")
+  Rel(auth, env, "Token mode reads")
+  Rel(gh, err, "Classifies git stderr into")
+```
