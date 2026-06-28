@@ -592,7 +592,7 @@ mod tests {
 
         let ui = crate::cli_structure::UserInput {
             action: crate::cli_structure::UserAction::Insert(
-                crate::cli_structure::FilterArgs::default(),
+                crate::cli_structure::InsertArgs::default(),
             ),
             save_to_database: false,
             view_generated_cv: false,
