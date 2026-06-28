@@ -883,10 +883,15 @@ mod distill_specs {
                 flags.iter().any(|f| f == &expected),
                 "token auth must point git at the fixed askpass helper constant"
             );
-            prop_assert!(
-                !flags.iter().any(|f| f.contains(host.as_str()) || f.contains(name.as_str())),
-                "the helper name must be input-independent — no url fragment in the flags"
-            );
+            // Input-independence is the real property: Token flags never vary with
+            // the url, so no url-derived fragment can leak in. Assert that invariant
+            // directly. (A substring check on the random host/name false-fails when
+            // it collides with the fixed helper constant's own letters — e.g. a
+            // generated "git"/"env"/"ask" is a substring of `core.askpass=
+            // git-askpass-from-env` — which made this test flaky under proptest.)
+            let baseline =
+                auth_invocation_flags(AuthMode::Token, "https://baseline.example/owner/repo.git");
+            prop_assert_eq!(&flags, &baseline, "token flags must be identical regardless of the url");
         });
     }
 
