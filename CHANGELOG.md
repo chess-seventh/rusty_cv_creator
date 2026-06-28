@@ -1,3 +1,10 @@
+## [5.2.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.1.1...v5.2.0) (2026-06-28)
+
+
+### Features
+
+* **template-source:** pull CV template from a local dir or GitHub repo ([#100](https://github.com/chess-seventh/rusty_cv_creator/issues/100)) ([282601d](https://github.com/chess-seventh/rusty_cv_creator/commit/282601d5922c100d73aceee3f1c04e6798706e3d)), closes [#101](https://github.com/chess-seventh/rusty_cv_creator/issues/101) [#101](https://github.com/chess-seventh/rusty_cv_creator/issues/101)
+
 ## [5.1.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.1.0...v5.1.1) (2026-06-28)
 
 
