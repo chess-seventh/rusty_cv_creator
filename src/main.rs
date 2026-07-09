@@ -119,7 +119,9 @@ mod tests {
     use super::*;
     use crate::command_runner::testing::FakeRunner;
 
-    /// A fake builder that "compiles" by writing the expected PDF into `cwd`.
+    /// A fake builder that "compiles" by writing the expected PDF into `cwd`
+    /// and emitting a contract-compliant 2-page transcript line, so the
+    /// page-count guard in `compile_cv` is satisfied.
     struct PdfWritingRunner {
         pdf_name: String,
     }
@@ -136,6 +138,24 @@ mod tests {
         }
         fn spawn(&self, _program: &str, _args: &[&str]) -> io::Result<()> {
             Ok(())
+        }
+        fn run_capturing(
+            &self,
+            _program: &str,
+            _args: &[&str],
+            cwd: Option<&str>,
+        ) -> io::Result<crate::command_runner::CommandOutcome> {
+            if let Some(dir) = cwd {
+                std::fs::write(format!("{dir}/{}", self.pdf_name), b"%PDF-1.4")?;
+            }
+            Ok(crate::command_runner::CommandOutcome {
+                success: true,
+                stdout: format!(
+                    "Output written on {} (2 pages, 150000 bytes).\n",
+                    self.pdf_name
+                ),
+                stderr: String::new(),
+            })
         }
     }
 

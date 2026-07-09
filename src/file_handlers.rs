@@ -1,4 +1,4 @@
-use crate::command_runner::CommandRunner;
+use crate::command_runner::{CommandOutcome, CommandRunner};
 use crate::config_parse::get_variable_from_config_file;
 use crate::global_conf::AppContext;
 use crate::helpers::{clean_string_from_quotes, fix_home_directory_path};
@@ -90,14 +90,12 @@ pub struct BuildConfig {
     pub builder: String,
     pub recipe: String,
     /// Page-count contract for the rendered PDF: a build whose transcript
-    /// reports more pages than this must fail. INI wiring (`[build] max_pages`)
-    /// lands with the guard in step 01-02; the default contract is 2 pages.
-    #[expect(
-        dead_code,
-        reason = "read by the page-count guard landing in step 01-02; \
-                  this expectation then errors and must be removed"
-    )]
+    /// reports more pages than this fails, even when the builder exited 0.
     pub max_pages: u32,
+    /// Justfile variable override prepended to the build args (e.g.
+    /// `tectonic=tectonic --print`) so the TeX transcript — carrying the
+    /// `Output written on ... (N pages` line — reaches the captured streams.
+    pub page_count_probe: String,
 }
 
 impl BuildConfig {
@@ -108,17 +106,25 @@ impl BuildConfig {
                 .unwrap_or_else(|_| "just".to_string()),
             recipe: get_variable_from_config_file(ctx, "build", "recipe")
                 .unwrap_or_else(|_| "build".to_string()),
-            max_pages: 2,
+            max_pages: get_variable_from_config_file(ctx, "build", "max_pages")
+                .unwrap_or_else(|_| "2".to_string())
+                .parse()?,
+            page_count_probe: get_variable_from_config_file(ctx, "build", "page_count_probe")
+                .unwrap_or_else(|_| "tectonic=tectonic --print".to_string()),
         })
     }
 }
 
 /// Build a single CV variant inside `cv_dir` using the project Justfile.
 ///
-/// Runs `<builder> <recipe> <variant>` (default `just build <variant>`) in the
-/// copied template directory, which produces `<prefix>-<variant>.pdf` next to
-/// the driver file. All build artifacts (pdf, log, aux, ...) land in `cv_dir`,
-/// so there is no hard-coded output directory.
+/// Runs `<builder> <probe> <recipe> <variant>` (default
+/// `just tectonic=tectonic --print build <variant>`) in the copied template
+/// directory, which produces `<prefix>-<variant>.pdf` next to the driver file.
+/// The probe is a Justfile variable override that routes the TeX transcript to
+/// the captured streams, so a successful build is additionally held to the
+/// page-count contract (`cfg.max_pages`) — see `enforce_page_contract`.
+/// All build artifacts (pdf, log, aux, ...) land in `cv_dir`, so there is no
+/// hard-coded output directory.
 ///
 /// Tool availability (`just`, `tectonic`) is checked by the caller before this
 /// runs; here we only validate the inputs and invoke the builder via `runner`.
@@ -151,20 +157,76 @@ pub fn compile_cv(
         cfg.builder, cfg.recipe
     );
 
-    if runner.status(&cfg.builder, &[&cfg.recipe, variant], Some(cv_dir))? {
-        info!("✅ CV compiled successfully");
-        Ok(())
-    } else {
+    let outcome = runner.run_capturing(
+        &cfg.builder,
+        &[&cfg.page_count_probe, &cfg.recipe, variant],
+        Some(cv_dir),
+    )?;
+    if !outcome.success {
         error!(
             "Error building CV with: {} {} {variant}",
             cfg.builder, cfg.recipe
         );
-        Err(format!(
+        return Err(format!(
             "Error building CV with: {} {} {variant}",
             cfg.builder, cfg.recipe
         )
-        .into())
+        .into());
     }
+
+    info!("✅ CV compiled successfully");
+    enforce_page_contract(&outcome, cfg.max_pages)
+}
+
+/// Enforce the page-count contract on a SUCCESSFUL build: the LAST
+/// `Output written on <file> (N pages` line across stdout+stderr combined
+/// decides the outcome (tectonic runs multiple passes and routes notes to
+/// stderr). No page line at all fails closed — a transcript format change
+/// must break loudly, never silently ship an oversized CV.
+fn enforce_page_contract(
+    outcome: &CommandOutcome,
+    max_pages: u32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let transcript = format!("{}\n{}", outcome.stdout, outcome.stderr);
+    match last_reported_page_count(&transcript) {
+        Some(pages) if pages > max_pages => {
+            error!("CV is {pages} pages; the contract allows at most {max_pages}");
+            Err(format!("CV is {pages} pages; the contract allows at most {max_pages}").into())
+        }
+        Some(pages) => {
+            info!("✅ Page-count contract met: {pages} <= {max_pages} pages");
+            Ok(())
+        }
+        None => {
+            error!("Build transcript reported no page count; failing closed");
+            Err("Build transcript reported no page count (expected an \
+                 'Output written on ... (N pages' line); failing closed \
+                 rather than shipping an unverified CV"
+                .into())
+        }
+    }
+}
+
+/// The page count reported by the LAST `Output written on <file> (N pages`
+/// transcript line, if any. Only the final pass's count reflects the artifact
+/// actually written.
+fn last_reported_page_count(transcript: &str) -> Option<u32> {
+    transcript
+        .lines()
+        .rev()
+        .filter(|line| line.contains("Output written on"))
+        .find_map(page_count_in)
+}
+
+/// Parse the `(N page[s]` fragment out of one transcript line.
+fn page_count_in(line: &str) -> Option<u32> {
+    let (_, tail) = line.split_once('(')?;
+    let digits_end = tail.find(|c: char| !c.is_ascii_digit())?;
+    let pages = tail[..digits_end].parse().ok()?;
+    tail[digits_end..]
+        .trim_start()
+        .starts_with("page")
+        .then_some(pages)
 }
 
 pub fn create_directory(
@@ -467,6 +529,7 @@ mod tests {
             builder: "just".to_string(),
             recipe: "build".to_string(),
             max_pages: 2,
+            page_count_probe: "tectonic=tectonic --print".to_string(),
         }
     }
 
@@ -476,9 +539,15 @@ mod tests {
         let dir = td.path().to_str().unwrap();
         fs::write(td.path().join("TestCV-senior-devops.tex"), "x").unwrap();
 
-        let runner = crate::command_runner::testing::FakeRunner::ok();
+        let runner = crate::command_runner::testing::FakeRunner::with_stdout(
+            "Output written on TestCV-senior-devops.xdv (2 pages, 150000 bytes).\n",
+        );
         assert!(compile_cv(&runner, dir, "senior-devops", &test_cfg()).is_ok());
-        assert_eq!(runner.calls.borrow()[0], "just build senior-devops");
+        assert_eq!(
+            runner.calls.borrow()[0],
+            "just tectonic=tectonic --print build senior-devops",
+            "the transcript probe override must be prepended to the build args"
+        );
     }
 
     #[test]
@@ -526,7 +595,6 @@ mod tests {
     /// transcript reports 3 pages must be an Err. The earlier-pass 2-page line
     /// pins the LAST-match rule (tectonic runs multiple passes).
     #[test]
-    #[ignore = "RED: page-count guard lands in step 01-02"]
     fn test_compile_cv_three_page_transcript_errs() {
         let td = sre_build_dir();
         let runner = crate::command_runner::testing::FakeRunner::with_stdout(
@@ -568,7 +636,6 @@ mod tests {
     /// RCA item 3 — fail closed: a successful run whose transcript carries NO
     /// page line must be an Err (a transcript format change breaks loudly).
     #[test]
-    #[ignore = "RED: page-count guard lands in step 01-02"]
     fn test_compile_cv_missing_page_line_errs() {
         let td = sre_build_dir();
         let runner = crate::command_runner::testing::FakeRunner::with_stdout(
@@ -589,7 +656,6 @@ mod tests {
     /// RCA item 4 — tectonic routes notes to stderr: a 3-page line arriving on
     /// stderr instead of stdout is still honored by the guard.
     #[test]
-    #[ignore = "RED: page-count guard lands in step 01-02"]
     fn test_compile_cv_page_line_on_stderr_is_honored() {
         let td = sre_build_dir();
         let runner = crate::command_runner::testing::FakeRunner::with_stderr(
@@ -610,7 +676,6 @@ mod tests {
     /// RCA item 5 — `max_pages` is honored from config: with a 1-page contract
     /// even a 2-page transcript must fail.
     #[test]
-    #[ignore = "RED: page-count guard lands in step 01-02"]
     fn test_compile_cv_max_pages_config_is_honored() {
         let td = sre_build_dir();
         let runner = crate::command_runner::testing::FakeRunner::with_stdout(
