@@ -151,6 +151,16 @@ pub mod testing {
             }
         }
 
+        /// A SUCCESSFUL runner whose captured `stderr` is the given string, so
+        /// a caller can assert output routed to stderr (e.g. the tectonic page
+        /// transcript) is still honored on a successful run.
+        pub fn with_stderr(stderr: &str) -> Self {
+            Self {
+                stderr: stderr.to_string(),
+                ..Self::ok()
+            }
+        }
+
         fn record(&self, program: &str, args: &[&str]) {
             self.calls
                 .borrow_mut()
@@ -189,9 +199,10 @@ pub mod testing {
             _cwd: Option<&str>,
         ) -> io::Result<CommandOutcome> {
             self.record(program, args);
-            let stderr = if self.succeed {
-                String::new()
-            } else if self.stderr.is_empty() {
+            // Surface `self.stderr` on success too (page-count guard tests fake
+            // a successful build whose transcript arrives on stderr). A failure
+            // with no injected stderr keeps the canned git default.
+            let stderr = if !self.succeed && self.stderr.is_empty() {
                 "fatal: could not read from remote repository.".to_string()
             } else {
                 self.stderr.clone()

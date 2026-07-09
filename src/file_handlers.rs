@@ -89,6 +89,15 @@ pub struct BuildConfig {
     pub prefix: String,
     pub builder: String,
     pub recipe: String,
+    /// Page-count contract for the rendered PDF: a build whose transcript
+    /// reports more pages than this must fail. INI wiring (`[build] max_pages`)
+    /// lands with the guard in step 01-02; the default contract is 2 pages.
+    #[expect(
+        dead_code,
+        reason = "read by the page-count guard landing in step 01-02; \
+                  this expectation then errors and must be removed"
+    )]
+    pub max_pages: u32,
 }
 
 impl BuildConfig {
@@ -99,6 +108,7 @@ impl BuildConfig {
                 .unwrap_or_else(|_| "just".to_string()),
             recipe: get_variable_from_config_file(ctx, "build", "recipe")
                 .unwrap_or_else(|_| "build".to_string()),
+            max_pages: 2,
         })
     }
 }
@@ -456,6 +466,7 @@ mod tests {
             prefix: "TestCV".to_string(),
             builder: "just".to_string(),
             recipe: "build".to_string(),
+            max_pages: 2,
         }
     }
 
@@ -497,6 +508,122 @@ mod tests {
         fs::write(td.path().join("TestCV-x.tex"), "x").unwrap();
         let runner = crate::command_runner::testing::FakeRunner::failing();
         assert!(compile_cv(&runner, td.path().to_str().unwrap(), "x", &test_cfg()).is_err());
+    }
+
+    // Page-count contract regression net (RCA fix-3-page-cv-overflow items 1-5).
+    // The build transcript line is real tectonic output; across multi-pass
+    // builds the LAST `Output written on ...` occurrence wins.
+
+    /// Working dir with the senior-sre driver file present, so `compile_cv`
+    /// reaches the builder invocation (the seam under test).
+    fn sre_build_dir() -> TempDir {
+        let td = TempDir::new().unwrap();
+        fs::write(td.path().join("TestCV-senior-sre.tex"), "x").unwrap();
+        td
+    }
+
+    /// RCA item 1 — THE bug regression: a successful builder run whose
+    /// transcript reports 3 pages must be an Err. The earlier-pass 2-page line
+    /// pins the LAST-match rule (tectonic runs multiple passes).
+    #[test]
+    #[ignore = "RED: page-count guard lands in step 01-02"]
+    fn test_compile_cv_three_page_transcript_errs() {
+        let td = sre_build_dir();
+        let runner = crate::command_runner::testing::FakeRunner::with_stdout(
+            "Output written on PivaFrancesco-senior-sre.xdv (2 pages, 150000 bytes).\n\
+             Rerunning...\n\
+             Output written on PivaFrancesco-senior-sre.xdv (3 pages, 176132 bytes).\n",
+        );
+        assert!(
+            compile_cv(
+                &runner,
+                td.path().to_str().unwrap(),
+                "senior-sre",
+                &test_cfg()
+            )
+            .is_err(),
+            "a 3-page artifact violates the 2-page contract and must fail the build"
+        );
+    }
+
+    /// RCA item 2 — a 2-page transcript honors the contract: Ok.
+    #[test]
+    fn test_compile_cv_two_page_transcript_is_ok() {
+        let td = sre_build_dir();
+        let runner = crate::command_runner::testing::FakeRunner::with_stdout(
+            "Output written on PivaFrancesco-senior-sre.xdv (2 pages, 150000 bytes).\n",
+        );
+        assert!(
+            compile_cv(
+                &runner,
+                td.path().to_str().unwrap(),
+                "senior-sre",
+                &test_cfg()
+            )
+            .is_ok(),
+            "a 2-page artifact meets the contract and must succeed"
+        );
+    }
+
+    /// RCA item 3 — fail closed: a successful run whose transcript carries NO
+    /// page line must be an Err (a transcript format change breaks loudly).
+    #[test]
+    #[ignore = "RED: page-count guard lands in step 01-02"]
+    fn test_compile_cv_missing_page_line_errs() {
+        let td = sre_build_dir();
+        let runner = crate::command_runner::testing::FakeRunner::with_stdout(
+            "note: downloading resources\nnote: done\n",
+        );
+        assert!(
+            compile_cv(
+                &runner,
+                td.path().to_str().unwrap(),
+                "senior-sre",
+                &test_cfg()
+            )
+            .is_err(),
+            "no page line in the transcript must fail closed, never silently ship"
+        );
+    }
+
+    /// RCA item 4 — tectonic routes notes to stderr: a 3-page line arriving on
+    /// stderr instead of stdout is still honored by the guard.
+    #[test]
+    #[ignore = "RED: page-count guard lands in step 01-02"]
+    fn test_compile_cv_page_line_on_stderr_is_honored() {
+        let td = sre_build_dir();
+        let runner = crate::command_runner::testing::FakeRunner::with_stderr(
+            "Output written on PivaFrancesco-senior-sre.xdv (3 pages, 176132 bytes).\n",
+        );
+        assert!(
+            compile_cv(
+                &runner,
+                td.path().to_str().unwrap(),
+                "senior-sre",
+                &test_cfg()
+            )
+            .is_err(),
+            "a 3-page line on stderr must still trip the page-count guard"
+        );
+    }
+
+    /// RCA item 5 — `max_pages` is honored from config: with a 1-page contract
+    /// even a 2-page transcript must fail.
+    #[test]
+    #[ignore = "RED: page-count guard lands in step 01-02"]
+    fn test_compile_cv_max_pages_config_is_honored() {
+        let td = sre_build_dir();
+        let runner = crate::command_runner::testing::FakeRunner::with_stdout(
+            "Output written on PivaFrancesco-senior-sre.xdv (2 pages, 150000 bytes).\n",
+        );
+        let cfg = BuildConfig {
+            max_pages: 1,
+            ..test_cfg()
+        };
+        assert!(
+            compile_cv(&runner, td.path().to_str().unwrap(), "senior-sre", &cfg).is_err(),
+            "max_pages=1 makes a 2-page transcript violate the contract"
+        );
     }
 
     #[test]
