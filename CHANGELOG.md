@@ -1,3 +1,10 @@
+## [5.2.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.2.0...v5.2.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **build:** fail the CV build when the PDF exceeds the page contract ([a38907e](https://github.com/chess-seventh/rusty_cv_creator/commit/a38907e0b063f4bb0aed6326a25d5cccfccccbb0))
+
 ## [5.2.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.1.1...v5.2.0) (2026-06-28)
 
 
