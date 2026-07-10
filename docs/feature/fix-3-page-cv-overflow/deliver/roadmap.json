@@ -1,0 +1,64 @@
+{
+  "roadmap": {
+    "project_id": "fix-3-page-cv-overflow",
+    "created_at": "2026-07-09T00:00:00Z",
+    "total_steps": 2,
+    "goal": "Enforce the 2-page CV contract at the render seam: compile_cv fails closed when the tectonic transcript reports more than max_pages (default 2) or reports no page count at all, so an overflowing CV can never be shipped as success again.",
+    "note": "Bugfix via /nw-bugfix from docs/feature/fix-3-page-cv-overflow/rca.md (the authoritative spec, incl. its 'Regression tests' list). No DISTILL .feature scenarios; regression unit tests through the existing CommandRunner port (ADR-0002, hexagonal seam) are the acceptance net. Two steps: RED (regression tests, core test fails on current code) then GREEN (page-count assertion).",
+    "validation": {
+      "status": "approved",
+      "by": "orchestrator (Vulcan) after nw-acceptance-designer-reviewer x2",
+      "rationale": "Review 1: 4 blockers. Re-review with code evidence: issues 1/3/4 WITHDRAWN (category errors - roadmap steps describe future work). Surviving issue 2 was the same category error (faults 01-01 for not yet containing the constructor 01-01 adds) - overruled; its real substance (run_capturing success path suppresses stderr) folded into 01-01 criterion 3."
+    }
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Page-count guard in compile_cv",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Regression tests for the page-count contract (RED)",
+          "criteria": [
+            "New FakeRunner-based unit tests live in src/file_handlers.rs's existing #[cfg(test)] mod tests (project convention: tests colocated in src), covering rca.md regression items 1-5: a transcript reporting 3 pages makes compile_cv return Err; a 2-page transcript returns Ok; a transcript with no page line returns Err (fail closed); a page line arriving on stderr instead of stdout is still honored; max_pages configured to 1 makes a 2-page transcript fail.",
+            "The core regression test (3-page transcript => compile_cv Err) demonstrably FAILS against the current unfixed compile_cv, which treats builder exit 0 as success (RED evidence captured in the step's test run).",
+            "THIS STEP ADDS FakeRunner::with_stderr to src/command_runner.rs's testing module: a SUCCESSFUL run whose captured stderr carries the given transcript text. Note the existing run_capturing success path forces stderr to String::new() - it must be changed to surface self.stderr on success (existing callers inject stderr only on failure, so they stay green). Test-support code only, no production behavior change in this step.",
+            "Pre-existing tests are left untouched; rca.md item 6 (the existing e2e test_prepare_cv_end_to_end_with_fake_builder) is intentionally deferred to step 01-02, where the fix makes it observable."
+          ],
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "src/file_handlers.rs (in-crate cfg(test) module)",
+          "scenario_name": "n/a bugfix \u2014 rca.md \u00a7Regression tests items 1-5",
+          "files_to_modify": [
+            "src/file_handlers.rs",
+            "src/command_runner.rs"
+          ]
+        },
+        {
+          "id": "01-02",
+          "name": "Page-count assertion in compile_cv (GREEN)",
+          "criteria": [
+            "compile_cv invokes the build through the runner's capturing run (run_capturing on the CommandRunner port) with a configurable transcript-probe just-variable override, default 'tectonic=tectonic --print', so the TeX transcript reaches the captured streams.",
+            "The LAST 'Output written on ... (N pages' match across stdout+stderr combined decides the outcome: Err when N exceeds max_pages, Err when no match is found at all (fail closed), Ok otherwise; the error names the offending page count and the allowed maximum.",
+            "BuildConfig gains max_pages (default 2) and the probe override, both read from the [build] section of the config INI; both keys are documented in rusty-cv-config-example.ini.",
+            "The existing e2e test_prepare_cv_end_to_end_with_fake_builder stays green: PdfWritingRunner in src/main.rs's test module emits a 2-page transcript line (rca.md regression item 6).",
+            "All six rca.md regression items pass and the entire suite is green (cargo nextest run and cargo test), with clippy -D warnings clean."
+          ],
+          "agent": "nw-software-crafter",
+          "deps": [
+            "01-01"
+          ],
+          "test_file": "src/file_handlers.rs (in-crate cfg(test) module) + src/main.rs e2e",
+          "scenario_name": "n/a bugfix \u2014 rca.md \u00a7Regression tests items 1-6 green",
+          "files_to_modify": [
+            "src/file_handlers.rs",
+            "src/main.rs",
+            "rusty-cv-config-example.ini"
+          ]
+        }
+      ]
+    }
+  ]
+}
