@@ -107,6 +107,18 @@ cv_template_file = "cv.tex"
 position_line_to_change = "POSITION_PLACEHOLDER"
 quote_line_to_change = "QUOTE_PLACEHOLDER"
 
+[build]
+# How each variant is compiled: <builder> <recipe> <variant>
+builder = "just"
+recipe = "build"
+# Page contract: the build FAILS if the rendered PDF exceeds this many pages
+# (or if no page count can be read from the TeX transcript — fail closed).
+max_pages = 2
+# Justfile variable override that routes the TeX transcript into the captured
+# output so the page count is readable. Only change if the template renames
+# its `tectonic` variable.
+page_count_probe = "tectonic=tectonic --print"
+
 [db]
 db_path = "~/.config/rusty-cv-creator"
 db_file = "applications.db"
