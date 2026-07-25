@@ -1,3 +1,10 @@
+## [5.3.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.2.2...v5.3.0) (2026-07-25)
+
+
+### Features
+
+* **cli:** select CV template repo and branch from the CLI ([679d4bf](https://github.com/chess-seventh/rusty_cv_creator/commit/679d4bfd56e4ec4e63b706b08d886bb75a2e812a))
+
 ## [5.2.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.2.1...v5.2.2) (2026-07-20)
 
 ## [5.2.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.2.0...v5.2.1) (2026-07-10)
