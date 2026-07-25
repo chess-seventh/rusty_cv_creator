@@ -106,6 +106,8 @@ mod tests {
             dry_run: false,
             config_ini: String::new(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         AppContext::new(Ini::new(), Local::now(), ui)
     }
@@ -128,6 +130,8 @@ mod tests {
             dry_run: false,
             config_ini: f.path().to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         let ctx = build_context(&ui);
         assert_eq!(get_db_configurations(&ctx).unwrap(), "/tmp/test.db");

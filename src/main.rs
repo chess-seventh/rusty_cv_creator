@@ -190,6 +190,8 @@ mod tests {
             dry_run: false,
             config_ini: ini_path.to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         let ctx = build_context(&ui);
 

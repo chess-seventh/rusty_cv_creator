@@ -217,6 +217,8 @@ is independently shippable and dogfoodable the same day.
 
 - The git-fetch mechanism choice (shell-out `git` vs `git2`/`gitoxide`) — a SPIKE/DESIGN decision, not DISCUSS.
 - A `--template-ref` / `--template-path` **CLI override** (config-first for now; can be a later slice).
+  **SUPERSEDED by DISCUSS delta L54 (D8 / TS-05 below):** this item is un-deferred — `--repo`
+  and `--branch` global flags now override the two INI keys. (Original line retained for traceability.)
 - Non-GitHub remotes (GitLab, Bitbucket, arbitrary git hosts) — URL detection may incidentally work, but only GitHub is
   a committed acceptance target.
 - Sparse-checkout / partial-clone performance optimisation.
@@ -672,3 +674,194 @@ Two follow-ups recorded honestly (no silent debt):
    derive the cache-entry path in two spots from the same `cache_dir` (correct
    today; could diverge if a future change splits them). Scoped refactor: have
    `resolve_cached` use the injected `cache.entry_path(...)`.
+
+---
+
+## Wave: DISCUSS (delta L54) / [REF] Context
+
+Un-defers the CLI-override item ruled OUT of initial scope (line 219 above, and
+D6's parenthetical). No new job — traces to the existing `source-cv-template`
+(`docs/product/jobs.yaml`). Strictly additive, backward-compatible: two global
+CLI flags that OVERRIDE two existing INI keys; the resolver
+(`resolve_template_for_config`) and all downstream flow (copy_dir → Justfile
+build → filing, D5) are untouched. Persona unchanged: **Francesco**.
+
+## Wave: DISCUSS (delta L54) / [REF] Locked decision D8
+
+| ID | Decision | Verdict |
+| ---- | ---------- | --------- |
+| D8 | **CLI override precedence is `flag > INI > built-in default`.** `--repo <git-url\|local-dir>` overrides `[cv] cv_template_path`; `--branch <ref>` overrides `[cv] cv_template_ref`. Both are **global** flags on `UserInput` (`src/cli_structure.rs`), consistent with the existing `--config-ini` / `--engine` globals — **not** a new subcommand. When a flag is absent, the INI value is used byte-for-byte unchanged. Override is applied in `prepare_path_for_new_cv` (`src/file_handlers.rs`) before the values are threaded into the unchanged `resolve_template_for_config(...)`. **D6 is relaxed only for override flags** (still no new subcommand). `cv_template_auth` / `cv_template_cache` get **no** CLI flag (INI-only). | LOCKED |
+
+## Wave: DISCUSS (delta L54) / [REF] User story TS-05
+
+### TS-05 — Override the template source/ref from the command line
+
+As Francesco, I pass `--repo` and/or `--branch` on the `insert` command so I can
+build from a different template repo or ref for a one-off run without editing my
+INI file.
+
+#### Elevator Pitch
+
+Before: to build from a different template repo or pin a different ref for one
+run, I must edit `[cv] cv_template_path` / `cv_template_ref` in my INI, run, then
+edit it back.
+After: run
+`rusty_cv_creator --repo git@github.com:chess-seventh/cv-experimental.git --branch redesign insert --job-title "SRE" --company-name "Acme"`
+→ the CV is sourced from that repo at that ref for this run only; my INI is
+untouched.
+Decision enabled: I decide per-invocation which template repo and version a CV is
+built from — reusing the exact same auto-detect / auth / ref-pin / cache resolver,
+with zero config churn.
+
+**Acceptance criteria**
+
+- AC1: Given `--repo <git-url>` is passed, when I run `insert`, then it **overrides**
+  `cv_template_path` and the CV is sourced from that repo (via the unchanged
+  `resolve_template_for_config` auto-detect path).
+- AC2: Given `--branch <ref>` is passed, when I run `insert`, then it **overrides**
+  `cv_template_ref` and that exact ref is checked out (TS-03 resolution unchanged).
+- AC3 (regression / backward-compat guard): Given **neither** flag is passed, when
+  I run `insert`, then behaviour is **identical to today** — the INI
+  `cv_template_path` / `cv_template_ref` values are used byte-for-byte, no override
+  applied.
+- AC4: Given `--repo` points at a **local directory**, when I run `insert`, then it
+  is honoured as a local passthrough — the same auto-detect (LOCAL vs GITHUB, D1)
+  that the INI value would receive.
+- AC5: Given `--branch <ref>` **without** `--repo`, when I run `insert`, then the
+  ref override still applies against the INI-configured `cv_template_path` repo
+  (independent override of the two keys).
+
+## Wave: DISCUSS (delta L54) / [REF] DoR check
+
+| # | DoR item | Status | Evidence |
+| --- | ---------- | -------- | ---------- |
+| 1 | Job traceable | ✅ | TS-05 → existing job `source-cv-template` (no new job) |
+| 2 | Persona known | ✅ | Francesco (unchanged) |
+| 3 | Elevator pitch present | ✅ | Before/After (exact `--repo`/`--branch` `insert` command)/Decision triplet |
+| 4 | ACs testable | ✅ | AC1–AC5 each Given/When/Then with an observable override outcome |
+| 5 | Backward-compat regression named | ✅ | AC3 is the explicit byte-for-byte no-flag regression guard |
+| 6 | Out-of-scope explicit | ✅ | delta out-of-scope note below |
+
+## Wave: DISCUSS (delta L54) / [REF] Out-of-scope (delta)
+
+- **Still no new subcommand** — flags are global on `UserInput`; D6 relaxed only for
+  the override flags.
+- **No `--auth` / `--cache` CLI flags** — `cv_template_auth` / `cv_template_cache`
+  remain INI-only.
+- **No change to resolver internals** — `resolve_template_for_config` (git detect →
+  auth → ref pin → cache) is unchanged; the override is a pre-resolve value swap in
+  `prepare_path_for_new_cv`.
+- Downstream copy_dir → Justfile build → filing untouched (D5 preserved).
+
+---
+
+## Wave: DISTILL (delta L54) / [REF] Authoring note
+
+> Scaffolded RED for story **TS-05** (CLI override `--repo` / `--branch`, D8). Adds
+> to the existing 16 scenarios; does **not** re-author them. Density: **LEAN**.
+> Reconciliation gate: **passed — 0 contradictions** (DISCUSS delta D8 only relaxes
+> D6 for the two override flags; DESIGN's resolver `resolve_template_for_config` is
+> untouched — the override is a pre-resolve value swap in `prepare_path_for_new_cv`,
+> fully consistent with DESIGN D5). No DEVOPS wave exists.
+>
+> **Testable seam (RED contract for the crafter):** the D8 precedence lives in two
+> PURE functions so it is property-testable —
+> `effective_template_path(repo_flag, ini_value) -> String` (flag > INI) and
+> `effective_template_ref(branch_flag, ini_ref) -> Option<String>`
+> (`branch_flag.or(ini_ref)`). Both are added as `todo!()` scaffolds in
+> `src/file_handlers.rs` in the RED commit (SCAFFOLD marker) so the crate COMPILES
+> and the new specs fail by `panic!` (RED), never by a compile/import error. The
+> override wiring into `prepare_path_for_new_cv` (before the unchanged
+> `resolve_template_for_config`) is DELIVER/GREEN work.
+
+## Wave: DISTILL (delta L54) / [REF] Inherited commitments
+
+| Origin | Commitment | DDD | Impact |
+| --- | --- | --- | --- |
+| DISCUSS(delta)#D8 | CLI override precedence `flag > INI > built-in default`; `--repo`→`cv_template_path`, `--branch`→`cv_template_ref`; global flags on `UserInput`, additive, no new subcommand. | D8 | Drives TS-05 scenarios; two pure precedence fns are the property-testable seam. |
+| DISCUSS(delta)#D8 | Override applied in `prepare_path_for_new_cv` BEFORE the unchanged `resolve_template_for_config`. | D8 | Auto-detect / auth / ref-pin / cache resolver reused verbatim (D5 preserved); override is a value swap only. |
+| DISCUSS#TS-01/D1 | A `--repo` local dir is auto-detected LOCAL exactly as an INI value would be. | n/a | TS-05/AC4 integration spec proves the override reaches resolve and is treated as a local passthrough. |
+
+## Wave: DISTILL (delta L54) / [REF] Scenario list with tags
+
+7 new specs for TS-05 (5 AC-mapped + 1 precedence property + 1 CLI-surface smoke).
+5 of 7 are error/edge/regression/property (**71%**).
+
+| # | Scenario | Test (file::name) | Tags |
+| --- | --- | --- | --- |
+| 1 | `--repo` overrides the INI template path | `src/file_handlers.rs::distill_specs_l54::ts05_ac1_repo_flag_overrides_ini_path` | @us-05 @contract-shape:pure-function |
+| 2 | With no `--repo` the INI path is used byte-for-byte | `…distill_specs_l54::ts05_ac3_no_repo_flag_uses_ini_path_byte_for_byte` | @us-05 @edge @contract-shape:unbounded-preservation |
+| 3 | `--branch` overrides the INI ref | `…distill_specs_l54::ts05_ac2_branch_flag_overrides_ini_ref` | @us-05 @contract-shape:pure-function |
+| 4 | `--branch` independent override of the ref key | `…distill_specs_l54::ts05_ac5_branch_flag_without_ini_ref` | @us-05 @edge @contract-shape:pure-function |
+| 5 | Precedence `flag > INI` is total over any (flag, ini) | `…distill_specs_l54::ts05_precedence_flag_wins_over_ini` | @us-05 @property @contract-shape:pure-function |
+| 6 | `--repo` local dir reaches resolve as a LOCAL passthrough | `…distill_specs_l54_integration::ts05_ac4_repo_flag_local_dir_passthrough` | @us-05 @real-io @contract-shape:bounded-change |
+| 7 | `--help` advertises `--repo` and `--branch` | `tests/cli_smoke.rs::test_help_lists_repo_and_branch_flags` | @us-05 @driving_adapter |
+
+## Wave: DISTILL (delta L54) / [REF] Traceability (AC → scenario → test → RED state)
+
+| AC | Scenario | Test (file::name) | State |
+| --- | --- | --- | --- |
+| TS-05/AC1 | 1 | `src/file_handlers.rs::distill_specs_l54::ts05_ac1_repo_flag_overrides_ini_path` | RED (panic — `effective_template_path` `todo!()`) |
+| TS-05/AC3 | 2 | `…::ts05_ac3_no_repo_flag_uses_ini_path_byte_for_byte` | RED (panic) |
+| TS-05/AC2 | 3 | `…::ts05_ac2_branch_flag_overrides_ini_ref` | RED (panic — `effective_template_ref` `todo!()`) |
+| TS-05/AC5 | 4 | `…::ts05_ac5_branch_flag_without_ini_ref` | RED (panic) |
+| TS-05/D8 (invariant) | 5 | `…::ts05_precedence_flag_wins_over_ini` | RED (panic — proptest first case) |
+| TS-05/AC4 | 6 | `…distill_specs_l54_integration::ts05_ac4_repo_flag_local_dir_passthrough` | RED (assertion — no override wiring yet; template sourced from INI dir, FLAG marker absent) |
+| TS-05 (CLI surface) | 7 | `tests/cli_smoke.rs::test_help_lists_repo_and_branch_flags` | GREEN on scaffold — `--repo`/`--branch` clap fields are added in the RED commit to keep the crate compile-clean, so `--help` lists them immediately. Behavioural RED lives in specs 1–6. |
+
+> **Pure-fn precedence seam:** specs 1–5 pin the two pure fns directly (5 fast
+> example/property specs). **Override integration:** spec 6 proves the override
+> actually reaches `prepare_path_for_new_cv` and is auto-detected LOCAL (D1) — it is
+> the wiring guard the pure-fn specs cannot provide.
+
+## Wave: DISTILL (delta L54) / [REF] Scaffolds
+
+Additive RED scaffolds (Mandate 7, Rust); crate compiles, existing 156 tests stay
+green, new behavioural specs fail by panic/assertion. Marker: `// SCAFFOLD: true`.
+
+| File | Symbol | Kind |
+| --- | --- | --- |
+| `src/file_handlers.rs` | `effective_template_path` | pure fn (`todo!()`) — flag > INI path |
+| `src/file_handlers.rs` | `effective_template_ref` | pure fn (`todo!()`) — flag > INI ref |
+| `src/cli_structure.rs` | `UserInput.repo` / `UserInput.branch` | additive `Option<String>` global flags (default None) |
+
+> The `repo`/`branch` fields are added to `UserInput` in the RED commit purely for
+> compile-cleanliness (they thread through every `UserInput` construction site).
+> The field alone does NOT satisfy spec 6 — the override WIRING in
+> `prepare_path_for_new_cv` (GREEN) does.
+
+## Wave: DISTILL (delta L54) / [REF] Mandate-12 (SSOT) note — informational
+
+Rust + no cucumber-rust harness ⇒ step-reuse-ratio metric N/A (consistent with the
+base feature's note). The D8 concept is expressed once via the type system
+(criterion 1): the two pure fns are the single precedence SSOT that both the CLI
+wiring and the specs reuse; no precedence logic is duplicated in a step body.
+
+---
+
+## Wave: DELIVER (delta L54) / [REF] Implementation summary
+
+TS-05 shipped as an additive pre-resolve value swap — the CLI flags override the
+INI values before the (unchanged) `resolve_template_for_config` resolver runs.
+
+- **Precedence seam** (`src/file_handlers.rs`): two pure fns `effective_template_path`
+  (`--repo` > INI `cv_template_path`) and `effective_template_ref`
+  (`--branch` > INI `cv_template_ref`, `None` → default branch). Single SSOT for D8.
+- **Wiring** (`prepare_path_for_new_cv`): reads the overrides via new read-only
+  accessors `AppContext::get_repo_override` / `get_branch_override` (ADR-0006
+  surface); the resolver, auth, cache and downstream build (D5) are untouched.
+- **Surface** (`src/cli_structure.rs`): `--repo` / `--branch` as global clap flags on
+  `UserInput`, consistent with the existing `--config-ini` / `--engine` globals — no
+  new subcommand (D6 relaxed only for the override flags).
+
+## Wave: DELIVER (delta L54) / [REF] Quality gates
+
+- **Tests**: full `cargo test` green — **169 passed / 0 failed** across 7 binaries
+  (156 base + 1 CLI-help smoke + 6 TS-05 specs). AC3/backward-compat guarded by the
+  unchanged `walking_skeleton_*` and `test_create_directory_and_remove_flow`.
+- **Mutation** (per-feature strategy): `cargo-mutants` scoped to the two precedence
+  fns — **5 mutants, 5 caught (100% kill)**.
+- **Lint/format**: clippy `-D warnings` (pedantic) clean; treefmt clean.
+- **Scenario SSOT**: `tests/acceptance/template-source/cli-override.feature` (5 TS-05
+  scenarios) mapped to `distill_specs_l54` + `distill_specs_l54_integration` +
+  `cli_smoke`.

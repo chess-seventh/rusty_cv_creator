@@ -94,6 +94,8 @@ mod tests {
             dry_run: false,
             config_ini: String::new(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         AppContext::new(Ini::new(), chrono::Local::now(), ui)
     }

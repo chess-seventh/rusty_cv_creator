@@ -53,6 +53,24 @@ fn test_insert_without_required_args_errors_with_help() {
     );
 }
 
+/// TS-05 (DISCUSS delta L54 / D8): the top-level `--help` must advertise the two
+/// new global override flags `--repo` and `--branch`. RED until they are added to
+/// `UserInput`. `--help` short-circuits before any config/DB/build.
+#[test]
+fn test_help_lists_repo_and_branch_flags() {
+    let out = bin().arg("--help").output().expect("failed to run --help");
+    assert!(out.status.success(), "--help should exit 0");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        stdout.contains("--repo"),
+        "top-level --help should expose the --repo override flag, got: {stdout}"
+    );
+    assert!(
+        stdout.contains("--branch"),
+        "top-level --help should expose the --branch override flag, got: {stdout}"
+    );
+}
+
 #[test]
 fn test_no_subcommand_is_an_error() {
     // A subcommand is required; clap should reject invocation with no action

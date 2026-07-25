@@ -109,6 +109,18 @@ impl AppContext {
         self.get_user_input_action_filter_args().variant
     }
 
+    /// TS-05/D8 — the `--repo` override for this run, if any. Overrides the INI
+    /// `cv_template_path` (flag > INI); absent → the INI value is used.
+    pub fn get_repo_override(&self) -> Option<String> {
+        self.get_user_input().repo
+    }
+
+    /// TS-05/D8 — the `--branch` override for this run, if any. Overrides the INI
+    /// `cv_template_ref` (flag > INI); absent → the INI ref (or repo default).
+    pub fn get_branch_override(&self) -> Option<String> {
+        self.get_user_input().branch
+    }
+
     pub fn _get_date(&self) -> Result<String, Box<dyn std::error::Error>> {
         match self.get_user_input_action_filter_args().date {
             Some(job) => Ok(job),
@@ -161,6 +173,8 @@ mod tests {
             dry_run: false,
             config_ini: String::new(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         }
     }
 

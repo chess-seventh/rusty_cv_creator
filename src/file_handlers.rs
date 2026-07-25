@@ -290,7 +290,12 @@ fn prepare_path_for_new_cv(
 ) -> Result<(String, String), Box<dyn std::error::Error>> {
     let var = get_variable_from_config_file(ctx, "cv", "cv_template_path")?;
 
-    let configured_template: String = fix_home_directory_path(&var);
+    // TS-05/D8: the `--repo` flag overrides the INI path (flag > INI) BEFORE the
+    // `~` expansion, so a `--repo` pointing at a local dir with a `~` is still
+    // home-expanded (AC4); with no flag the INI value is used byte-for-byte (AC3).
+    let repo_override = ctx.get_repo_override();
+    let configured_template: String =
+        fix_home_directory_path(&effective_template_path(repo_override.as_deref(), &var));
 
     // D1/D7: auto-detect a local dir vs a git URL and resolve to a local dir.
     // A git source resolves through the cache executor (probe → decide →
@@ -299,7 +304,11 @@ fn prepare_path_for_new_cv(
     // TS-01/AC2). For token auth the secret is read from the GITHUB_TOKEN
     // environment variable via the askpass indirection — never from the INI.
     let cache_dir = resolve_template_cache_dir(ctx);
-    let git_ref = get_variable_from_config_file(ctx, "cv", "cv_template_ref").ok();
+    // TS-05/D8: the `--branch` flag overrides the INI `cv_template_ref` (flag >
+    // INI); absent → the INI ref, which may itself be None (repo default branch).
+    let ini_ref = get_variable_from_config_file(ctx, "cv", "cv_template_ref").ok();
+    let branch_override = ctx.get_branch_override();
+    let git_ref = effective_template_ref(branch_override.as_deref(), ini_ref.as_deref());
     let auth = resolve_template_auth(ctx)?;
     let cv_template_path = resolve_template_for_config(
         &configured_template,
@@ -321,6 +330,28 @@ fn prepare_path_for_new_cv(
     info!("✅ Copying from: {}", cv_template_path.clone());
 
     Ok((cv_template_path, full_destination_path))
+}
+
+// TS-05 (DISCUSS delta L54 / D8) — CLI-override precedence `flag > INI > default`.
+// These two pure functions are the testable precedence seam. They are
+// `pub(crate)` so the in-crate `mod distill_specs_l54` specs below can drive them
+// directly (binary-private, like the existing TemplateSource scaffolds).
+
+/// TS-05/D8 — effective template PATH: the `--repo` flag when present overrides the
+/// INI `cv_template_path`; otherwise the INI value is used byte-for-byte.
+/// (AC1 selection, AC3 no-flag byte-for-byte, AC4 flag→local-dir passthrough.)
+pub(crate) fn effective_template_path(repo_flag: Option<&str>, ini_value: &str) -> String {
+    repo_flag.unwrap_or(ini_value).to_string()
+}
+
+/// TS-05/D8 — effective template REF: the `--branch` flag when present overrides the
+/// INI `cv_template_ref`; otherwise the INI ref (which may itself be None → default
+/// branch). (AC2, AC5 independent override.)
+pub(crate) fn effective_template_ref(
+    branch_flag: Option<&str>,
+    ini_ref: Option<&str>,
+) -> Option<String> {
+    branch_flag.or(ini_ref).map(str::to_string)
 }
 
 /// Resolve the template cache directory: the optional `[cv] cv_template_cache`
@@ -791,6 +822,8 @@ mod tests {
             dry_run: false,
             config_ini: ini_path.to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         let ctx = crate::config_parse::build_context(&ui);
 
@@ -847,6 +880,8 @@ mod tests {
             dry_run: false,
             config_ini: ini_path.to_str().unwrap().to_string(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         };
         let ctx = crate::config_parse::build_context(&ui);
 
@@ -872,5 +907,197 @@ mod tests {
 
         assert!(Path::new(&output_pdf).is_file());
         assert!(!Path::new(&created).exists());
+    }
+}
+
+#[cfg(test)]
+mod distill_specs_l54 {
+    //! DISTILL (delta L54) specifications for story TS-05 — CLI-override precedence
+    //! `flag > INI > built-in default` (D8). Mapped from
+    //! `tests/acceptance/template-source/cli-override.feature` (scenario SSOT).
+    //!
+    //! RED discipline (Rust): the two pure fns `effective_template_path` /
+    //! `effective_template_ref` exist as `todo!()` scaffolds (SCAFFOLD marker
+    //! above), so the crate COMPILES and every spec here fails by `panic!`
+    //! (unimplemented) — a genuine RED, not a compile/import error. The crafter
+    //! fills the bodies + the `prepare_path_for_new_cv` override wiring in DELIVER
+    //! (GREEN); no spec is `#[ignore]`d (option (a) per the precedent).
+    use super::{effective_template_path, effective_template_ref};
+
+    // ── AC1 — --repo overrides the INI cv_template_path ──────────────────────
+
+    /// @us-05 @contract-shape:pure-function
+    /// TS-05/AC1: `--repo <url>` wins over the INI `cv_template_path` value.
+    #[test]
+    fn ts05_ac1_repo_flag_overrides_ini_path() {
+        assert_eq!(
+            effective_template_path(Some("git@github.com:me/other.git"), "/ini/path"),
+            "git@github.com:me/other.git",
+            "the --repo flag must override the INI cv_template_path (flag > INI)"
+        );
+    }
+
+    // ── AC3 — no flag ⇒ INI value byte-for-byte (regression guard) ───────────
+
+    /// @us-05 @edge @contract-shape:unbounded-preservation
+    /// TS-05/AC3: with NO `--repo`, the INI value is used byte-for-byte unchanged.
+    #[test]
+    fn ts05_ac3_no_repo_flag_uses_ini_path_byte_for_byte() {
+        assert_eq!(
+            effective_template_path(None, "/ini/path"),
+            "/ini/path",
+            "absent --repo must leave the INI cv_template_path byte-for-byte unchanged"
+        );
+    }
+
+    // ── AC2 — --branch overrides the INI cv_template_ref ─────────────────────
+
+    /// @us-05 @contract-shape:pure-function
+    /// TS-05/AC2: `--branch <ref>` wins over the INI `cv_template_ref`.
+    #[test]
+    fn ts05_ac2_branch_flag_overrides_ini_ref() {
+        assert_eq!(
+            effective_template_ref(Some("redesign"), Some("v2.1")),
+            Some("redesign".to_string()),
+            "the --branch flag must override the INI cv_template_ref (flag > INI)"
+        );
+    }
+
+    // ── AC5 — --branch is an independent override of the ref key ─────────────
+
+    /// @us-05 @edge @contract-shape:pure-function
+    /// TS-05/AC5: `--branch` applies with no INI ref set; the INI ref is used when
+    /// no flag is passed; and with neither the result is None (default branch).
+    #[test]
+    fn ts05_ac5_branch_flag_without_ini_ref() {
+        assert_eq!(
+            effective_template_ref(Some("redesign"), None),
+            Some("redesign".to_string()),
+            "--branch must apply even when no INI ref is configured"
+        );
+        assert_eq!(
+            effective_template_ref(None, Some("v2.1")),
+            Some("v2.1".to_string()),
+            "with no --branch the INI ref is used (independent override of the two keys)"
+        );
+        assert_eq!(
+            effective_template_ref(None, None),
+            None,
+            "with neither flag nor INI ref the result is None (repo default branch)"
+        );
+    }
+
+    // ── D8 precedence invariant (genuine property, not a finite set) ─────────
+
+    /// @us-05 @property @contract-shape:pure-function
+    /// TS-05/D8: for ANY (flag, ini) strings the precedence invariant holds —
+    /// `effective_template_path` returns the flag iff the flag is Some (else the INI
+    /// value byte-for-byte); `effective_template_ref` returns the flag when Some
+    /// regardless of the INI ref. This is a genuine invariant over an unbounded
+    /// input domain, so it is a proptest (falsifier-gate), not a table example.
+    #[test]
+    fn ts05_precedence_flag_wins_over_ini() {
+        use proptest::prelude::*;
+        proptest!(|(flag in ".*", ini in ".*", ini_ref in ".*")| {
+            // PATH: flag Some ⇒ flag wins; flag None ⇒ INI byte-for-byte.
+            prop_assert_eq!(
+                effective_template_path(Some(&flag), &ini),
+                flag.clone()
+            );
+            prop_assert_eq!(
+                effective_template_path(None, &ini),
+                ini.clone()
+            );
+            // REF: flag Some ⇒ flag wins regardless of the INI ref.
+            prop_assert_eq!(
+                effective_template_ref(Some(&flag), Some(&ini_ref)),
+                Some(flag.clone())
+            );
+            prop_assert_eq!(
+                effective_template_ref(Some(&flag), None),
+                Some(flag.clone())
+            );
+        });
+    }
+}
+
+#[cfg(test)]
+mod distill_specs_l54_integration {
+    //! TS-05/AC4 override integration spec — proves the `--repo` override actually
+    //! REACHES `prepare_path_for_new_cv` and is auto-detected as a LOCAL source
+    //! (D1), so the copied template comes from the FLAG's dir, not the INI's.
+    //!
+    //! RED shape: in DELIVER-pending state no override wiring exists, so
+    //! `create_directory` sources from the INI `cv_template_path` and the flag
+    //! dir's marker driver file is ABSENT in the created working dir — this spec
+    //! fails by ASSERTION (correct RED), not by panic. The crafter wires the
+    //! override in `prepare_path_for_new_cv` (GREEN). The `UserInput.repo` field
+    //! already exists (added in this RED commit as `Option<String>` defaulting to
+    //! None); the field alone does NOT make this pass — the wiring does.
+    use super::create_directory;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::TempDir;
+
+    /// @us-05 @real-io @contract-shape:bounded-change
+    /// TS-05/AC4: `--repo <local-dir>` is honoured as a LOCAL passthrough and
+    /// overrides an INI `cv_template_path` that points elsewhere.
+    #[test]
+    fn ts05_ac4_repo_flag_local_dir_passthrough() {
+        let td = TempDir::new().unwrap();
+        let base = td.path();
+
+        // The FLAG's local template dir — carries a UNIQUE marker driver file so we
+        // can prove the copy came from HERE and not from the INI dir.
+        let flag_template = base.join("flag-template");
+        fs::create_dir_all(&flag_template).unwrap();
+        fs::write(flag_template.join("TestCV-senior-devops.tex"), "from-flag").unwrap();
+        fs::write(flag_template.join("FROM_FLAG_MARKER.txt"), "flag").unwrap();
+
+        // The INI's template dir — a DIFFERENT, wrong dir the override must beat.
+        let ini_template = base.join("ini-template");
+        fs::create_dir_all(&ini_template).unwrap();
+        fs::write(ini_template.join("TestCV-senior-devops.tex"), "from-ini").unwrap();
+
+        let dest = base.join("dest");
+        let out = base.join("out");
+        fs::create_dir_all(&dest).unwrap();
+
+        let ini = format!(
+            "[cv]\ncv_template_path = \"{tpl}\"\ncv_file_prefix = \"TestCV\"\n\
+             [destination]\ncv_path = \"{dest}\"\noutput_pdf = \"{out}\"\n\
+             [db]\nengine = \"sqlite\"\ndb_file = \"x.db\"\n",
+            tpl = ini_template.display(),
+            dest = dest.display(),
+            out = out.display()
+        );
+        let ini_path = base.join("conf.ini");
+        fs::write(&ini_path, ini).unwrap();
+
+        // Drive the real entry point with the --repo override set to the FLAG dir.
+        let ui = crate::cli_structure::UserInput {
+            action: crate::cli_structure::UserAction::Insert(
+                crate::cli_structure::InsertArgs::default(),
+            ),
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: ini_path.to_str().unwrap().to_string(),
+            engine: "sqlite".to_string(),
+            repo: Some(flag_template.to_str().unwrap().to_string()),
+            branch: None,
+        };
+        let ctx = crate::config_parse::build_context(&ui);
+
+        let runner = crate::command_runner::testing::FakeRunner::ok();
+        let created = create_directory(&ctx, &runner, "Senior DevOps", "ACME").unwrap();
+
+        // The override reached prepare_path_for_new_cv and was auto-detected LOCAL:
+        // the FLAG dir's unique marker landed in the created working dir.
+        assert!(
+            Path::new(&created).join("FROM_FLAG_MARKER.txt").is_file(),
+            "the --repo override must source the template from the FLAG's dir, \
+             not the INI cv_template_path dir"
+        );
     }
 }

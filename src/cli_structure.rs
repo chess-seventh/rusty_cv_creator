@@ -32,6 +32,19 @@ pub struct UserInput {
     /// Database engine (supports only postgresql and sqlite)
     #[arg(short, long, default_value_t = String::from("sqlite"))]
     pub engine: String,
+
+    /// TS-05 (D8): override the template source repo/dir for this run only.
+    /// A `--repo <git-url|local-dir>` overrides `[cv] cv_template_path`
+    /// (`flag > INI > default`); auto-detected LOCAL vs GITHUB exactly as the INI
+    /// value would be. Absent → the INI value is used byte-for-byte.
+    #[arg(long)]
+    pub repo: Option<String>,
+
+    /// TS-05 (D8): override the template ref (branch/tag/SHA) for this run only.
+    /// A `--branch <ref>` overrides `[cv] cv_template_ref`; absent → the INI ref
+    /// (or the repo default branch when neither is set).
+    #[arg(long)]
+    pub branch: Option<String>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -203,6 +216,8 @@ mod tests {
             dry_run: false,
             config_ini: String::new(),
             engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
         }
     }
 
