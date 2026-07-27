@@ -11,7 +11,7 @@ jobs:
     name: 🧪 Tests, Lint & Format (devenv)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: ❄️ Install Nix
         uses: cachix/install-nix-action@v27
         with:
@@ -41,7 +41,7 @@ jobs:
     # nightly toolchain / coverage tooling may break from time to time
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: ❄️ Install Nix
         uses: cachix/install-nix-action@v27
         with:
@@ -57,7 +57,7 @@ jobs:
             cargo llvm-cov report --doctests --lcov --output-path lcov.info --ignore-filename-regex "schema\.rs"
           '
       - name: 💭 Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         env:
           token: ${{ secrets.CODECOV_TOKEN }}
         with:
