@@ -376,6 +376,26 @@ diesel migration run
 cargo test
 ```
 
+### 🎯 Releasing
+
+Releases are fully automated - never bump the version by hand.
+
+Every push to `master` runs the Release workflow, which:
+
+1. derives the next version and the changelog from the conventional-commit
+   history (`feat!:` / `BREAKING CHANGE:` -> major, `feat:` -> minor, `fix:` ->
+   patch);
+2. writes `CHANGELOG.md`, `Cargo.toml` and `Cargo.lock`, then opens a
+   `release-bot/<run-id>-<attempt>` pull request with that bump;
+3. merges that PR itself (merge commit, never squash) using the built-in
+   `GITHUB_TOKEN`;
+4. tags the merged bump commit and publishes the GitHub release.
+
+`master` is protected by the `branch-discipline` ruleset - a pull request is
+required and there is no bypass actor - so the bot goes through a PR like
+everyone else. The tag is created only *after* the PR merges, which is what
+keeps a failed release from leaving an orphan tag behind.
+
 ## 🌟 Roadmap
 
 - [ ] **Web Interface**: Browser-based CV management

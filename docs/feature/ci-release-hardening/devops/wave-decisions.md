@@ -16,6 +16,8 @@
 | 5 | Keep triggers `push`+`pull_request` to `master`. | Correct for GitHub Flow; no change needed. | feature-delta |
 | 6 | Do NOT add mutation testing; record `nightly-delta` as intended/not-yet-wired; do NOT edit `CLAUDE.md`. | No tooling exists; out of scope this pass. | feature-delta |
 | 7 | CI uses `cargo fmt --check`, not `treefmt`; accept treefmt as a local superset. | Avoid provisioning nix in CI; revisit only on rustfmt edition/skip_children drift. | ADR-0007 alt A |
+| 8 | `release.yml` lands its version bump through a bot-opened, bot-merged pull request instead of pushing to `master`; the tag is created only after that PR merges. | The `branch-discipline` ruleset requires a PR on `master` with no bypass actor, so the direct push failed with GH013 and left the version stuck at 5.3.0 plus an orphan `v5.3.1` tag. Making the automation compliant beats weakening the ruleset. | L66 |
+| 9 | Delete the orphan `v5.3.1` tag on the remote before the first run of the new flow. | The version lookup walks reachable tags only, so the unreachable `v5.3.1` is invisible: the run computes 5.3.1 again from `v5.3.0`, and the release API silently attaches that release to the pre-existing orphan tag at `63f7d0b` instead of the merged bump commit. Every later run recomputes the same collision, so the pipeline stays stuck until the tag is gone. | L66 |
 
 ## Production Readiness Summary
 
@@ -34,9 +36,12 @@ production-readiness checklist is applied in its CI-relevant subset:
 ## Deployment Strategy
 
 Recreate / N-A — GitHub Release artifact via `release.yml`
-(conventional-changelog-action) on `master` push. No canary/blue-green (no
-service). **Rollback = re-tag-forward** (preferred), or mark the bad GitHub
-Release as pre-release, or `cargo yank` if crates.io publishing is ever wired.
+(conventional-changelog-action) on `master` push. Since decision 8 the workflow
+writes nothing to `master` directly: it opens a `release-bot/<run-id>-<attempt>` PR with
+the bump, merges it with the built-in `GITHUB_TOKEN`, then tags the bump commit
+the merge brought in. No canary/blue-green (no service). **Rollback = re-tag-forward**
+(preferred), or mark the bad GitHub Release as pre-release, or `cargo yank` if
+crates.io publishing is ever wired.
 
 ## Stakeholder / Sign-off
 
@@ -48,7 +53,9 @@ mechanism remains. Sign-off = PR merge to `master`.
 ## Constraints
 
 - DOCS-ONLY this wave; no `.yml`/`.releaserc*`/source edits until apply step.
-- Behavior-preserving for the release pipeline (deletions target unreferenced files).
+- Behavior-preserving for the release pipeline (deletions target unreferenced
+  files). Superseded for `release.yml` by decision 8, which deliberately changes
+  how the bump reaches `master` - the ruleset left the old behavior unusable.
 - No new dependencies, no new platform, no container/orchestration.
 - GitHub Flow triggers unchanged.
 
@@ -59,6 +66,7 @@ mechanism remains. Sign-off = PR merge to `master`.
 | `.github/workflows/rust-tests.yml` | EDIT | CHANGE 1 (clippy `-D warnings` step + advisory pedantic), CHANGE 2 (uncomment/enable `rustfmt` job), CHANGE 3 (add `threaded-test` job) |
 | `.releaserc.yml` | DELETE | CHANGE 4 (dormant semantic-release config) |
 | `.releaserc` | DELETE | CHANGE 4 (dormant semantic-release branches) |
+| `.github/workflows/release.yml` | EDIT | Decision 8 (bump lands via a bot pull request; tag created after the merge) |
 
 ## Upstream Changes
 

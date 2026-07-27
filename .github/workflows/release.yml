@@ -2,6 +2,12 @@ name: 🎯 Release
 on:
   push:
     branches: [master]
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: release
+  cancel-in-progress: false
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -24,29 +30,82 @@ jobs:
           # default angular preset ignored `feat!:` and shipped a breaking
           # change as a patch (v4.0.3); see ADR-0007.
           preset: "conventionalcommits"
-          git-user-name: "chess-seventh"
-          git-user-email: "chess7th@pm.me"
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          git-message: "ci: version bump"
           output-file: "CHANGELOG.md"
           release-count: "0"
-          skip-version-file: "false"
-          skip-commit: "false"
           skip-on-empty: "false"
           version-file: "Cargo.toml"
           version-path: "package.version"
           create-summary: "true"
-      - name: 🛠️ Update Cargo.toml version
+          # This job owns every git operation; the action only computes the
+          # version and writes CHANGELOG.md. It must never push: master is
+          # protected by the branch-discipline ruleset (PR required, no bypass
+          # actor), and a tag pushed alongside a rejected commit is how v5.3.1
+          # ended up orphaned. Tagging waits until the PR is merged.
+          # NOTE: skip-commit also routes the version lookup to git tags, so
+          # the action no longer rewrites Cargo.toml - the cargo set-version
+          # step below owns that.
+          skip-commit: "true"
+          skip-tag: "true"
+          git-push: "false"
+      - name: 🛠️ Update Cargo.toml and Cargo.lock
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         run: |
-          cargo set-version ${{ steps.changelog.outputs.version }}
+          cargo set-version "${{ steps.changelog.outputs.version }}"
+          # Scoped to this crate on purpose: a bare `cargo update` would drag a
+          # full dependency refresh into a release PR that runs no CI.
+          cargo update -p rusty_cv_creator
           cargo build --verbose
-          cargo update
+      - name: 📤 Open the version-bump pull request
+        id: bump_pr
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.changelog.outputs.version }}
+          BRANCH: release-bot/${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          # The branch is cut here, after the changelog action has run: the
+          # action pulls the checked-out branch, which only works while master
+          # is still the current branch. The file edits carry over untouched.
+          git switch -c "${BRANCH}"
           git config user.name "chess-seventh"
           git config user.email "chess7th@pm.me"
-          git add Cargo.lock
-          git commit -m "chore: update Cargo.lock [skip ci]"
-          git push
+          git add CHANGELOG.md Cargo.toml Cargo.lock
+          git commit -m "chore(release): v${VERSION}"
+          git push origin "${BRANCH}"
+          echo "bump_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          gh pr create \
+            --base master \
+            --head "${BRANCH}" \
+            --title "chore(release): v${VERSION}" \
+            --body "Automated version bump for v${VERSION}, opened and merged by the Release workflow."
+      - name: 🔀 Merge the pull request
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: release-bot/${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          # Mergeability is computed asynchronously, so a merge fired straight
+          # after the create can still see UNKNOWN. Wait it out.
+          state=UNKNOWN
+          for _ in $(seq 1 30); do
+            state=$(gh pr view "${BRANCH}" --json mergeable --jq .mergeable || echo UNKNOWN)
+            [ "${state}" = "MERGEABLE" ] && break
+            echo "waiting for mergeability, currently ${state}"
+            sleep 5
+          done
+          if [ "${state}" != "MERGEABLE" ]; then
+            echo "::error::gave up waiting for mergeability, last state ${state}"
+            exit 1
+          fi
+          # A merge commit, never a squash: the release tag points at the bump
+          # commit, and a squash would rewrite that SHA off master's history.
+          # The ruleset requires no status checks, so the merge lands at once.
+          # The repo reaps the branch itself (delete_branch_on_merge), so this
+          # step never risks the release on a cleanup failure.
+          gh pr merge "${BRANCH}" --merge
       - name: ✨ Create Release
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
         uses: ncipollo/release-action@v1
@@ -54,4 +113,5 @@ jobs:
           tag: ${{ steps.changelog.outputs.tag }}
           name: ${{ steps.changelog.outputs.tag }}
           body: ${{ steps.changelog.outputs.clean_changelog }}
+          commit: ${{ steps.bump_pr.outputs.bump_sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
