@@ -17,7 +17,7 @@ ratatui = "0.30"
 crossterm = "0.28"
 
 [dev-dependencies]
-serial_test = "3.5.0"
+serial_test = "4.0.1"
 tempfile = "3.27.0"
 proptest = "1.6"
 
