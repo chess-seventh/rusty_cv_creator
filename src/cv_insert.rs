@@ -2,7 +2,7 @@ use crate::command_runner::SystemRunner;
 use crate::config_parse::resolve_db_target;
 use crate::global_conf::AppContext;
 use crate::prepare_cv;
-use log::{info, warn};
+use log::{error, info, warn};
 use rusty_cv_creator::database::{DbConnection, establish_connection, save_new_cv_to_db};
 use rusty_cv_creator::models::Cv;
 
@@ -25,7 +25,9 @@ pub fn insert_cv(ctx: &AppContext) -> Result<String, Box<dyn std::error::Error>>
     let save_to_db = ctx.get_user_input_save_to_db();
     let application_date = ctx.get_today_str();
 
-    // A failed DB save must not discard a successfully generated CV — log and continue.
+    // A failed DB save must not discard a successfully generated CV — report and
+    // continue. Reported at `error!` so it is visible at env_logger's default
+    // level: at `warn!` a failed save printed nothing at all.
     if let Err(e) = run_persistence(
         save_to_db,
         || {
@@ -38,7 +40,7 @@ pub fn insert_cv(ctx: &AppContext) -> Result<String, Box<dyn std::error::Error>>
         quote.as_ref(),
         &application_date,
     ) {
-        warn!("Could not save CV to database: {e:}");
+        error!("The CV was generated but NOT saved to the database: {e:}");
     }
 
     Ok(destination_cv_file_full_path)

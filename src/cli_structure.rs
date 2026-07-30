@@ -3,6 +3,7 @@ use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand};
+use log::error;
 
 #[derive(Parser, Debug, Clone)]
 #[command(version, about, long_about = None)]
@@ -125,7 +126,9 @@ pub fn match_user_action(
         UserAction::Insert(_) => insert_cv(ctx),
 
         UserAction::Remove(filters) => {
-            let _ = remove_cv(ctx, &filters);
+            if let Err(e) = remove_cv(ctx, &filters) {
+                error!("Could not remove the CV: {e:}");
+            }
             let out = format!("filter args for LIST: {filters:?}");
             println!("{out:?}");
             Ok(out)
