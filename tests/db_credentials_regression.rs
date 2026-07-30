@@ -8,9 +8,22 @@
 //! targets from `tests/*.rs` only, so `tests/regression/db_credentials.rs`
 //! would never be compiled or run.
 //!
-//! There is NO allowlist. If a scan hit is legitimate, the fixture gets fixed,
-//! not the scanner. That is also why every credential-shaped string in this
-//! file is assembled at runtime from fragments: the scanner scans itself.
+//! THE SCANNING RULE, PLAINLY: every tracked file is scanned. The only things
+//! skipped are prose (`.md`, which legitimately describes the credential shape
+//! -- the analysis document on this branch spells the defect out on purpose)
+//! and files whose bytes are not valid UTF-8 (binaries), skipped silently.
+//! Everything else is scanned: `.json`, `.sql`, `.feature`, `.xml`, `.iml`,
+//! `env.sample`, `.envrc`, and extensionless files such as
+//! `.github/CODEOWNERS`.
+//!
+//! There is NO allowlist, and there never will be one. An allowlist is what
+//! made `env.sample` -- the file a human copies to `.env` and pastes a real
+//! password into -- invisible to the previous version of this scanner. When
+//! this test hits, the offending FILE gets fixed; the scanner is never narrowed
+//! to make a hit go away. If a legitimate example needs a credential-shaped
+//! string, assemble it at runtime from fragments, the way the tests below do.
+//! That is also why every credential-shaped string in this file is assembled at
+//! runtime: the scanner scans itself.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -20,11 +33,6 @@ use std::process::Command;
 fn burned_literal() -> String {
     ["rusty", "cv", "01"].join("-")
 }
-
-/// Machine-read file kinds where a credential is dangerous. Markdown and other
-/// prose are deliberately excluded from the shape scan: the analysis document
-/// legitimately describes the defect shape.
-const SCANNED_EXTENSIONS: [&str; 7] = ["nix", "ini", "toml", "rs", "yml", "yaml", "sh"];
 
 /// Every file tracked by git, as absolute paths, paired with their repo-relative
 /// name for reporting. Fails loudly when git is unavailable: a scanner that
@@ -59,31 +67,34 @@ fn tracked_files() -> Vec<(String, PathBuf)> {
     files
 }
 
-fn read_text(path: &Path) -> Option<String> {
-    std::fs::read(path)
-        .ok()
-        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
-}
-
-fn is_machine_read_file(name: &str) -> bool {
-    let path = Path::new(name);
-
-    let file_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or_default();
-    if file_name.starts_with(".env") {
-        return true;
-    }
-
-    path.extension()
+/// The one and only exclusion of the shape scan: prose. A `.md` file is allowed
+/// to describe what a leaked credential looks like; that is what documentation
+/// is for. Nothing else is excluded -- there is no extension allowlist.
+fn is_prose(name: &str) -> bool {
+    Path::new(name)
+        .extension()
         .and_then(|ext| ext.to_str())
-        .is_some_and(|ext| SCANNED_EXTENSIONS.contains(&ext.to_ascii_lowercase().as_str()))
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
 }
 
 /// Structural detection of a password inside a URL userinfo: find `://`, then a
-/// `:` before the next `@`, with that `@` before the next `/`. No regex, so no
-/// new dependency.
+/// `:` before the next `@`. No regex, so no new dependency.
+///
+/// The `@` is deliberately NOT required to precede the first `/`: a password may
+/// legally contain a slash, and requiring the authority to end before the first
+/// `/` made exactly that shape invisible. (The shape is not written out here --
+/// this file is scanned by its own matcher; see the runtime-assembled fixture in
+/// `the_matcher_fires_when_the_password_itself_contains_a_slash`.) The trade is
+/// more false positives -- accepted on purpose, because a false positive gets
+/// the file fixed while a miss gets a password committed.
+///
+/// What this detector still CANNOT see:
+/// - it is line-based, so a credential split across two lines (a wrapped INI
+///   value, a multi-line YAML scalar, a Rust string continued with `\`) evades
+///   it entirely;
+/// - a password held in a variable and interpolated at runtime, which is the
+///   shape the fixtures in this repo deliberately use;
+/// - a credential in a file whose bytes are not valid UTF-8.
 ///
 /// The shape is deliberately not spelled out as a literal anywhere in this
 /// file: once tracked, this file is scanned by its own matcher.
@@ -94,11 +105,9 @@ fn has_inline_credential(line: &str) -> bool {
         let authority = &rest[scheme + "://".len()..];
 
         if let (Some(at), Some(colon)) = (authority.find('@'), authority.find(':')) {
-            let ends_before_path = authority.find('/').is_none_or(|slash| at < slash);
             let user = &authority[..colon];
             let password = &authority[colon + 1..at.max(colon + 1)];
             let is_userinfo = colon < at
-                && ends_before_path
                 && !user.is_empty()
                 && !password.is_empty()
                 && !user.contains(char::is_whitespace)
@@ -115,37 +124,68 @@ fn has_inline_credential(line: &str) -> bool {
     false
 }
 
-fn offences(hit: impl Fn(&str) -> bool, only_machine_read: bool) -> Vec<String> {
+fn hits_in(name: &str, text: &str, hit: &impl Fn(&str) -> bool, found: &mut Vec<String>) {
+    for (index, line) in text.lines().enumerate() {
+        if hit(line) {
+            found.push(format!("{name}:{}", index + 1));
+        }
+    }
+}
+
+/// Shape scan: EVERY tracked file, minus prose, minus binaries. Not an
+/// allowlist -- a denylist of exactly two entries.
+fn offences_outside_prose(hit: impl Fn(&str) -> bool) -> Vec<String> {
     let mut found = Vec::new();
 
     for (name, path) in tracked_files() {
-        if only_machine_read && !is_machine_read_file(&name) {
+        if is_prose(&name) {
             continue;
         }
 
-        let Some(text) = read_text(&path) else {
+        let Ok(bytes) = std::fs::read(&path) else {
             found.push(format!("{name}: tracked file could not be read"));
             continue;
         };
 
-        for (index, line) in text.lines().enumerate() {
-            if hit(line) {
-                found.push(format!("{name}:{}", index + 1));
-            }
-        }
+        // Not valid UTF-8 => binary => skipped silently, by design.
+        let Ok(text) = String::from_utf8(bytes) else {
+            continue;
+        };
+
+        hits_in(&name, &text, &hit, &mut found);
+    }
+
+    found
+}
+
+/// Literal scan: EVERY tracked file, no exclusions at all -- prose included,
+/// binaries read lossily so a literal buried in one is still caught.
+fn offences_everywhere(hit: impl Fn(&str) -> bool) -> Vec<String> {
+    let mut found = Vec::new();
+
+    for (name, path) in tracked_files() {
+        let Ok(bytes) = std::fs::read(&path) else {
+            found.push(format!("{name}: tracked file could not be read"));
+            continue;
+        };
+
+        let text = String::from_utf8_lossy(&bytes);
+        hits_in(&name, &text, &hit, &mut found);
     }
 
     found
 }
 
 #[test]
-fn no_tracked_machine_read_file_carries_an_inline_credential_url() {
-    let found = offences(has_inline_credential, true);
+fn no_tracked_file_outside_prose_carries_an_inline_credential_url() {
+    let found = offences_outside_prose(has_inline_credential);
 
     assert!(
         found.is_empty(),
         "a URL carrying a password in its userinfo was found in tracked files:\n  {}\n\
-         Remove the credential; the postgres password comes from RUSTY_CV_DB_PASSWORD.",
+         Fix the FILE, never this scanner. Remove the credential; the postgres\n\
+         password comes from RUSTY_CV_DB_PASSWORD. If the string is a legitimate\n\
+         example, assemble it at runtime from fragments.",
         found.join("\n  ")
     );
 }
@@ -153,7 +193,7 @@ fn no_tracked_machine_read_file_carries_an_inline_credential_url() {
 #[test]
 fn the_burned_credential_literal_never_reappears() {
     let literal = burned_literal();
-    let found = offences(|line| line.contains(&literal), false);
+    let found = offences_everywhere(|line| line.contains(&literal));
 
     assert!(
         found.is_empty(),
@@ -175,6 +215,21 @@ fn the_matcher_fires_on_a_known_bad_url() {
 }
 
 #[test]
+fn the_matcher_fires_when_the_password_itself_contains_a_slash() {
+    // The hole the previous matcher had: it demanded the `@` come before the
+    // first `/`, so a slash inside the password hid the whole credential.
+    let scheme = "postgres";
+    let with_slash = format!("db_url = \"{scheme}://user{}pa/ss@host/db\"", ':');
+    assert!(has_inline_credential(&with_slash), "missed: {with_slash}");
+
+    let many_slashes = format!("{scheme}://user{}a/b/c@host/db", ':');
+    assert!(
+        has_inline_credential(&many_slashes),
+        "missed: {many_slashes}"
+    );
+}
+
+#[test]
 fn the_matcher_ignores_passwordless_and_pathological_urls() {
     for clean in [
         "postgres://rusty_cv@nixos-02.caracara-palermo.ts.net/rusty_cv",
@@ -187,23 +242,84 @@ fn the_matcher_ignores_passwordless_and_pathological_urls() {
     }
 }
 
+/// The names the shape scan actually visits, derived exactly the way the scan
+/// derives them -- so the test below proves coverage of the real tracked tree,
+/// not of a hand-written list that can drift away from it.
+fn shape_scanned_names() -> Vec<String> {
+    tracked_files()
+        .into_iter()
+        .map(|(name, _)| name)
+        .filter(|name| !is_prose(name))
+        .collect()
+}
+
 #[test]
-fn the_scanned_set_covers_the_machine_read_file_kinds() {
+fn the_shape_scan_covers_every_tracked_file_except_prose() {
+    let scanned = shape_scanned_names();
+
+    // The proven hole in the extension allowlist this replaced. `env.sample`
+    // exists to be copied to `.env`, which makes it the single most likely
+    // place for a human to paste a real password -- and its name starts with
+    // neither `.env` nor an allowlisted extension, so it was invisible.
+    // `.github/CODEOWNERS` has no extension at all; `.json`, `.sql`,
+    // `.feature` and `.xml` were simply never on the list.
     for name in [
-        "devenv.nix",
-        "rusty-cv-config-example.ini",
-        "Cargo.toml",
-        "src/config_parse.rs",
-        ".github/workflows/build.yml",
-        "scripts/thing.yaml",
-        "scripts/thing.sh",
-        ".env",
-        ".env.testing",
+        "env.sample",
+        ".github/CODEOWNERS",
+        ".envrc",
+        ".idea/rusty_cv_creator.iml",
+        "Cargo.lock",
+        "migrations/.keep",
+        "docs/feature/fix-db-credentials-from-sops/deliver/roadmap.json",
+        "tests/acceptance/template-source/public-source.feature",
     ] {
-        assert!(is_machine_read_file(name), "should be scanned: {name}");
+        assert!(
+            scanned.iter().any(|scanned_name| scanned_name == name),
+            "must be scanned: {name}"
+        );
     }
 
-    for name in ["README.md", "docs/product/architecture/brief.md", "LICENSE"] {
-        assert!(!is_machine_read_file(name), "should not be scanned: {name}");
+    // Prose is the only exclusion, and it is a real one: these files describe
+    // the credential shape on purpose.
+    for name in ["README.md", "docs/product/architecture/brief.md"] {
+        assert!(
+            tracked_files().iter().any(|(tracked, _)| tracked == name),
+            "fixture drifted: {name} is no longer tracked"
+        );
+        assert!(
+            !scanned.iter().any(|scanned_name| scanned_name == name),
+            "prose must not be shape-scanned: {name}"
+        );
+    }
+
+    // And nothing else is excluded. If this fails, an allowlist crept back in.
+    let skipped: Vec<String> = tracked_files()
+        .into_iter()
+        .map(|(name, _)| name)
+        .filter(|name| is_prose(name))
+        .collect();
+    assert!(
+        skipped.iter().all(|name| name.ends_with(".md")),
+        "the only exclusion is `.md` prose, but these were skipped too: {skipped:?}"
+    );
+}
+
+#[test]
+fn the_literal_scan_has_no_exclusions_at_all() {
+    let literal_scanned: Vec<String> = offences_everywhere(|_| true)
+        .into_iter()
+        .filter_map(|hit| hit.rsplit_once(':').map(|(name, _)| name.to_string()))
+        .collect();
+
+    // Prose is scanned here: the analysis document may describe the shape, but
+    // it must never carry the burned literal itself.
+    for name in [
+        "README.md",
+        "docs/feature/fix-db-credentials-from-sops/rca.md",
+    ] {
+        assert!(
+            literal_scanned.iter().any(|scanned| scanned == name),
+            "the literal scan must reach prose too: {name}"
+        );
     }
 }

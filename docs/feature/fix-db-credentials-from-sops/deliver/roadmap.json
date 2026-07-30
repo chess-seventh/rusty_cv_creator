@@ -22,7 +22,7 @@
           "id": "01-01",
           "name": "Regression net: no credential literals, loud failure, quoted values",
           "criteria": [
-            "A test walks the tracked tree and fails on any URL carrying inline userinfo credentials (scheme://user:secret@host), covering .nix, .ini, .rs, .md and .toml files.",
+            "A test walks the tracked tree and fails on any URL carrying a password in its userinfo, covering every tracked file except markdown prose and binaries.",
             "A test proves resolve_db_target on the postgres arm returns an error naming RUSTY_CV_DB_PASSWORD when that variable is unset or empty.",
             "A test proves a config whose values are quoted (the documented example format) still resolves engine postgres and a usable URL.",
             "A test proves a base URL that already carries a password is rejected rather than double-spliced.",
