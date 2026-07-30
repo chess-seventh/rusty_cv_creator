@@ -66,7 +66,10 @@ pub fn get_db_configurations(ctx: &AppContext) -> Result<String, Box<dyn std::er
 /// Environment variable carrying the PostgreSQL password. It is supplied by
 /// sops through home-manager on the real machine, and by the gitignored `.env`
 /// in development. It is never stored in the INI file nor in this repository.
-pub const DB_PASSWORD_ENV: &str = "RUSTY_CV_DB_PASSWORD";
+///
+/// Re-exported from `child_env` so the name this module reads and the name
+/// stripped from every child environment can never drift apart.
+pub use rusty_cv_creator::child_env::DB_PASSWORD_ENV;
 
 /// Read the PostgreSQL password from the environment.
 ///

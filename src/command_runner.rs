@@ -1,5 +1,6 @@
+use rusty_cv_creator::child_env::command_without_db_password;
 use std::io;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 /// Captured outcome of a subprocess run (UC-1, feature `template-source`):
 /// success plus both streams, so a caller can classify a git failure from its
@@ -46,12 +47,13 @@ pub trait CommandRunner {
     }
 }
 
-/// The real runner, backed by `std::process::Command`.
+/// The real runner. Every child is built by `command_without_db_password`, never
+/// by `Command::new` directly, so no subprocess inherits the database password.
 pub struct SystemRunner;
 
 impl CommandRunner for SystemRunner {
     fn status(&self, program: &str, args: &[&str], cwd: Option<&str>) -> io::Result<bool> {
-        let mut cmd = Command::new(program);
+        let mut cmd = command_without_db_password(program);
         cmd.args(args);
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -60,13 +62,13 @@ impl CommandRunner for SystemRunner {
     }
 
     fn output(&self, program: &str, args: &[&str]) -> io::Result<(bool, String)> {
-        let out = Command::new(program).args(args).output()?;
+        let out = command_without_db_password(program).args(args).output()?;
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
         Ok((out.status.success(), stdout))
     }
 
     fn spawn(&self, program: &str, args: &[&str]) -> io::Result<()> {
-        Command::new(program)
+        command_without_db_password(program)
             .args(args)
             .stdout(Stdio::null())
             .spawn()?;
@@ -79,7 +81,7 @@ impl CommandRunner for SystemRunner {
         args: &[&str],
         cwd: Option<&str>,
     ) -> io::Result<CommandOutcome> {
-        let mut cmd = Command::new(program);
+        let mut cmd = command_without_db_password(program);
         cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
