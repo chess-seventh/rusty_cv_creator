@@ -1,6 +1,7 @@
 use crate::{
     UserInput,
     cli_structure::{FilterArgs, UserAction},
+    helpers::clean_string_from_quotes,
 };
 use chrono::{DateTime, Local};
 use configparser::ini::Ini;
@@ -134,13 +135,22 @@ impl AppContext {
         self.get_user_input().save_to_database
     }
 
+    /// The `[db] engine` value, stripped of the surrounding quotes the
+    /// documented config format uses (`engine = "postgres"`). Without the
+    /// stripping the engine name never matches `postgres`/`sqlite` and the
+    /// caller falls through to its catch-all arm.
     pub fn get_user_input_db_engine(&self) -> Result<String, Box<dyn std::error::Error>> {
-        self.get_user_input_vars("db", "engine")
+        let engine = self.get_user_input_vars("db", "engine")?;
+        Ok(clean_string_from_quotes(&engine))
     }
 
+    /// The `[db] db_pg_host` value, stripped of the surrounding quotes the
+    /// documented config format uses. The value is a passwordless base URL —
+    /// the password is spliced in at connection time from the environment.
     pub fn get_user_input_db_url(&self) -> Result<String, &str> {
         self.config
             .get("db", "db_pg_host")
+            .map(|url| clean_string_from_quotes(&url))
             .ok_or("Could not get the database engine")
     }
 }
@@ -201,6 +211,43 @@ mod tests {
     fn test_get_user_input_vars_errors_when_missing() {
         let ctx = context();
         assert!(ctx.get_user_input_vars("missing", "key").is_err());
+    }
+
+    #[test]
+    fn test_db_accessors_strip_the_quotes_of_the_documented_format() {
+        // The documented config format quotes every value; without stripping,
+        // the engine never matches "postgres" and the URL keeps its quotes.
+        let mut ini = Ini::new();
+        ini.set("db", "engine", Some("\"postgres\"".to_string()));
+        ini.set(
+            "db",
+            "db_pg_host",
+            Some("\"postgres://rusty_cv@example.invalid/rusty_cv\"".to_string()),
+        );
+        let ctx = AppContext::new(ini, Local::now(), dummy_user_input());
+
+        assert_eq!(ctx.get_user_input_db_engine().unwrap(), "postgres");
+        assert_eq!(
+            ctx.get_user_input_db_url().unwrap(),
+            "postgres://rusty_cv@example.invalid/rusty_cv"
+        );
+    }
+
+    #[test]
+    fn test_db_accessors_leave_unquoted_values_untouched() {
+        let mut ini = Ini::new();
+        ini.set("db", "engine", Some("sqlite".to_string()));
+        ini.set("db", "db_pg_host", Some("postgres://u@h/d".to_string()));
+        let ctx = AppContext::new(ini, Local::now(), dummy_user_input());
+
+        assert_eq!(ctx.get_user_input_db_engine().unwrap(), "sqlite");
+        assert_eq!(ctx.get_user_input_db_url().unwrap(), "postgres://u@h/d");
+    }
+
+    #[test]
+    fn test_get_user_input_db_url_errors_when_missing() {
+        let ctx = context();
+        assert!(ctx.get_user_input_db_url().is_err());
     }
 
     #[test]
