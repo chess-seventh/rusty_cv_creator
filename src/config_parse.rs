@@ -268,21 +268,32 @@ mod tests {
         AppContext::new(load_config(config.to_string()), Local::now(), ui)
     }
 
-    /// Restore the password variable to whatever it was, so a serial test does
-    /// not leak its value into the next one.
-    struct PasswordVar(Option<String>);
+    /// Restore an environment variable to whatever it was, so a serial test
+    /// does not leak its value into the next one.
+    ///
+    /// The restore lives in `Drop` rather than in a trailing statement because
+    /// `cargo test` runs these threaded in one process: a panicking assertion
+    /// would skip a trailing restore and hand the leaked value to every
+    /// sibling test in the binary.
+    struct EnvVarGuard {
+        name: &'static str,
+        original: Option<String>,
+    }
 
-    impl PasswordVar {
-        fn capture() -> Self {
-            PasswordVar(std::env::var(DB_PASSWORD_ENV).ok())
+    impl EnvVarGuard {
+        fn capture(name: &'static str) -> Self {
+            EnvVarGuard {
+                name,
+                original: std::env::var(name).ok(),
+            }
         }
     }
 
-    impl Drop for PasswordVar {
+    impl Drop for EnvVarGuard {
         fn drop(&mut self) {
-            match self.0.take() {
-                Some(value) => std::env::set_var(DB_PASSWORD_ENV, value),
-                None => std::env::remove_var(DB_PASSWORD_ENV),
+            match self.original.take() {
+                Some(value) => std::env::set_var(self.name, value),
+                None => std::env::remove_var(self.name),
             }
         }
     }
@@ -378,7 +389,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_resolve_db_target_postgres_errors_when_the_password_is_unset() {
-        let _restore = PasswordVar::capture();
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
         std::env::remove_var(DB_PASSWORD_ENV);
 
         let ctx = context_from(
@@ -393,7 +404,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_resolve_db_target_postgres_errors_when_the_password_is_empty() {
-        let _restore = PasswordVar::capture();
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
         std::env::set_var(DB_PASSWORD_ENV, "   ");
 
         let ctx = context_from(
@@ -407,7 +418,7 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_resolve_db_target_resolves_the_documented_quoted_config() {
-        let _restore = PasswordVar::capture();
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
         std::env::set_var(DB_PASSWORD_ENV, "s3cret");
 
         let ctx = context_from(
@@ -430,8 +441,8 @@ mod tests {
     #[test]
     #[serial_test::serial]
     fn test_resolve_db_target_sqlite_is_unaffected_by_the_password_variable() {
-        let _restore = PasswordVar::capture();
-        let original_url = std::env::var("DATABASE_URL").ok();
+        let _restore_password = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        let _restore_url = EnvVarGuard::capture("DATABASE_URL");
         std::env::remove_var("DATABASE_URL");
 
         let ctx = context_from(
@@ -443,10 +454,6 @@ mod tests {
         let without = resolve_db_target(&ctx).unwrap();
         std::env::set_var(DB_PASSWORD_ENV, "s3cret");
         let with = resolve_db_target(&ctx).unwrap();
-
-        if let Some(url) = original_url {
-            std::env::set_var("DATABASE_URL", url);
-        }
 
         assert_eq!(
             without,
