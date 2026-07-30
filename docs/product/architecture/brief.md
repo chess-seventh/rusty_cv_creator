@@ -173,16 +173,31 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
 - **Functional suitability** — variant resolution precedence
   (flag → inference → default) covers explicit and implicit selection.
 - **Security** — single-user local tool; Postgres reached only over Tailscale.
-  The Postgres password is injected from the `RUSTY_CV_DB_PASSWORD` environment
-  variable (sops via home-manager) and spliced into the configured passwordless
-  URL at connect time; it is never stored in the repo, in the INI config, or in
-  the process environment. Enforced by a tracked-tree credential scan in the
-  test suite (`tests/db_credentials_regression.rs`), which runs in CI and fails
-  on any `scheme://user:secret@host` in a machine-read file. The devenv
-  `detect-private-keys` / `detect-aws-credentials` hooks are **not** the control
-  here — neither can match a URL userinfo password. Historical exposure: a
-  plaintext password was tracked from 2024-07-28 to 2026-07-30 and is in git
-  history; rotation rides the nixos-02 database recreation.
+  The Postgres password is delivered **through the process environment**: sops
+  exports `RUSTY_CV_DB_PASSWORD` via home-manager, the program reads it, and
+  splices it into the configured passwordless URL immediately before
+  connecting. What is actually guaranteed, and what enforces each claim:
+  - **Not in the repository, not in the INI config.** Enforced by the
+    tracked-tree credential scan (`tests/db_credentials_regression.rs`), which
+    runs in CI and fails on any URL carrying a password in its userinfo, in
+    every tracked file except markdown prose and non-UTF-8 binaries. There is
+    no allowlist: a hit fixes the offending file, never the scanner.
+  - **In this process's environment — deliberately.** That is the delivery
+    mechanism, not a defect. The program does not write it there: it reads the
+    variable, holds the value in a local `String`, and hands it to the
+    connection.
+  - **Not in any child process's environment.** Every subprocess is built by
+    `child_env::command_without_db_password`, which removes the variable, so
+    the PDF viewer, `xdg-open` and the browser it starts, `git`, `sudo` and
+    `tailscale` cannot expose it through `/proc/<pid>/environ`. Enforced by
+    `tests/child_env_scrubbing.rs`.
+
+  The devenv `detect-private-keys` / `detect-aws-credentials` hooks are **not**
+  the control here — neither can match a URL userinfo password, and the brief
+  claiming otherwise is what let the leak sit unnoticed for two years.
+  Historical exposure: a plaintext password was tracked from 2024-07-28 to
+  2026-07-30 and is in git history; rotation rides the nixos-02 database
+  recreation.
 
 ### Decisions table
 

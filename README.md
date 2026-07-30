@@ -183,10 +183,14 @@ The PostgreSQL path does **not** read `DATABASE_URL`. It reads two things:
    db_pg_host = "postgres://<user>@<host>/<database>"
    ```
 
-2. The password, from the `RUSTY_CV_DB_PASSWORD` environment variable. It is
-   percent-encoded and spliced into the URL immediately before connecting, and
-   is never written into the process environment nor into any file in this
-   repository.
+2. The password, from the `RUSTY_CV_DB_PASSWORD` environment variable. The
+   variable **is** in this process's environment — that is deliberate, it is
+   how the password reaches the program. What the program does with it: it
+   reads the value, percent-encodes it, splices it into the URL immediately
+   before connecting, and writes it nowhere — not into a file in this
+   repository, and not back into the environment. Every subprocess it spawns
+   (the PDF viewer, `xdg-open`, `git`, `sudo`, `tailscale`) is started with the
+   variable removed, so the password stops at this process.
 
 Where the variable comes from:
 

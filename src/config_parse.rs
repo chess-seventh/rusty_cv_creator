@@ -163,8 +163,10 @@ fn inject_db_password(
 ///
 /// - `postgres` -> the passwordless `db_pg_host` configured in the INI file,
 ///   with the password from the `RUSTY_CV_DB_PASSWORD` environment variable
-///   spliced in. The password lives in a local `String` handed straight to the
-///   connection: it is never written into the process environment.
+///   spliced in. The variable is already in this process's environment - that
+///   is how it arrives - and this function does not write it back there: the
+///   value lives in a local `String` handed straight to the connection.
+///   Children never see it; see `child_env::command_without_db_password`.
 /// - `sqlite`   -> the `DATABASE_URL` env var when set, otherwise a
 ///   `sqlite://<configured-path>` URL built from the INI config.
 pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn std::error::Error>> {
