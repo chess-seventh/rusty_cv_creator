@@ -189,8 +189,10 @@ The PostgreSQL path does **not** read `DATABASE_URL`. It reads two things:
    reads the value, percent-encodes it, splices it into the URL immediately
    before connecting, and writes it nowhere — not into a file in this
    repository, and not back into the environment. Every subprocess it spawns
-   (the PDF viewer, `xdg-open`, `git`, `sudo`, `tailscale`) is started with the
-   variable removed, so the password stops at this process.
+   (the PDF viewer, `xdg-open`, `git`, `sudo`, `tailscale`) is started with
+   both `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL` removed, so no credential
+   reaches a child - not even from an unmigrated config whose `db_pg_host`
+   still carries an inline password.
 
 Where the variable comes from:
 
@@ -222,9 +224,19 @@ exports one (it used to, with a credential in it), so put the SQLite URL in
 `.env` — see `env.sample` — or pass a URL inline for the migration command only:
 
 ```bash
+# option A: from .env (copy env.sample and edit it), then
 diesel setup
 diesel migration run
+
+# option B: inline, without persisting anything
+DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel setup
+DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel migration run
 ```
+
+For a PostgreSQL target, build that inline URL from your `db_pg_host` plus the
+password — it is a `diesel-cli` invocation, not this program, so it takes the
+whole URL. Do not write that URL into a tracked file; the credential scanner
+will fail the build if you do.
 
 ### Template Structure
 

@@ -509,7 +509,7 @@ no signature change:
 - `src/user_action.rs:24-25` — same pair
 
 Add a private helper in `src/config_parse.rs`, e.g.
-`fn splice_db_password(base_url: &str) -> Result<String, Box<dyn std::error::Error>>`,
+`fn inject_db_password(base_url: &str) -> Result<String, Box<dyn std::error::Error>>`,
 and call it in the `postgres` arm only. It must:
 
 0. **de-quote the base URL first** — `clean_string_from_quotes` (`src/helpers.rs:46`),
@@ -660,7 +660,7 @@ Ordered by expected damage.
 **R-1 — The live INI still contains the password, and it is outside this commit's
 reach. HIGH.**
 `~/.config/rusty-cv-creator/rusty-cv-config.ini` currently holds
-`postgres://rusty_cv:<pw>@nixos-02…/rusty_cv`. After the fix, `splice_db_password`
+`postgres://rusty_cv:<pw>@nixos-02…/rusty_cv`. After the fix, `inject_db_password`
 receives that string as its "base". Naive insertion yields
 `postgres://rusty_cv:<old>:<new>@nixos-02…` — malformed, and the failure mode is a
 confusing parse/auth error rather than the intended actionable message.

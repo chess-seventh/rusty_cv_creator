@@ -183,14 +183,19 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
     every tracked file except markdown prose and non-UTF-8 binaries. There is
     no allowlist: a hit fixes the offending file, never the scanner.
   - **In this process's environment — deliberately.** That is the delivery
-    mechanism, not a defect. The program does not write it there: it reads the
-    variable, holds the value in a local `String`, and hands it to the
-    connection.
+    mechanism, not a defect. The program does not write the password there: it
+    reads the variable, holds the value in a local `String`, and hands it to
+    the connection. It does write `DATABASE_URL` at startup from the
+    configured `db_pg_host` (`helpers.rs`), so a config whose URL still carries
+    inline userinfo puts a password in this process's environment too.
   - **Not in any child process's environment.** Every subprocess is built by
-    `child_env::command_without_db_password`, which removes the variable, so
-    the PDF viewer, `xdg-open` and the browser it starts, `git`, `sudo` and
-    `tailscale` cannot expose it through `/proc/<pid>/environ`. Enforced by
-    `tests/child_env_scrubbing.rs`.
+    `child_env::command_without_db_credentials`, which removes **both**
+    `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL`, so the PDF viewer, `xdg-open`
+    and the browser it starts, `git`, `sudo` and `tailscale` cannot expose
+    either through `/proc/<pid>/environ`. Stripping `DATABASE_URL` matters
+    because the startup write happens before the first child is spawned.
+    Enforced by `tests/child_env_scrubbing.rs`, which carries a control test
+    proving an unscrubbed child does inherit them.
 
   The devenv `detect-private-keys` / `detect-aws-credentials` hooks are **not**
   the control here — neither can match a URL userinfo password, and the brief
