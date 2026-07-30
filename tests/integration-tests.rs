@@ -41,7 +41,7 @@ quote_line_to_change = "QUOTE_PLACEHOLDER"
 db_path = "{}/db"
 db_file = "test.db"
 engine = "sqlite"
-db_pg_host = "postgresql://test:test@localhost/test"
+db_pg_host = "postgresql://test@localhost/test"
 
 [optional]
 pdf_viewer = "echo"
