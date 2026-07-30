@@ -1,0 +1,73 @@
+{
+  "roadmap": {
+    "project_id": "fix-db-credentials-from-sops",
+    "created_at": "2026-07-30T21:00:00Z",
+    "total_steps": 2,
+    "goal": "Remove the plaintext PostgreSQL password from the tracked tree, source it at runtime from RUSTY_CV_DB_PASSWORD, and reconcile the database host and name onto nixos-02/rusty_cv.",
+    "note": "Bugfix flow (lane L74). RCA at ../rca.md. Two steps: a failing regression net first, then the fix that turns it green. Scope approved by the maintainer includes de-quoting the DB accessors (without it the engine name never matches and the postgres path cannot connect at all) and making a swallowed DB error visible. Explicitly OUT of scope: the sqlite arm receiving a postgres URL from the dev shell, which gets its own lane.",
+    "validation": {
+      "status": "approved",
+      "by": "maintainer",
+      "rationale": "scope chosen at the bugfix Phase-2 review gate"
+    }
+  },
+  "phases": [
+    {
+      "id": "01",
+      "name": "Credentials out of the tree, password from the environment",
+      "default_agent": "nw-software-crafter",
+      "default_deps_strategy": "sequential",
+      "steps": [
+        {
+          "id": "01-01",
+          "name": "Regression net: no credential literals, loud failure, quoted values",
+          "criteria": [
+            "A test walks the tracked tree and fails on any URL carrying inline userinfo credentials (scheme://user:secret@host), covering .nix, .ini, .rs, .md and .toml files.",
+            "A test proves resolve_db_target on the postgres arm returns an error naming RUSTY_CV_DB_PASSWORD when that variable is unset or empty.",
+            "A test proves a config whose values are quoted (the documented example format) still resolves engine postgres and a usable URL.",
+            "A test proves a base URL that already carries a password is rejected rather than double-spliced.",
+            "Every new test fails against current code for the stated reason, not by compile error alone."
+          ],
+          "agent": "nw-software-crafter",
+          "deps": [],
+          "test_file": "tests/regression/db_credentials.rs plus in-crate cfg(test) modules",
+          "scenario_name": "n/a defect regression net",
+          "files_to_modify": [
+            "tests/regression/db_credentials.rs",
+            "src/config_parse.rs",
+            "src/global_conf.rs"
+          ]
+        },
+        {
+          "id": "01-02",
+          "name": "Fix: strip the literals, splice the password, reconcile the host",
+          "criteria": [
+            "No inline-credential URL remains anywhere in the tracked tree, test fixtures included.",
+            "devenv.nix no longer sets DATABASE_URL to a credential-bearing value.",
+            "rusty-cv-config-example.ini points at nixos-02 with database rusty_cv and carries no password.",
+            "The postgres arm reads RUSTY_CV_DB_PASSWORD, percent-encodes it, and splices it into the configured URL immediately before connecting; the password is never written into the process environment.",
+            "A missing or empty variable fails with an actionable message; there is no passwordless fallback connect.",
+            "The database accessors strip surrounding quotes, so a quoted config resolves correctly.",
+            "A database error on the insert path is reported at error level instead of being swallowed at warn level.",
+            "The sqlite path is unchanged; all 169 pre-existing tests still pass; treefmt and clippy -D warnings clean; no new runtime dependency."
+          ],
+          "agent": "nw-software-crafter",
+          "deps": ["01-01"],
+          "test_file": "tests/regression/db_credentials.rs plus in-crate cfg(test) modules",
+          "scenario_name": "n/a defect fix",
+          "files_to_modify": [
+            "devenv.nix",
+            "rusty-cv-config-example.ini",
+            "src/config_parse.rs",
+            "src/global_conf.rs",
+            "src/cv_insert.rs",
+            "src/cli_structure.rs",
+            "tests/integration-tests.rs",
+            "README.md",
+            "docs/product/architecture/brief.md"
+          ]
+        }
+      ]
+    }
+  ]
+}
