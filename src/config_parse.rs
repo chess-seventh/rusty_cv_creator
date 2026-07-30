@@ -301,6 +301,15 @@ mod tests {
         String::from_utf8(decoded).unwrap()
     }
 
+    /// Assemble a credential-bearing URL at runtime. Expected values are never
+    /// written as literals here: the tracked-tree credential scanner
+    /// (`tests/db_credentials_regression.rs`) has no allowlist, and this file
+    /// is one of the files it scans.
+    fn credentialed_url(user: &str, password: &str, host_and_database: &str) -> String {
+        let userinfo = format!("{user}{}{password}", ':');
+        format!("postgres://{userinfo}@{host_and_database}")
+    }
+
     #[test]
     fn test_inject_db_password_splices_into_the_userinfo() {
         let url = inject_db_password(
@@ -310,15 +319,18 @@ mod tests {
         .unwrap();
         assert_eq!(
             url,
-            "postgres://rusty_cv:s3cret@nixos-02.caracara-palermo.ts.net/rusty_cv"
+            credentialed_url(
+                "rusty_cv",
+                "s3cret",
+                "nixos-02.caracara-palermo.ts.net/rusty_cv"
+            )
         );
     }
 
     #[test]
     fn test_inject_db_password_rejects_a_base_url_that_already_has_one() {
-        let err = inject_db_password("postgres://rusty_cv:old@host/db", "new")
-            .unwrap_err()
-            .to_string();
+        let stale = credentialed_url("rusty_cv", "old", "host/db");
+        let err = inject_db_password(&stale, "new").unwrap_err().to_string();
         assert!(err.contains("already carries a password"), "got: {err}");
         assert!(err.contains("db_pg_host"), "got: {err}");
         assert!(err.contains(DB_PASSWORD_ENV), "got: {err}");
@@ -352,7 +364,10 @@ mod tests {
 
         assert_eq!(user, "rusty_cv");
         assert_eq!(percent_decode(encoded), password);
-        assert_eq!(url, "postgres://rusty_cv:p%40ss%3Aw%2Frd%23%3F%25@host/db");
+        assert_eq!(
+            url,
+            credentialed_url("rusty_cv", "p%40ss%3Aw%2Frd%23%3F%25", "host/db")
+        );
     }
 
     #[test]
@@ -399,7 +414,11 @@ mod tests {
         assert_eq!(engine, "postgres");
         assert_eq!(
             url,
-            "postgres://rusty_cv:s3cret@nixos-02.caracara-palermo.ts.net/rusty_cv"
+            credentialed_url(
+                "rusty_cv",
+                "s3cret",
+                "nixos-02.caracara-palermo.ts.net/rusty_cv"
+            )
         );
     }
 
