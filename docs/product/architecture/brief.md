@@ -172,8 +172,17 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
   (ADR-0004) instead of cryptic subprocess errors.
 - **Functional suitability** — variant resolution precedence
   (flag → inference → default) covers explicit and implicit selection.
-- **Security** — single-user local tool; Postgres reached only over Tailscale;
-  no secrets in repo (pre-commit hooks for keys/AWS creds in devenv).
+- **Security** — single-user local tool; Postgres reached only over Tailscale.
+  The Postgres password is injected from the `RUSTY_CV_DB_PASSWORD` environment
+  variable (sops via home-manager) and spliced into the configured passwordless
+  URL at connect time; it is never stored in the repo, in the INI config, or in
+  the process environment. Enforced by a tracked-tree credential scan in the
+  test suite (`tests/db_credentials_regression.rs`), which runs in CI and fails
+  on any `scheme://user:secret@host` in a machine-read file. The devenv
+  `detect-private-keys` / `detect-aws-credentials` hooks are **not** the control
+  here — neither can match a URL userinfo password. Historical exposure: a
+  plaintext password was tracked from 2024-07-28 to 2026-07-30 and is in git
+  history; rotation rides the nixos-02 database recreation.
 
 ### Decisions table
 

@@ -161,17 +161,61 @@ rusty_cv_creator insert "StartupCo" "Backend Engineer" "Excited about scaling ch
 
 ### Database Setup
 
-Set your database URL in your environment or `.env` file:
+#### SQLite (recommended for single user)
+
+The SQLite path reads `DATABASE_URL` from the environment, falling back to the
+`[db] db_path` / `db_file` values in your config file:
 
 ```bash
-# SQLite (recommended for single user)
 echo "DATABASE_URL=sqlite://$HOME/.config/rusty-cv-creator/applications.db" > .env
-
-# PostgreSQL (for advanced users)
-echo "DATABASE_URL=postgresql://user:password@localhost/cv_db" > .env
 ```
 
-Initialize the database:
+#### PostgreSQL (for advanced users)
+
+The PostgreSQL path does **not** read `DATABASE_URL`. It reads two things:
+
+1. `[db] db_pg_host` in your config file — a **passwordless** connection URL
+   naming the scheme, the database user, the host and the database:
+
+   ```ini
+   [db]
+   engine = "postgres"
+   db_pg_host = "postgres://<user>@<host>/<database>"
+   ```
+
+2. The password, from the `RUSTY_CV_DB_PASSWORD` environment variable. It is
+   percent-encoded and spliced into the URL immediately before connecting, and
+   is never written into the process environment nor into any file in this
+   repository.
+
+Where the variable comes from:
+
+- on the real machine, sops supplies it through home-manager, exported into the
+  user session environment so non-interactive invocations see it too;
+- in development, from the gitignored `.env` file at the root of this repo.
+
+Two rules the program enforces, both with an actionable error:
+
+- a missing or empty `RUSTY_CV_DB_PASSWORD` is a hard failure — there is no
+  passwordless fallback connect;
+- a `db_pg_host` that still carries a password is rejected. Remove the password
+  from your config file: it now comes only from the environment.
+
+#### Run and test it
+
+```bash
+# development: supply the password for this shell only
+read -rs RUSTY_CV_DB_PASSWORD && export RUSTY_CV_DB_PASSWORD
+
+# check the resolution and the credential scanner
+devenv shell -- cargo nextest run --no-fail-fast
+```
+
+#### Initialize the database
+
+`diesel-cli` reads `DATABASE_URL` from the environment. The dev shell no longer
+exports one (it used to, with a credential in it), so put the SQLite URL in
+`.env` — see `env.sample` — or pass a URL inline for the migration command only:
 
 ```bash
 diesel setup
