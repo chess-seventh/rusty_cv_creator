@@ -1,4 +1,4 @@
-use rusty_cv_creator::child_env::command_without_db_password;
+use rusty_cv_creator::child_env::command_without_db_credentials;
 use std::io;
 use std::process::Stdio;
 
@@ -47,13 +47,13 @@ pub trait CommandRunner {
     }
 }
 
-/// The real runner. Every child is built by `command_without_db_password`, never
+/// The real runner. Every child is built by `command_without_db_credentials`, never
 /// by `Command::new` directly, so no subprocess inherits the database password.
 pub struct SystemRunner;
 
 impl CommandRunner for SystemRunner {
     fn status(&self, program: &str, args: &[&str], cwd: Option<&str>) -> io::Result<bool> {
-        let mut cmd = command_without_db_password(program);
+        let mut cmd = command_without_db_credentials(program);
         cmd.args(args);
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -62,13 +62,15 @@ impl CommandRunner for SystemRunner {
     }
 
     fn output(&self, program: &str, args: &[&str]) -> io::Result<(bool, String)> {
-        let out = command_without_db_password(program).args(args).output()?;
+        let out = command_without_db_credentials(program)
+            .args(args)
+            .output()?;
         let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
         Ok((out.status.success(), stdout))
     }
 
     fn spawn(&self, program: &str, args: &[&str]) -> io::Result<()> {
-        command_without_db_password(program)
+        command_without_db_credentials(program)
             .args(args)
             .stdout(Stdio::null())
             .spawn()?;
@@ -81,7 +83,7 @@ impl CommandRunner for SystemRunner {
         args: &[&str],
         cwd: Option<&str>,
     ) -> io::Result<CommandOutcome> {
-        let mut cmd = command_without_db_password(program);
+        let mut cmd = command_without_db_credentials(program);
         cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
