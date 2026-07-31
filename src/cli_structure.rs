@@ -1,4 +1,4 @@
-use crate::config_parse::resolve_db_target;
+use crate::config_parse::connect_db;
 use crate::global_conf::AppContext;
 use crate::{cv_insert::insert_cv, user_action::remove_cv};
 use chrono::NaiveDate;
@@ -150,8 +150,7 @@ pub fn match_user_action(
 /// application through the v5 `DbConnection` seam and hand it to the pure-UI TUI.
 fn run_list_tui(ctx: &AppContext) -> Result<(), Box<dyn std::error::Error>> {
     rusty_cv_creator::tui::probe::run_startup_probe()?;
-    let (engine, url) = resolve_db_target(ctx)?;
-    let mut conn = rusty_cv_creator::database::establish_connection(&engine, &url)?;
+    let mut conn = connect_db(ctx)?;
     let cvs = rusty_cv_creator::database::load_all_applications(&mut conn)?;
     rusty_cv_creator::tui::run(cvs)
 }

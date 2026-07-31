@@ -111,10 +111,15 @@ fn percent_encode_password(password: &str) -> String {
 }
 
 /// The only schemes libpq parses as a URI. Anything else is treated as a
-/// keyword/value connection string, and its parse errors quote the WHOLE
-/// string back - password included - into a log line. Validating the scheme
-/// here is what keeps a one-character typo in `db_pg_host` from printing the
-/// spliced password to the terminal and the journal.
+/// keyword/value connection string, whose parse errors quote the WHOLE string
+/// back - password included.
+///
+/// This check is a guard rail, NOT the control that keeps the password out of
+/// the logs: libpq echoes the connection string from several other error
+/// branches too, and those fire on a perfectly valid `postgres://` scheme.
+/// The control is `connect_db`, which redacts the secret from whatever the
+/// driver produces. Rejecting a wrong scheme here just turns a confusing
+/// driver error into an actionable one.
 const POSTGRES_URI_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
 
 /// Splice `password` into the userinfo of a passwordless `base_url`.
@@ -145,9 +150,7 @@ fn inject_db_password(
             "The configured database URL has scheme '{scheme}', which PostgreSQL \
              does not parse as a URL.\n  \
              Use 'postgres://' or 'postgresql://' in db_pg_host in the INI config \
-             file.\n  \
-             Refusing to connect: any other scheme makes the driver echo the whole \
-             connection string, password included, into its error message."
+             file."
         )
         .into());
     }
@@ -211,6 +214,46 @@ pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn s
         }
         _ => Ok((engine, String::new())),
     }
+}
+
+/// Replace every occurrence of `secret` in `message` with a marker.
+///
+/// Both the raw secret and its percent-encoded form are removed, because the
+/// value that ends up inside a connection URL is the encoded one while the
+/// value a human recognises is the raw one. An empty secret is a no-op.
+fn redact_secret(message: &str, secret: &str) -> String {
+    const MARKER: &str = "<password redacted>";
+
+    if secret.is_empty() {
+        return message.to_string();
+    }
+
+    message
+        .replace(secret, MARKER)
+        .replace(&percent_encode_password(secret), MARKER)
+}
+
+/// Open the database connection for this run, with the password scrubbed from
+/// any error before it can be logged.
+///
+/// Validating the URL is not enough on its own. libpq quotes the WHOLE
+/// connection string back in several of its parse errors - a malformed IPv6
+/// host is one - and those fire on a perfectly valid `postgres://` scheme, so
+/// the spliced password would reach stderr and the journal. Enumerating the
+/// driver's error branches is a losing game across versions; removing the
+/// secret from whatever it produces is not. Every caller must connect through
+/// here rather than calling `establish_connection` directly.
+pub fn connect_db(
+    ctx: &AppContext,
+) -> Result<rusty_cv_creator::database::DbConnection, Box<dyn std::error::Error>> {
+    let (engine, url) = resolve_db_target(ctx)?;
+
+    rusty_cv_creator::database::establish_connection(&engine, &url).map_err(
+        |e| -> Box<dyn std::error::Error> {
+            let secret = std::env::var(DB_PASSWORD_ENV).unwrap_or_default();
+            redact_secret(&e.to_string(), &secret).into()
+        },
+    )
 }
 
 #[cfg(test)]
@@ -516,5 +559,62 @@ mod tests {
             ("sqlite".to_string(), "sqlite:///tmp/test.db".to_string())
         );
         assert_eq!(without, with);
+    }
+
+    #[test]
+    fn test_redact_secret_removes_both_the_raw_and_encoded_forms() {
+        let secret = "p@ss w0rd";
+        let message = format!(
+            "failed on {} and on {}",
+            secret,
+            percent_encode_password(secret)
+        );
+
+        let redacted = redact_secret(&message, secret);
+
+        assert!(!redacted.contains(secret), "raw form survived: {redacted}");
+        assert!(
+            !redacted.contains(&percent_encode_password(secret)),
+            "encoded form survived: {redacted}"
+        );
+        assert_eq!(redacted.matches("<password redacted>").count(), 2);
+    }
+
+    #[test]
+    fn test_redact_secret_is_a_no_op_for_an_empty_secret() {
+        assert_eq!(redact_secret("nothing to hide", ""), "nothing to hide");
+    }
+
+    /// The reason `connect_db` exists. libpq quotes the whole connection
+    /// string back in several parse errors that fire on a valid `postgres://`
+    /// scheme - a malformed IPv6 host is the cheapest to trigger - so without
+    /// redaction the live password reaches stderr and the journal.
+    #[test]
+    #[serial_test::serial]
+    fn test_connect_db_never_echoes_the_password_when_the_driver_rejects_the_url() {
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        let secret = "ZZTOPSECRETpw987";
+        std::env::set_var(DB_PASSWORD_ENV, secret);
+
+        for host in ["[2001:db8::1", "[notipv6", "[]"] {
+            let ctx = context_from(&format!(
+                "[db]\nengine = \"postgres\"\n\
+                 db_pg_host = \"postgresql://rusty_cv@{host}/rusty_cv\""
+            ));
+
+            let err = connect_db(&ctx)
+                .err()
+                .expect("the driver must reject a malformed host")
+                .to_string();
+
+            assert!(
+                !err.contains(secret),
+                "the password leaked for host {host}: {err}"
+            );
+            assert!(
+                !err.contains(&percent_encode_password(secret)),
+                "the encoded password leaked for host {host}: {err}"
+            );
+        }
     }
 }
