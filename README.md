@@ -167,8 +167,12 @@ The SQLite path reads `DATABASE_URL` from the environment, falling back to the
 `[db] db_path` / `db_file` values in your config file:
 
 ```bash
-echo "DATABASE_URL=sqlite://$HOME/.config/rusty-cv-creator/applications.db" > .env
+cp env.sample .env   # then edit it
 ```
+
+Append rather than overwrite if you already have a `.env`: on the PostgreSQL
+path it also holds `RUSTY_CV_DB_PASSWORD`, and a truncating `>` would destroy
+it.
 
 #### PostgreSQL (for advanced users)
 
@@ -206,7 +210,10 @@ Two rules the program enforces, both with an actionable error:
 
 - a missing or empty `RUSTY_CV_DB_PASSWORD` is a hard failure — there is no
   passwordless fallback connect;
-- a `db_pg_host` that still carries a password is rejected. Remove the password
+- a `db_pg_host` that still carries a password is rejected — both forms, before
+  the `@` and as a `?password=` query parameter. The query form matters because
+  PostgreSQL *prefers* it over the spliced one, so accepting it would let a
+  config-file password silently beat the sops-supplied one. Remove the password
   from your config file: it now comes only from the environment.
 
 #### Run and test it
