@@ -190,9 +190,11 @@ The PostgreSQL path does **not** read `DATABASE_URL`. It reads two things:
    before connecting, and writes it nowhere — not into a file in this
    repository, and not back into the environment. Every subprocess it spawns
    (the PDF viewer, `xdg-open`, `git`, `sudo`, `tailscale`) is started with
-   both `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL` removed, so no credential
-   reaches a child - not even from an unmigrated config whose `db_pg_host`
-   still carries an inline password.
+   both `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL` removed, so no **database**
+   credential reaches a child - not even from an unmigrated config whose
+   `db_pg_host` still carries an inline password. `GITHUB_TOKEN` is a known
+   exception: `git` needs it, so it is still inherited by every child. Closing
+   that is tracked separately.
 
 Where the variable comes from:
 

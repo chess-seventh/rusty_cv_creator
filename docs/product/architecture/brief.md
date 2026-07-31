@@ -181,19 +181,29 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
     tracked-tree credential scan (`tests/db_credentials_regression.rs`), which
     runs in CI and fails on any URL carrying a password in its userinfo, in
     every tracked file except markdown prose and non-UTF-8 binaries. There is
-    no allowlist: a hit fixes the offending file, never the scanner.
+    no allowlist: a hit fixes the offending file, never the scanner. What the
+    scan does **not** catch, so the guarantee is only as wide as this: it
+    matches the URL-userinfo shape and reads one line at a time, so a bare
+    `db_password = "..."` key, or a credential wrapped across two lines, would
+    pass. Widening it is future work, not a claim made here.
   - **In this process's environment — deliberately.** That is the delivery
     mechanism, not a defect. The program does not write the password there: it
     reads the variable, holds the value in a local `String`, and hands it to
     the connection. It does write `DATABASE_URL` at startup from the
     configured `db_pg_host` (`helpers.rs`), so a config whose URL still carries
     inline userinfo puts a password in this process's environment too.
-  - **Not in any child process's environment.** Every subprocess is built by
-    `child_env::command_without_db_credentials`, which removes **both**
-    `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL`, so the PDF viewer, `xdg-open`
-    and the browser it starts, `git`, `sudo` and `tailscale` cannot expose
-    either through `/proc/<pid>/environ`. Stripping `DATABASE_URL` matters
-    because the startup write happens before the first child is spawned.
+  - **No DATABASE credential in any child process's environment.** Every
+    subprocess is built by `child_env::command_without_db_credentials`, which
+    removes **both** `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL`, so the PDF
+    viewer, `xdg-open` and the browser it starts, `git`, `sudo` and
+    `tailscale` cannot expose either through `/proc/<pid>/environ`. Stripping
+    `DATABASE_URL` matters because the startup write happens before the first
+    child is spawned. **`GITHUB_TOKEN` is deliberately NOT stripped** and is
+    still inherited by every child, including the browser: `git` needs it for
+    template authentication (`template_source.rs`), so closing that leak means
+    scrubbing by default and re-injecting it on the git calls only. That is
+    tracked as its own change, not done here. Read this bullet as "database
+    credentials", not "all credentials".
     Enforced by `tests/child_env_scrubbing.rs`, which carries a control test
     proving an unscrubbed child does inherit them.
 
