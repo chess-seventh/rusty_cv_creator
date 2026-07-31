@@ -237,8 +237,15 @@ DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel se
 the whole SQLite path. Do not follow it with `diesel migration run`: the
 migration declares `id SERIAL PRIMARY KEY`, which `diesel-cli` will not reflect
 back for SQLite, so the command exits 1 with ``Unsupported type: `serial` ``.
-The database is already correct at that point; only the schema printer fails.
-Against a PostgreSQL target both commands succeed.
+
+On SQLite the table the migration produces is **not usable by this program**:
+`SERIAL` is not `INTEGER PRIMARY KEY` there, so `id` is not a rowid alias and
+does not autoincrement — every insert and read then fails with
+`UnexpectedNullError`. The migration is written for PostgreSQL. If you want a
+working SQLite database today, create the table with
+`id INTEGER PRIMARY KEY AUTOINCREMENT`, which is what the test fixtures in
+`src/database.rs` do. Against a PostgreSQL target both commands succeed and the
+schema is correct.
 
 For a PostgreSQL target, build that inline URL from your `db_pg_host` plus the
 password — it is a `diesel-cli` invocation, not this program, so it takes the
