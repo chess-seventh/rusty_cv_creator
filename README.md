@@ -228,12 +228,17 @@ exports one (it used to, with a credential in it), so put the SQLite URL in
 ```bash
 # option A: from .env (copy env.sample and edit it), then
 diesel setup
-diesel migration run
 
 # option B: inline, without persisting anything
 DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel setup
-DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel migration run
 ```
+
+`diesel setup` creates the database **and** applies the migrations — that is
+the whole SQLite path. Do not follow it with `diesel migration run`: the
+migration declares `id SERIAL PRIMARY KEY`, which `diesel-cli` will not reflect
+back for SQLite, so the command exits 1 with ``Unsupported type: `serial` ``.
+The database is already correct at that point; only the schema printer fails.
+Against a PostgreSQL target both commands succeed.
 
 For a PostgreSQL target, build that inline URL from your `db_pg_host` plus the
 password — it is a `diesel-cli` invocation, not this program, so it takes the
