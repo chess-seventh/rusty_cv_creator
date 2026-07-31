@@ -127,13 +127,14 @@ fn inject_db_password(
     base_url: &str,
     password: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
+    // Deliberately does NOT echo `base_url`: an unmigrated config still holds
+    // an inline password, and printing it here would put it in the terminal
+    // and the journal - the very leak this module exists to close.
     let missing_user = || -> Box<dyn std::error::Error> {
-        format!(
-            "The configured database URL names no user: expected \
-             '<scheme>://<user>@<host>/<database>', got '{base_url}'.\n  \
-             Add the database user to db_pg_host in the INI config file."
-        )
-        .into()
+        "The configured database URL names no user: expected \
+         '<scheme>://<user>@<host>/<database>'.\n  \
+         Add the database user to db_pg_host in the INI config file."
+            .into()
     };
 
     let scheme_end = base_url.find("://").ok_or_else(missing_user)? + "://".len();

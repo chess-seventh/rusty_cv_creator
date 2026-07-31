@@ -185,7 +185,9 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
     scan does **not** catch, so the guarantee is only as wide as this: it
     matches the URL-userinfo shape and reads one line at a time, so a bare
     `db_password = "..."` key, or a credential wrapped across two lines, would
-    pass. Widening it is future work, not a claim made here.
+    pass. Nor does it match a user or password containing whitespace - that
+    exclusion is what keeps ordinary prose from tripping it, and it is pinned
+    by a test. Widening any of this is future work, not a claim made here.
   - **In this process's environment — deliberately.** That is the delivery
     mechanism, not a defect. The program does not write the password there: it
     reads the variable, holds the value in a local `String`, and hands it to

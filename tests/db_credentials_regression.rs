@@ -107,6 +107,12 @@ fn has_inline_credential(line: &str) -> bool {
         if let (Some(at), Some(colon)) = (authority.find('@'), authority.find(':')) {
             let user = &authority[..colon];
             let password = &authority[colon + 1..at.max(colon + 1)];
+            // Neither segment may contain whitespace. This is a deliberate
+            // trade-off, not an oversight: it is what stops ordinary prose
+            // ("see https://host/docs: ask bob@host") from matching, and
+            // `the_matcher_ignores_passwordless_and_pathological_urls` pins
+            // it. The cost is that a passphrase containing a space slips
+            // through - recorded as a known gap in the architecture brief.
             let is_userinfo = colon < at
                 && !user.is_empty()
                 && !password.is_empty()
