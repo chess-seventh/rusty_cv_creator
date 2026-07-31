@@ -210,11 +210,16 @@ Two rules the program enforces, both with an actionable error:
 
 - a missing or empty `RUSTY_CV_DB_PASSWORD` is a hard failure — there is no
   passwordless fallback connect;
-- a `db_pg_host` that still carries a password is rejected — both forms, before
-  the `@` and as a `?password=` query parameter. The query form matters because
-  PostgreSQL *prefers* it over the spliced one, so accepting it would let a
-  config-file password silently beat the sops-supplied one. Remove the password
-  from your config file: it now comes only from the environment.
+- a `db_pg_host` that still carries a password is rejected: before the `@`, or
+  as a query parameter whose name means a password. The query form matters
+  because PostgreSQL *prefers* it over the spliced one, so accepting it would
+  let a config-file password silently beat the sops-supplied one. Parameter
+  names are percent-decoded before the check (PostgreSQL decodes them too, so
+  `?%70assword=` is the same parameter), an empty value counts — it discards
+  the supplied password and falls through to `.pgpass` — and any name
+  containing "password", such as `sslpassword`, is treated the same way.
+  Remove the password from your config file: it now comes only from the
+  environment.
 
 #### Run and test it
 

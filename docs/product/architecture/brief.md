@@ -179,15 +179,24 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
   connecting. What is actually guaranteed, and what enforces each claim:
   - **Not in the repository, not in the INI config.** Enforced by the
     tracked-tree credential scan (`tests/db_credentials_regression.rs`), which
-    runs in CI and fails on any URL carrying a password in its userinfo, in
-    every tracked file except markdown prose and non-UTF-8 binaries. There is
-    no allowlist: a hit fixes the offending file, never the scanner. What the
-    scan does **not** catch, so the guarantee is only as wide as this: it
-    matches the URL-userinfo shape and reads one line at a time, so a bare
-    `db_password = "..."` key, or a credential wrapped across two lines, would
-    pass. Nor does it match a user or password containing whitespace - that
-    exclusion is what keeps ordinary prose from tripping it, and it is pinned
-    by a test. Widening any of this is future work, not a claim made here.
+    runs in CI and fails on any URL carrying a password - in its userinfo, or
+    as a password-bearing query parameter - in every tracked file except
+    markdown prose and non-UTF-8 binaries. There is no allowlist: a hit fixes
+    the offending file, never the scanner. The query-parameter half is shared
+    with the code that rejects such a URL at connect time
+    (`rusty_cv_creator::db_url`), deliberately: they were once written twice
+    and both copies had the same blind spot.
+
+    What the scan does **not** catch, so the guarantee is only as wide as
+    this. The list is not claimed to be exhaustive - four of these were found
+    by someone attacking it, not by writing it:
+    - it reads one line at a time, so a credential wrapped across two lines
+      passes;
+    - it matches URL shapes, so a bare `db_password = "..."` key passes;
+    - it ignores a user or password containing whitespace, which is what keeps
+      ordinary prose from tripping it, pinned by a test;
+    - it cannot see a credential in a non-UTF-8 file, or one assembled at
+      runtime from fragments.
   - **In this process's environment — deliberately.** That is the delivery
     mechanism, not a defect. The program does not write the password there: it
     reads the variable, holds the value in a local `String`, and hands it to
