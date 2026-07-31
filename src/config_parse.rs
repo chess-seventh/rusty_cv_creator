@@ -122,6 +122,25 @@ fn percent_encode_password(password: &str) -> String {
 /// driver error into an actionable one.
 const POSTGRES_URI_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
 
+/// Does this URL carry a password as a query parameter?
+///
+/// PostgreSQL accepts `?password=` as well as userinfo, and prefers it over
+/// the value spliced into the userinfo - so without this check a config-file
+/// password would silently override the sops-supplied one, be invisible to the
+/// credential scan, and survive the redaction (which only knows the
+/// environment's value).
+fn has_password_query_parameter(url: &str) -> bool {
+    let Some((_, query)) = url.split_once('?') else {
+        return false;
+    };
+
+    query.split('&').any(|parameter| {
+        parameter
+            .split_once('=')
+            .is_some_and(|(key, value)| key.eq_ignore_ascii_case("password") && !value.is_empty())
+    })
+}
+
 /// Splice `password` into the userinfo of a passwordless `base_url`.
 ///
 /// The base URL names the database user and carries no password:
@@ -165,7 +184,7 @@ fn inject_db_password(
     }
 
     let userinfo = &authority[..at];
-    if userinfo.contains(':') {
+    if userinfo.contains(':') || has_password_query_parameter(base_url) {
         return Err(format!(
             "The configured database URL already carries a password.\n  \
              Remove the password from db_pg_host in the INI config file: it now comes \
@@ -228,9 +247,12 @@ fn redact_secret(message: &str, secret: &str) -> String {
         return message.to_string();
     }
 
+    // Encoded form first: it is the longer of the two and contains the raw
+    // form's characters, so replacing raw first would shred it into fragments
+    // (a secret of "%" would turn "%2F" into "<marker>2F").
     message
-        .replace(secret, MARKER)
         .replace(&percent_encode_password(secret), MARKER)
+        .replace(secret, MARKER)
 }
 
 /// Open the database connection for this run, with the password scrubbed from
@@ -578,6 +600,41 @@ mod tests {
             "encoded form survived: {redacted}"
         );
         assert_eq!(redacted.matches("<password redacted>").count(), 2);
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_password_query_parameter() {
+        // PostgreSQL prefers this form over the spliced userinfo, so accepting
+        // it would let a config-file password silently beat the sops one.
+        // Assembled at runtime: the credential scanner reads this file too, and
+        // a spelled-out query credential here is exactly what it must flag.
+        let key = "password";
+        for query in [
+            format!("?{key}=fromconfig"),
+            format!("?sslmode=require&{key}=fromconfig"),
+            format!("?{}=fromconfig", key.to_uppercase()),
+        ] {
+            let base = format!("postgres://rusty_cv@host/db{query}");
+            let err = inject_db_password(&base, "s3cret").unwrap_err().to_string();
+            assert!(
+                err.contains("already carries a password"),
+                "for {base}: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_keeps_harmless_query_parameters() {
+        let url = inject_db_password(
+            "postgres://rusty_cv@host/db?sslmode=require&connect_timeout=5",
+            "s3cret",
+        )
+        .unwrap();
+
+        assert!(
+            url.ends_with("?sslmode=require&connect_timeout=5"),
+            "got: {url}"
+        );
     }
 
     #[test]
