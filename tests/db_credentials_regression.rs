@@ -124,7 +124,7 @@ fn has_inline_credential(line: &str) -> bool {
             }
         }
 
-        if has_password_query_parameter(authority) {
+        if rusty_cv_creator::db_url::has_password_query_parameter(authority) {
             return true;
         }
 
@@ -132,28 +132,6 @@ fn has_inline_credential(line: &str) -> bool {
     }
 
     false
-}
-
-/// A password can also ride in the URL's query string, which PostgreSQL
-/// accepts and prefers over the one spliced into the userinfo. That form
-/// carries no colon before the `@`, so the userinfo matcher above is blind to
-/// it - it needs its own check or a plaintext credential ships undetected.
-fn has_password_query_parameter(url_tail: &str) -> bool {
-    let url = url_tail
-        .split_whitespace()
-        .next()
-        .unwrap_or_default()
-        .trim_end_matches(['"', '\'', ',', ';', ')']);
-
-    let Some(query) = url.split_once('?').map(|(_, query)| query) else {
-        return false;
-    };
-
-    query.split('&').any(|parameter| {
-        parameter
-            .split_once('=')
-            .is_some_and(|(key, value)| key.eq_ignore_ascii_case("password") && !value.is_empty())
-    })
 }
 
 fn hits_in(name: &str, text: &str, hit: &impl Fn(&str) -> bool, found: &mut Vec<String>) {

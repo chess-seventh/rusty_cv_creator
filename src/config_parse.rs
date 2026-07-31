@@ -122,31 +122,16 @@ fn percent_encode_password(password: &str) -> String {
 /// driver error into an actionable one.
 const POSTGRES_URI_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
 
-/// Does this URL carry a password as a query parameter?
-///
-/// PostgreSQL accepts `?password=` as well as userinfo, and prefers it over
-/// the value spliced into the userinfo - so without this check a config-file
-/// password would silently override the sops-supplied one, be invisible to the
-/// credential scan, and survive the redaction (which only knows the
-/// environment's value).
-fn has_password_query_parameter(url: &str) -> bool {
-    let Some((_, query)) = url.split_once('?') else {
-        return false;
-    };
-
-    query.split('&').any(|parameter| {
-        parameter
-            .split_once('=')
-            .is_some_and(|(key, value)| key.eq_ignore_ascii_case("password") && !value.is_empty())
-    })
-}
-
 /// Splice `password` into the userinfo of a passwordless `base_url`.
 ///
 /// The base URL names the database user and carries no password:
-/// `postgres://<user>@<host>/<database>`. Errors when the base URL already
-/// carries a password (it would otherwise become `user:old:new@host`), when it
-/// names no user at all, and when its scheme is not one libpq will URI-parse.
+/// `postgres://<user>@<host>/<database>`. Errors when it names no user at all,
+/// when its scheme is not one libpq will URI-parse, and when it already
+/// carries a password - either in the userinfo (which would otherwise become
+/// `user:old:new@host`) or as a password-bearing query parameter, which
+/// PostgreSQL would silently prefer over the spliced one. The query check
+/// lives in [`rusty_cv_creator::db_url`] and is shared with the tracked-tree
+/// credential scan, so the two cannot drift apart again.
 fn inject_db_password(
     base_url: &str,
     password: &str,
@@ -184,7 +169,7 @@ fn inject_db_password(
     }
 
     let userinfo = &authority[..at];
-    if userinfo.contains(':') || has_password_query_parameter(base_url) {
+    if userinfo.contains(':') || rusty_cv_creator::db_url::has_password_query_parameter(base_url) {
         return Err(format!(
             "The configured database URL already carries a password.\n  \
              Remove the password from db_pg_host in the INI config file: it now comes \
