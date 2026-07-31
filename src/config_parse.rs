@@ -110,12 +110,19 @@ fn percent_encode_password(password: &str) -> String {
     encoded
 }
 
+/// The only schemes libpq parses as a URI. Anything else is treated as a
+/// keyword/value connection string, and its parse errors quote the WHOLE
+/// string back - password included - into a log line. Validating the scheme
+/// here is what keeps a one-character typo in `db_pg_host` from printing the
+/// spliced password to the terminal and the journal.
+const POSTGRES_URI_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
+
 /// Splice `password` into the userinfo of a passwordless `base_url`.
 ///
 /// The base URL names the database user and carries no password:
 /// `postgres://<user>@<host>/<database>`. Errors when the base URL already
-/// carries a password (it would otherwise become `user:old:new@host`) and when
-/// it names no user at all.
+/// carries a password (it would otherwise become `user:old:new@host`), when it
+/// names no user at all, and when its scheme is not one libpq will URI-parse.
 fn inject_db_password(
     base_url: &str,
     password: &str,
@@ -130,6 +137,20 @@ fn inject_db_password(
     };
 
     let scheme_end = base_url.find("://").ok_or_else(missing_user)? + "://".len();
+
+    let scheme = &base_url[..scheme_end - "://".len()];
+    if !POSTGRES_URI_SCHEMES.contains(&scheme) {
+        return Err(format!(
+            "The configured database URL has scheme '{scheme}', which PostgreSQL \
+             does not parse as a URL.\n  \
+             Use 'postgres://' or 'postgresql://' in db_pg_host in the INI config \
+             file.\n  \
+             Refusing to connect: any other scheme makes the driver echo the whole \
+             connection string, password included, into its error message."
+        )
+        .into());
+    }
+
     let authority = &base_url[scheme_end..];
 
     let at = authority.find('@').ok_or_else(missing_user)?;
@@ -362,6 +383,40 @@ mod tests {
         ] {
             let err = inject_db_password(base, "s3cret").unwrap_err().to_string();
             assert!(err.contains("names no user"), "for {base}, got: {err}");
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_scheme_libpq_will_not_uri_parse() {
+        // A scheme libpq does not URI-parse is read as a keyword/value
+        // connection string, and its parse error quotes the whole string -
+        // spliced password included - into a log line. `postgres:://` is one
+        // extra colon away from the real thing.
+        for base in [
+            "postgres:://rusty_cv@host/db",
+            "postgress://rusty_cv@host/db",
+            "mysql://rusty_cv@host/db",
+            "https://rusty_cv@host/db",
+        ] {
+            let err = inject_db_password(base, "s3cret").unwrap_err().to_string();
+            assert!(
+                err.contains("does not parse as a URL"),
+                "for {base}, got: {err}"
+            );
+            assert!(
+                !err.contains("s3cret"),
+                "the rejection must not echo the password, got: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_accepts_both_postgres_uri_schemes() {
+        for base in [
+            "postgres://rusty_cv@host/db",
+            "postgresql://rusty_cv@host/db",
+        ] {
+            assert!(inject_db_password(base, "s3cret").is_ok(), "for {base}");
         }
     }
 
