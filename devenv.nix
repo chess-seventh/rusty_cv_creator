@@ -22,7 +22,11 @@
   dotenv.enable = true;
 
   env.GREET = "Welcome to the Rusty CV Creator";
-  env.DATABASE_URL = "postgres://rusty_cv:rusty-cv-01@nixos-03.caracara-palermo.ts.net/db_rusty_cv";
+  # This file must never carry credentials. The postgres password is read at
+  # runtime from RUSTY_CV_DB_PASSWORD, supplied by sops via home-manager on the
+  # real machine, or by the gitignored .env in development.
+  # diesel-cli in this dev shell still needs DATABASE_URL: set it in .env
+  # (see env.sample), since it is no longer exported from here.
 
   packages = with pkgs; [
     zlib

@@ -63,10 +63,139 @@ pub fn get_db_configurations(ctx: &AppContext) -> Result<String, Box<dyn std::er
     Ok(db_path)
 }
 
+/// Environment variable carrying the PostgreSQL password. It is supplied by
+/// sops through home-manager on the real machine, and by the gitignored `.env`
+/// in development. It is never stored in the INI file nor in this repository.
+///
+/// Re-exported from `child_env` so the name this module reads and the name
+/// stripped from every child environment can never drift apart.
+pub use rusty_cv_creator::child_env::DB_PASSWORD_ENV;
+
+/// Read the PostgreSQL password from the environment.
+///
+/// A missing, empty or blank value is a hard error: connecting without a
+/// password is never a fallback.
+fn read_db_password() -> Result<String, Box<dyn std::error::Error>> {
+    let password = std::env::var(DB_PASSWORD_ENV).unwrap_or_default();
+
+    if password.trim().is_empty() {
+        return Err(format!(
+            "The PostgreSQL password is missing: set {DB_PASSWORD_ENV} to a non-empty value.\n  \
+             It is supplied by sops through home-manager on the real machine, or by the \
+             gitignored .env file in development.\n  \
+             The password must never be written into the INI config file."
+        )
+        .into());
+    }
+
+    Ok(password)
+}
+
+/// Percent-encode `password` so URL-significant characters survive the splice.
+///
+/// Every byte except the RFC 3986 unreserved set (ASCII alphanumerics and
+/// `-` `.` `_` `~`) is escaped, which covers `@ : / # ? %` and whitespace.
+/// Hand-rolled on purpose: this must not pull in a new runtime dependency.
+fn percent_encode_password(password: &str) -> String {
+    let mut encoded = String::with_capacity(password.len());
+
+    for byte in password.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+
+    encoded
+}
+
+/// The only schemes libpq parses as a URI. Anything else is treated as a
+/// keyword/value connection string, whose parse errors quote the WHOLE string
+/// back - password included.
+///
+/// This check is a guard rail, NOT the control that keeps the password out of
+/// the logs: libpq echoes the connection string from several other error
+/// branches too, and those fire on a perfectly valid `postgres://` scheme.
+/// The control is `connect_db`, which redacts the secret from whatever the
+/// driver produces. Rejecting a wrong scheme here just turns a confusing
+/// driver error into an actionable one.
+const POSTGRES_URI_SCHEMES: [&str; 2] = ["postgres", "postgresql"];
+
+/// Splice `password` into the userinfo of a passwordless `base_url`.
+///
+/// The base URL names the database user and carries no password:
+/// `postgres://<user>@<host>/<database>`. Errors when it names no user at all,
+/// when its scheme is not one libpq will URI-parse, and when it already
+/// carries a password - either in the userinfo (which would otherwise become
+/// `user:old:new@host`) or as a password-bearing query parameter, which
+/// PostgreSQL would silently prefer over the spliced one. The query check
+/// lives in [`rusty_cv_creator::db_url`] and is shared with the tracked-tree
+/// credential scan, so the two cannot drift apart again.
+fn inject_db_password(
+    base_url: &str,
+    password: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
+    // Deliberately does NOT echo `base_url`: an unmigrated config still holds
+    // an inline password, and printing it here would put it in the terminal
+    // and the journal - the very leak this module exists to close.
+    let missing_user = || -> Box<dyn std::error::Error> {
+        "The configured database URL names no user: expected \
+         '<scheme>://<user>@<host>/<database>'.\n  \
+         Add the database user to db_pg_host in the INI config file."
+            .into()
+    };
+
+    let scheme_end = base_url.find("://").ok_or_else(missing_user)? + "://".len();
+
+    let scheme = &base_url[..scheme_end - "://".len()];
+    if !POSTGRES_URI_SCHEMES.contains(&scheme) {
+        return Err(format!(
+            "The configured database URL has scheme '{scheme}', which PostgreSQL \
+             does not parse as a URL.\n  \
+             Use 'postgres://' or 'postgresql://' in db_pg_host in the INI config \
+             file."
+        )
+        .into());
+    }
+
+    let authority = &base_url[scheme_end..];
+
+    let at = authority.find('@').ok_or_else(missing_user)?;
+    let host_starts_before_userinfo_ends =
+        authority.find('/').is_some_and(|slash| slash < at) || at == 0;
+    if host_starts_before_userinfo_ends {
+        return Err(missing_user());
+    }
+
+    let userinfo = &authority[..at];
+    if userinfo.contains(':') || rusty_cv_creator::db_url::has_password_query_parameter(base_url) {
+        return Err(format!(
+            "The configured database URL already carries a password.\n  \
+             Remove the password from db_pg_host in the INI config file: it now comes \
+             from the {DB_PASSWORD_ENV} environment variable.\n  \
+             Expected '<scheme>://<user>@<host>/<database>'."
+        )
+        .into());
+    }
+
+    Ok(format!(
+        "{}{}:{}{}",
+        &base_url[..scheme_end],
+        userinfo,
+        percent_encode_password(password),
+        &authority[at..]
+    ))
+}
+
 /// Resolve the `(engine, url)` pair the DB layer needs to open a connection.
 ///
-/// Mirrors [`crate::helpers::check_if_db_env_is_set_or_set_from_config`]:
-/// - `postgres` -> the `db_pg_host` configured in the INI file.
+/// - `postgres` -> the passwordless `db_pg_host` configured in the INI file,
+///   with the password from the `RUSTY_CV_DB_PASSWORD` environment variable
+///   spliced in. The variable is already in this process's environment - that
+///   is how it arrives - and this function does not write it back there: the
+///   value lives in a local `String` handed straight to the connection.
+///   Children never see it; see `child_env::command_without_db_credentials`.
 /// - `sqlite`   -> the `DATABASE_URL` env var when set, otherwise a
 ///   `sqlite://<configured-path>` URL built from the INI config.
 pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn std::error::Error>> {
@@ -74,9 +203,10 @@ pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn s
 
     match engine.trim() {
         "postgres" => {
-            let url = ctx
+            let base_url = ctx
                 .get_user_input_db_url()
                 .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+            let url = inject_db_password(&base_url, &read_db_password()?)?;
             Ok((engine, url))
         }
         "sqlite" => {
@@ -88,6 +218,49 @@ pub fn resolve_db_target(ctx: &AppContext) -> Result<(String, String), Box<dyn s
         }
         _ => Ok((engine, String::new())),
     }
+}
+
+/// Replace every occurrence of `secret` in `message` with a marker.
+///
+/// Both the raw secret and its percent-encoded form are removed, because the
+/// value that ends up inside a connection URL is the encoded one while the
+/// value a human recognises is the raw one. An empty secret is a no-op.
+fn redact_secret(message: &str, secret: &str) -> String {
+    const MARKER: &str = "<password redacted>";
+
+    if secret.is_empty() {
+        return message.to_string();
+    }
+
+    // Encoded form first: it is the longer of the two and contains the raw
+    // form's characters, so replacing raw first would shred it into fragments
+    // (a secret of "%" would turn "%2F" into "<marker>2F").
+    message
+        .replace(&percent_encode_password(secret), MARKER)
+        .replace(secret, MARKER)
+}
+
+/// Open the database connection for this run, with the password scrubbed from
+/// any error before it can be logged.
+///
+/// Validating the URL is not enough on its own. libpq quotes the WHOLE
+/// connection string back in several of its parse errors - a malformed IPv6
+/// host is one - and those fire on a perfectly valid `postgres://` scheme, so
+/// the spliced password would reach stderr and the journal. Enumerating the
+/// driver's error branches is a losing game across versions; removing the
+/// secret from whatever it produces is not. Every caller must connect through
+/// here rather than calling `establish_connection` directly.
+pub fn connect_db(
+    ctx: &AppContext,
+) -> Result<rusty_cv_creator::database::DbConnection, Box<dyn std::error::Error>> {
+    let (engine, url) = resolve_db_target(ctx)?;
+
+    rusty_cv_creator::database::establish_connection(&engine, &url).map_err(
+        |e| -> Box<dyn std::error::Error> {
+            let secret = std::env::var(DB_PASSWORD_ENV).unwrap_or_default();
+            redact_secret(&e.to_string(), &secret).into()
+        },
+    )
 }
 
 #[cfg(test)]
@@ -149,5 +322,341 @@ mod tests {
         let ctx = empty_context();
         let result = get_db_configurations(&ctx);
         assert!(result.is_err());
+    }
+
+    // ─── password injection ──────────────────────────────────────────────────
+
+    fn context_from(config: &str) -> AppContext {
+        let ui = UserInput {
+            action: UserAction::List(FilterArgs::default()),
+            save_to_database: false,
+            view_generated_cv: false,
+            dry_run: false,
+            config_ini: String::new(),
+            engine: "sqlite".to_string(),
+            repo: None,
+            branch: None,
+        };
+        AppContext::new(load_config(config.to_string()), Local::now(), ui)
+    }
+
+    /// Restore an environment variable to whatever it was, so a serial test
+    /// does not leak its value into the next one.
+    ///
+    /// The restore lives in `Drop` rather than in a trailing statement because
+    /// `cargo test` runs these threaded in one process: a panicking assertion
+    /// would skip a trailing restore and hand the leaked value to every
+    /// sibling test in the binary.
+    struct EnvVarGuard {
+        name: &'static str,
+        original: Option<String>,
+    }
+
+    impl EnvVarGuard {
+        fn capture(name: &'static str) -> Self {
+            EnvVarGuard {
+                name,
+                original: std::env::var(name).ok(),
+            }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            match self.original.take() {
+                Some(value) => std::env::set_var(self.name, value),
+                None => std::env::remove_var(self.name),
+            }
+        }
+    }
+
+    fn percent_decode(encoded: &str) -> String {
+        let bytes = encoded.as_bytes();
+        let mut decoded: Vec<u8> = Vec::with_capacity(bytes.len());
+        let mut index = 0;
+
+        while index < bytes.len() {
+            if bytes[index] == b'%' && index + 2 < bytes.len() {
+                let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).unwrap();
+                decoded.push(u8::from_str_radix(hex, 16).unwrap());
+                index += 3;
+            } else {
+                decoded.push(bytes[index]);
+                index += 1;
+            }
+        }
+
+        String::from_utf8(decoded).unwrap()
+    }
+
+    /// Assemble a credential-bearing URL at runtime. Expected values are never
+    /// written as literals here: the tracked-tree credential scanner
+    /// (`tests/db_credentials_regression.rs`) has no allowlist, and this file
+    /// is one of the files it scans.
+    fn credentialed_url(user: &str, password: &str, host_and_database: &str) -> String {
+        let userinfo = format!("{user}{}{password}", ':');
+        format!("postgres://{userinfo}@{host_and_database}")
+    }
+
+    #[test]
+    fn test_inject_db_password_splices_into_the_userinfo() {
+        let url = inject_db_password(
+            "postgres://rusty_cv@nixos-02.caracara-palermo.ts.net/rusty_cv",
+            "s3cret",
+        )
+        .unwrap();
+        assert_eq!(
+            url,
+            credentialed_url(
+                "rusty_cv",
+                "s3cret",
+                "nixos-02.caracara-palermo.ts.net/rusty_cv"
+            )
+        );
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_base_url_that_already_has_one() {
+        let stale = credentialed_url("rusty_cv", "old", "host/db");
+        let err = inject_db_password(&stale, "new").unwrap_err().to_string();
+        assert!(err.contains("already carries a password"), "got: {err}");
+        assert!(err.contains("db_pg_host"), "got: {err}");
+        assert!(err.contains(DB_PASSWORD_ENV), "got: {err}");
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_base_url_without_a_user() {
+        for base in [
+            "postgres://host/db",
+            "postgres://@host/db",
+            "postgres://host/db@path",
+            "not-a-url",
+        ] {
+            let err = inject_db_password(base, "s3cret").unwrap_err().to_string();
+            assert!(err.contains("names no user"), "for {base}, got: {err}");
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_scheme_libpq_will_not_uri_parse() {
+        // A scheme libpq does not URI-parse is read as a keyword/value
+        // connection string, and its parse error quotes the whole string -
+        // spliced password included - into a log line. `postgres:://` is one
+        // extra colon away from the real thing.
+        for base in [
+            "postgres:://rusty_cv@host/db",
+            "postgress://rusty_cv@host/db",
+            "mysql://rusty_cv@host/db",
+            "https://rusty_cv@host/db",
+        ] {
+            let err = inject_db_password(base, "s3cret").unwrap_err().to_string();
+            assert!(
+                err.contains("does not parse as a URL"),
+                "for {base}, got: {err}"
+            );
+            assert!(
+                !err.contains("s3cret"),
+                "the rejection must not echo the password, got: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_accepts_both_postgres_uri_schemes() {
+        for base in [
+            "postgres://rusty_cv@host/db",
+            "postgresql://rusty_cv@host/db",
+        ] {
+            assert!(inject_db_password(base, "s3cret").is_ok(), "for {base}");
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_percent_encodes_every_significant_character() {
+        let password = "p@ss:w/rd#?%";
+        let url = inject_db_password("postgres://rusty_cv@host/db", password).unwrap();
+
+        let userinfo = url
+            .strip_prefix("postgres://")
+            .unwrap()
+            .split('@')
+            .next()
+            .unwrap();
+        let (user, encoded) = userinfo.split_once(':').unwrap();
+
+        assert_eq!(user, "rusty_cv");
+        assert_eq!(percent_decode(encoded), password);
+        assert_eq!(
+            url,
+            credentialed_url("rusty_cv", "p%40ss%3Aw%2Frd%23%3F%25", "host/db")
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_db_target_postgres_errors_when_the_password_is_unset() {
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        std::env::remove_var(DB_PASSWORD_ENV);
+
+        let ctx = context_from(
+            "[db]\nengine = \"postgres\"\ndb_pg_host = \"postgres://rusty_cv@host/rusty_cv\"",
+        );
+        let err = resolve_db_target(&ctx).unwrap_err().to_string();
+
+        assert!(err.contains(DB_PASSWORD_ENV), "got: {err}");
+        assert!(err.contains("sops"), "got: {err}");
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_db_target_postgres_errors_when_the_password_is_empty() {
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        std::env::set_var(DB_PASSWORD_ENV, "   ");
+
+        let ctx = context_from(
+            "[db]\nengine = \"postgres\"\ndb_pg_host = \"postgres://rusty_cv@host/rusty_cv\"",
+        );
+        let err = resolve_db_target(&ctx).unwrap_err().to_string();
+
+        assert!(err.contains(DB_PASSWORD_ENV), "got: {err}");
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_db_target_resolves_the_documented_quoted_config() {
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        std::env::set_var(DB_PASSWORD_ENV, "s3cret");
+
+        let ctx = context_from(
+            "[db]\nengine = \"postgres\"\n\
+             db_pg_host = \"postgres://rusty_cv@nixos-02.caracara-palermo.ts.net/rusty_cv\"",
+        );
+        let (engine, url) = resolve_db_target(&ctx).unwrap();
+
+        assert_eq!(engine, "postgres");
+        assert_eq!(
+            url,
+            credentialed_url(
+                "rusty_cv",
+                "s3cret",
+                "nixos-02.caracara-palermo.ts.net/rusty_cv"
+            )
+        );
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_resolve_db_target_sqlite_is_unaffected_by_the_password_variable() {
+        let _restore_password = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        let _restore_url = EnvVarGuard::capture("DATABASE_URL");
+        std::env::remove_var("DATABASE_URL");
+
+        let ctx = context_from(
+            "[db]\nengine = \"sqlite\"\ndb_path = \"/tmp\"\ndb_file = \"test.db\"\n\
+             db_pg_host = \"postgres://rusty_cv@host/rusty_cv\"",
+        );
+
+        std::env::remove_var(DB_PASSWORD_ENV);
+        let without = resolve_db_target(&ctx).unwrap();
+        std::env::set_var(DB_PASSWORD_ENV, "s3cret");
+        let with = resolve_db_target(&ctx).unwrap();
+
+        assert_eq!(
+            without,
+            ("sqlite".to_string(), "sqlite:///tmp/test.db".to_string())
+        );
+        assert_eq!(without, with);
+    }
+
+    #[test]
+    fn test_redact_secret_removes_both_the_raw_and_encoded_forms() {
+        let secret = "p@ss w0rd";
+        let message = format!(
+            "failed on {} and on {}",
+            secret,
+            percent_encode_password(secret)
+        );
+
+        let redacted = redact_secret(&message, secret);
+
+        assert!(!redacted.contains(secret), "raw form survived: {redacted}");
+        assert!(
+            !redacted.contains(&percent_encode_password(secret)),
+            "encoded form survived: {redacted}"
+        );
+        assert_eq!(redacted.matches("<password redacted>").count(), 2);
+    }
+
+    #[test]
+    fn test_inject_db_password_rejects_a_password_query_parameter() {
+        // PostgreSQL prefers this form over the spliced userinfo, so accepting
+        // it would let a config-file password silently beat the sops one.
+        // Assembled at runtime: the credential scanner reads this file too, and
+        // a spelled-out query credential here is exactly what it must flag.
+        let key = "password";
+        for query in [
+            format!("?{key}=fromconfig"),
+            format!("?sslmode=require&{key}=fromconfig"),
+            format!("?{}=fromconfig", key.to_uppercase()),
+        ] {
+            let base = format!("postgres://rusty_cv@host/db{query}");
+            let err = inject_db_password(&base, "s3cret").unwrap_err().to_string();
+            assert!(
+                err.contains("already carries a password"),
+                "for {base}: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_inject_db_password_keeps_harmless_query_parameters() {
+        let url = inject_db_password(
+            "postgres://rusty_cv@host/db?sslmode=require&connect_timeout=5",
+            "s3cret",
+        )
+        .unwrap();
+
+        assert!(
+            url.ends_with("?sslmode=require&connect_timeout=5"),
+            "got: {url}"
+        );
+    }
+
+    #[test]
+    fn test_redact_secret_is_a_no_op_for_an_empty_secret() {
+        assert_eq!(redact_secret("nothing to hide", ""), "nothing to hide");
+    }
+
+    /// The reason `connect_db` exists. libpq quotes the whole connection
+    /// string back in several parse errors that fire on a valid `postgres://`
+    /// scheme - a malformed IPv6 host is the cheapest to trigger - so without
+    /// redaction the live password reaches stderr and the journal.
+    #[test]
+    #[serial_test::serial]
+    fn test_connect_db_never_echoes_the_password_when_the_driver_rejects_the_url() {
+        let _restore = EnvVarGuard::capture(DB_PASSWORD_ENV);
+        let secret = "ZZTOPSECRETpw987";
+        std::env::set_var(DB_PASSWORD_ENV, secret);
+
+        for host in ["[2001:db8::1", "[notipv6", "[]"] {
+            let ctx = context_from(&format!(
+                "[db]\nengine = \"postgres\"\n\
+                 db_pg_host = \"postgresql://rusty_cv@{host}/rusty_cv\""
+            ));
+
+            let err = connect_db(&ctx)
+                .err()
+                .expect("the driver must reject a malformed host")
+                .to_string();
+
+            assert!(
+                !err.contains(secret),
+                "the password leaked for host {host}: {err}"
+            );
+            assert!(
+                !err.contains(&percent_encode_password(secret)),
+                "the encoded password leaked for host {host}: {err}"
+            );
+        }
     }
 }

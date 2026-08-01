@@ -161,22 +161,111 @@ rusty_cv_creator insert "StartupCo" "Backend Engineer" "Excited about scaling ch
 
 ### Database Setup
 
-Set your database URL in your environment or `.env` file:
+#### SQLite (recommended for single user)
+
+The SQLite path reads `DATABASE_URL` from the environment, falling back to the
+`[db] db_path` / `db_file` values in your config file:
 
 ```bash
-# SQLite (recommended for single user)
-echo "DATABASE_URL=sqlite://$HOME/.config/rusty-cv-creator/applications.db" > .env
-
-# PostgreSQL (for advanced users)
-echo "DATABASE_URL=postgresql://user:password@localhost/cv_db" > .env
+cp env.sample .env   # then edit it
 ```
 
-Initialize the database:
+Append rather than overwrite if you already have a `.env`: on the PostgreSQL
+path it also holds `RUSTY_CV_DB_PASSWORD`, and a truncating `>` would destroy
+it.
+
+#### PostgreSQL (for advanced users)
+
+The PostgreSQL path does **not** connect using `DATABASE_URL`. (Startup still
+touches that variable — when it is unset the program writes `db_pg_host` into
+it — but nothing on the connect path reads it back, and it is stripped from
+every child process.) The connection is built from two things:
+
+1. `[db] db_pg_host` in your config file — a **passwordless** connection URL
+   naming the scheme, the database user, the host and the database:
+
+   ```ini
+   [db]
+   engine = "postgres"
+   db_pg_host = "postgres://<user>@<host>/<database>"
+   ```
+
+2. The password, from the `RUSTY_CV_DB_PASSWORD` environment variable. The
+   variable **is** in this process's environment — that is deliberate, it is
+   how the password reaches the program. What the program does with it: it
+   reads the value, percent-encodes it, splices it into the URL immediately
+   before connecting, and writes it nowhere — not into a file in this
+   repository, and not back into the environment. Every subprocess it spawns
+   (the PDF viewer, `xdg-open`, `git`, `sudo`, `tailscale`) is started with
+   both `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL` removed, so no **database**
+   credential reaches a child - not even from an unmigrated config whose
+   `db_pg_host` still carries an inline password. `GITHUB_TOKEN` is a known
+   exception: `git` needs it, so it is still inherited by every child. Closing
+   that is tracked separately.
+
+Where the variable comes from:
+
+- on the real machine, sops supplies it through home-manager, exported into the
+  user session environment so non-interactive invocations see it too;
+- in development, from the gitignored `.env` file at the root of this repo.
+
+Two rules the program enforces, both with an actionable error:
+
+- a missing or empty `RUSTY_CV_DB_PASSWORD` is a hard failure — there is no
+  passwordless fallback connect;
+- a `db_pg_host` that still carries a password is rejected: before the `@`, or
+  as a query parameter whose name means a password. The query form matters
+  because PostgreSQL *prefers* it over the spliced one, so accepting it would
+  let a config-file password silently beat the sops-supplied one. Parameter
+  names are percent-decoded before the check (PostgreSQL decodes them too, so
+  `?%70assword=` is the same parameter), an empty value counts — it discards
+  the supplied password and falls through to `.pgpass` — and any name
+  containing "password", such as `sslpassword`, is treated the same way.
+  Remove the password from your config file: it now comes only from the
+  environment.
+
+#### Run and test it
 
 ```bash
+# development: supply the password for this shell only
+read -rs RUSTY_CV_DB_PASSWORD && export RUSTY_CV_DB_PASSWORD
+
+# check the resolution and the credential scanner
+devenv shell -- cargo nextest run --no-fail-fast
+```
+
+#### Initialize the database
+
+`diesel-cli` reads `DATABASE_URL` from the environment. The dev shell no longer
+exports one (it used to, with a credential in it), so put the SQLite URL in
+`.env` — see `env.sample` — or pass a URL inline for the migration command only:
+
+```bash
+# option A: from .env (copy env.sample and edit it), then
 diesel setup
-diesel migration run
+
+# option B: inline, without persisting anything
+DATABASE_URL="sqlite://$HOME/.config/rusty-cv-creator/applications.db" diesel setup
 ```
+
+`diesel setup` creates the database **and** applies the migrations — that is
+the whole SQLite path. Do not follow it with `diesel migration run`: the
+migration declares `id SERIAL PRIMARY KEY`, which `diesel-cli` will not reflect
+back for SQLite, so the command exits 1 with ``Unsupported type: `serial` ``.
+
+On SQLite the table the migration produces is **not usable by this program**:
+`SERIAL` is not `INTEGER PRIMARY KEY` there, so `id` is not a rowid alias and
+does not autoincrement — every insert and read then fails with
+`UnexpectedNullError`. The migration is written for PostgreSQL. If you want a
+working SQLite database today, create the table with
+`id INTEGER PRIMARY KEY AUTOINCREMENT`, which is what the test fixtures in
+`src/database.rs` do. Against a PostgreSQL target both commands succeed and the
+schema is correct.
+
+For a PostgreSQL target, build that inline URL from your `db_pg_host` plus the
+password — it is a `diesel-cli` invocation, not this program, so it takes the
+whole URL. Do not write that URL into a tracked file; the credential scanner
+will fail the build if you do.
 
 ### Template Structure
 

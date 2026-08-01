@@ -1,7 +1,7 @@
+use crate::child_env::command_without_db_credentials;
 use crate::tui::state::AppState;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::Path;
-use std::process::Command;
 
 /// Returns Ok(true) to signal quit, Ok(false) to continue.
 pub fn handle_key_event(
@@ -51,6 +51,10 @@ pub fn handle_key_event(
 
 /// Open `path` in the OS default viewer (non-blocking).
 /// Returns Err("File not found: {path}") when the file does not exist, is empty, or is a directory.
+///
+/// `xdg-open` starts a long-lived desktop application (often a browser) that
+/// keeps its environment for the whole session, so the child is built through
+/// `command_without_db_credentials`.
 pub fn open_pdf(path: &str) -> Result<(), String> {
     if path.is_empty() {
         return Err(format!("File not found: {path}"));
@@ -60,12 +64,12 @@ pub fn open_pdf(path: &str) -> Result<(), String> {
         return Err(format!("File not found: {path}"));
     }
     #[cfg(target_os = "macos")]
-    Command::new("open")
+    command_without_db_credentials("open")
         .arg(path)
         .spawn()
         .map_err(|e| format!("Failed to open {path}: {e}"))?;
     #[cfg(target_os = "linux")]
-    Command::new("xdg-open")
+    command_without_db_credentials("xdg-open")
         .arg(path)
         .spawn()
         .map_err(|e| format!("Failed to open {path}: {e}"))?;

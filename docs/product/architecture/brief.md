@@ -172,8 +172,58 @@ core; effects (subprocess, fs, db) live in the shell and behind ports.
   (ADR-0004) instead of cryptic subprocess errors.
 - **Functional suitability** — variant resolution precedence
   (flag → inference → default) covers explicit and implicit selection.
-- **Security** — single-user local tool; Postgres reached only over Tailscale;
-  no secrets in repo (pre-commit hooks for keys/AWS creds in devenv).
+- **Security** — single-user local tool; Postgres reached only over Tailscale.
+  The Postgres password is delivered **through the process environment**: sops
+  exports `RUSTY_CV_DB_PASSWORD` via home-manager, the program reads it, and
+  splices it into the configured passwordless URL immediately before
+  connecting. What is actually guaranteed, and what enforces each claim:
+  - **Not in the repository, not in the INI config.** Enforced by the
+    tracked-tree credential scan (`tests/db_credentials_regression.rs`), which
+    runs in CI and fails on any URL carrying a password - in its userinfo, or
+    as a password-bearing query parameter - in every tracked file except
+    markdown prose and non-UTF-8 binaries. There is no allowlist: a hit fixes
+    the offending file, never the scanner. The query-parameter half is shared
+    with the code that rejects such a URL at connect time
+    (`rusty_cv_creator::db_url`), deliberately: they were once written twice
+    and both copies had the same blind spot.
+
+    What the scan does **not** catch, so the guarantee is only as wide as
+    this. The list is not claimed to be exhaustive - four of these were found
+    by someone attacking it, not by writing it:
+    - it reads one line at a time, so a credential wrapped across two lines
+      passes;
+    - it matches URL shapes, so a bare `db_password = "..."` key passes;
+    - it ignores a user or password containing whitespace, which is what keeps
+      ordinary prose from tripping it, pinned by a test;
+    - it cannot see a credential in a non-UTF-8 file, or one assembled at
+      runtime from fragments.
+  - **In this process's environment — deliberately.** That is the delivery
+    mechanism, not a defect. The program does not write the password there: it
+    reads the variable, holds the value in a local `String`, and hands it to
+    the connection. It does write `DATABASE_URL` at startup from the
+    configured `db_pg_host` (`helpers.rs`), so a config whose URL still carries
+    inline userinfo puts a password in this process's environment too.
+  - **No DATABASE credential in any child process's environment.** Every
+    subprocess is built by `child_env::command_without_db_credentials`, which
+    removes **both** `RUSTY_CV_DB_PASSWORD` and `DATABASE_URL`, so the PDF
+    viewer, `xdg-open` and the browser it starts, `git`, `sudo` and
+    `tailscale` cannot expose either through `/proc/<pid>/environ`. Stripping
+    `DATABASE_URL` matters because the startup write happens before the first
+    child is spawned. **`GITHUB_TOKEN` is deliberately NOT stripped** and is
+    still inherited by every child, including the browser: `git` needs it for
+    template authentication (`template_source.rs`), so closing that leak means
+    scrubbing by default and re-injecting it on the git calls only. That is
+    tracked as its own change, not done here. Read this bullet as "database
+    credentials", not "all credentials".
+    Enforced by `tests/child_env_scrubbing.rs`, which carries a control test
+    proving an unscrubbed child does inherit them.
+
+  The devenv `detect-private-keys` / `detect-aws-credentials` hooks are **not**
+  the control here — neither can match a URL userinfo password, and the brief
+  claiming otherwise is what let the leak sit unnoticed for two years.
+  Historical exposure: a plaintext password was tracked from 2024-07-28 to
+  2026-07-30 and is in git history; rotation rides the nixos-02 database
+  recreation.
 
 ### Decisions table
 

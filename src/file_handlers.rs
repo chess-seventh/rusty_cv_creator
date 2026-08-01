@@ -736,7 +736,7 @@ mod tests {
     /// disabled (`core.hooksPath` pointed at an empty dir) so the developer's
     /// global git hooks cannot interfere with the hermetic fixture.
     fn git_in(dir: &Path, empty_hooks: &Path, args: &[&str]) {
-        let ok = std::process::Command::new("git")
+        let ok = rusty_cv_creator::child_env::command_without_db_credentials("git")
             .current_dir(dir)
             .arg("-c")
             .arg(format!("core.hooksPath={}", empty_hooks.display()))
