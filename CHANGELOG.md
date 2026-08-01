@@ -1,3 +1,24 @@
+## [5.4.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.3.3...v5.4.0) (2026-08-01)
+
+
+### Features
+
+* **db:** read the postgres password from the environment ([e6c8eba](https://github.com/chess-seventh/rusty_cv_creator/commit/e6c8ebadab40ad71431535e67773a3bc0a8a489d))
+
+
+### Bug Fixes
+
+* **config:** drop the plaintext password and target nixos-02 ([b3879e5](https://github.com/chess-seventh/rusty_cv_creator/commit/b3879e52528b69a492ecbbe2252604078ed16581))
+* **config:** strip surrounding quotes on the database accessors ([ef48bdc](https://github.com/chess-seventh/rusty_cv_creator/commit/ef48bdcc34029d27db33da9ef0f10782ff757f10))
+* **db:** surface database errors instead of swallowing them ([a6ba813](https://github.com/chess-seventh/rusty_cv_creator/commit/a6ba813904d031914c59fe2024e238b4ff75207d))
+* **security:** decode query parameter names before rejecting a password ([602b312](https://github.com/chess-seventh/rusty_cv_creator/commit/602b31224247b72d06ace94dae5ff71409dc8ef6))
+* **security:** redact the password from any driver connection error ([deb1ee6](https://github.com/chess-seventh/rusty_cv_creator/commit/deb1ee664140c597b0380c1a05d0420bb19ba2c4))
+* **security:** reject a password passed as a URL query parameter ([2b91ad0](https://github.com/chess-seventh/rusty_cv_creator/commit/2b91ad0df5a3e71a3b9a69281aae0c79f61187c1))
+* **security:** reject a scheme PostgreSQL will not parse as a URL ([45bb3d6](https://github.com/chess-seventh/rusty_cv_creator/commit/45bb3d62fbca80661fa932eb9440291b3517ab3e))
+* **security:** stop the config URL echoing into the missing-user error ([4e143ab](https://github.com/chess-seventh/rusty_cv_creator/commit/4e143ab1912939a616f93b410267807c26ab41e9))
+* **security:** strip DATABASE_URL from child environments too ([86865c5](https://github.com/chess-seventh/rusty_cv_creator/commit/86865c5249df5544cd4c1f77e180eb5ef7ce3de7))
+* **security:** strip the database password from child environments ([4f202ec](https://github.com/chess-seventh/rusty_cv_creator/commit/4f202ec3f4f0b973a3473e333febc4aaa0af6869))
+
 ## [5.3.3](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.3.2...v5.3.3) (2026-07-30)
 
 ## [5.3.2](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.3.1...v5.3.2) (2026-07-28)
