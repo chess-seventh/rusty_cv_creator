@@ -176,7 +176,10 @@ it.
 
 #### PostgreSQL (for advanced users)
 
-The PostgreSQL path does **not** read `DATABASE_URL`. It reads two things:
+The PostgreSQL path does **not** connect using `DATABASE_URL`. (Startup still
+touches that variable — when it is unset the program writes `db_pg_host` into
+it — but nothing on the connect path reads it back, and it is stripped from
+every child process.) The connection is built from two things:
 
 1. `[db] db_pg_host` in your config file — a **passwordless** connection URL
    naming the scheme, the database user, the host and the database:

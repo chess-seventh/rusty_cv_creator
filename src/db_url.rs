@@ -53,8 +53,10 @@ fn percent_decode(text: &str) -> String {
 ///   a passwordless fallback arrived at through config alone;
 /// - it does not enumerate exact names. Any decoded name CONTAINING
 ///   "password" is treated as password-bearing, which covers `sslpassword` and
-///   whatever the next one turns out to be. No legitimate PostgreSQL parameter
-///   name contains that substring.
+///   whatever the next one turns out to be. Deliberately over-broad: of the
+///   41 parameters libpq accepts, exactly two contain that substring
+///   (`password` and `sslpassword`) and both are secret-bearing, so the width
+///   costs nothing today and covers a name that does not exist yet.
 pub fn has_password_query_parameter(url: &str) -> bool {
     let Some((_, query)) = url.split_once('?') else {
         return false;
