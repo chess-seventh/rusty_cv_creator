@@ -50,3 +50,8 @@ mutants.out/
 mutants.out.old/
 # proptest seed from a RED todo!() panic (not a real regression)
 proptest-regressions/
+# Written by devenv's claude.code integration on every shell entry (symlinks
+# into the nix store). They only appear now that the shared claude_code.nix
+# module actually resolves, and an untracked file here blocks a worktree reap.
+.claude/settings.json
+.mcp.json
