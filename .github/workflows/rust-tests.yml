@@ -21,7 +21,8 @@ jobs:
         run: nix profile install nixpkgs#devenv
       # Every gate runs inside devenv so CI matches local exactly: the nightly
       # toolchain, just + tectonic, cargo-nextest/shear, and treefmt + its
-      # formatters all come from devenv.nix (self-sufficient; no ~/devenv_shared).
+      # formatters all come from devenv.nix itself. Its shared-module imports are
+      # optional and resolve to nothing here, so no checkout is needed on a runner.
       - name: 🧪 nextest
         run: devenv shell -- cargo nextest run --no-fail-fast
       - name: 🧵 threaded cargo test (ADR-0006 determinism guard)
