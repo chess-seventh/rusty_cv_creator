@@ -2442,7 +2442,7 @@ dependencies = [
 
 [[package]]
 name = "rusty_cv_creator"
-version = "5.4.0"
+version = "5.4.1"
 dependencies = [
  "chrono",
  "clap",

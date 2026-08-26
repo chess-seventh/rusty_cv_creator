@@ -1,3 +1,10 @@
+## [5.4.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.4.0...v5.4.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **L230:** resolve the shared devenv modules where they are provisioned ([7d0a6f5](https://github.com/chess-seventh/rusty_cv_creator/commit/7d0a6f5d730d9433f5633534782b3426547e860b))
+
 ## [5.4.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.3.3...v5.4.0) (2026-08-01)
 
 
