@@ -6,18 +6,37 @@
   inputs,
   ...
 }:
-{
-  # Optional shared modules: present on the maintainer's machine
-  # (~/devenv_shared/*), absent in CI. `builtins.filter pathExists` keeps the
-  # environment evaluable in CI; the packages those modules add that CI needs
+let
+  # Optional shared modules, absent in CI. `builtins.filter pathExists` keeps the
+  # environment evaluable there; the packages those modules add that CI needs
   # (just, cargo-nextest/shear/llvm-cov, treefmt + formatters) are declared
   # directly below so this devenv is self-sufficient.
-  imports = builtins.filter builtins.pathExists [
-    "${builtins.getEnv "HOME"}/devenv_shared/shared_pkgs.nix"
-    "${builtins.getEnv "HOME"}/devenv_shared/rust_pkgs.nix"
-    "${builtins.getEnv "HOME"}/devenv_shared/git_hooks.nix"
-    "${builtins.getEnv "HOME"}/devenv_shared/claude_code.nix"
+  #
+  # ~/devenv_shared was the maintainer's OLD layout and exists on no current box:
+  # persona-bootstrap clones the governed `devenv_shared` repository to
+  # ~/src/claude-src/repos/devenv_shared. Pointing at the old path alone did not
+  # fail - pathExists just dropped every module in silence, so the shared git
+  # hooks and the shared `claude.code` block below were never actually applied
+  # anywhere. Prefer the provisioned checkout, keep the old path as a fallback.
+  sharedDirs = builtins.filter builtins.pathExists [
+    "${builtins.getEnv "HOME"}/src/claude-src/repos/devenv_shared"
+    "${builtins.getEnv "HOME"}/devenv_shared"
   ];
+  sharedModules =
+    if sharedDirs == [ ] then
+      [ ]
+    else
+      builtins.filter builtins.pathExists (
+        map (f: "${builtins.head sharedDirs}/${f}") [
+          "shared_pkgs.nix"
+          "rust_pkgs.nix"
+          "git_hooks.nix"
+          "claude_code.nix"
+        ]
+      );
+in
+{
+  imports = sharedModules;
 
   dotenv.enable = true;
 
@@ -34,8 +53,8 @@
     tectonic
     diesel-cli
     postgresql
-    # Self-sufficiency for CI (these otherwise come from ~/devenv_shared/* or the
-    # maintainer's global profile): build tool + test/lint tooling + formatters.
+    # Self-sufficiency for CI (these otherwise come from the shared modules above
+    # or the maintainer's global profile): build tool + test/lint + formatters.
     just
     cargo-nextest
     cargo-shear
@@ -69,8 +88,10 @@
     cargo-watch.exec = "cargo-watch";
   };
 
-  # claude.code is provided by the shared ~/devenv_shared/claude_code.nix module
-  # (imported above). Hooks there write logs to $XDG_STATE_HOME, not the repo.
+  # claude.code is provided by the shared `claude_code.nix` module (imported
+  # above, when a devenv_shared checkout is present). Hooks there write logs to
+  # $XDG_STATE_HOME, not the repo. Absent that checkout there is no claude.code
+  # block at all - it is an enrichment, and nothing in the gate depends on it.
 
   tasks = {
     "bash:source_env" = {
