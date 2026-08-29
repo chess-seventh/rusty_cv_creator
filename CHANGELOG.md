@@ -1,3 +1,10 @@
+## [5.5.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.4.1...v5.5.0) (2026-08-29)
+
+
+### Features
+
+* **L235:** declare the fleet gate as this repo's own hooks ([29e268a](https://github.com/chess-seventh/rusty_cv_creator/commit/29e268ac03abdbbe82b406916a56a37b907690bd))
+
 ## [5.4.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.4.0...v5.4.1) (2026-08-26)
 
 
