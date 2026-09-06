@@ -30,7 +30,7 @@ every number in `../rca.md` on their own.
 **`devenv shell` must be entered from the `cv` repo, and the scripts referred
 to by absolute path.** `devenv` resolves its environment from the working
 directory: run it from this directory instead and it fails with `File devenv.nix
-does not exist` and drops a stray `devenv.lock` into this tracked tree.
+does not exist`.
 
 ```bash
 export L327_WORK="$(mktemp -d)"
