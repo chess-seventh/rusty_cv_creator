@@ -393,7 +393,7 @@ wall in front of entering this shell on every box, CI included.
 On a box with no fleet gate installed it says so on every commit, and never
 blocks:
 
-```
+```text
 fleet gate: NOT INSTALLED on this box - pre-commit ran this repo's hooks only
 ```
 
