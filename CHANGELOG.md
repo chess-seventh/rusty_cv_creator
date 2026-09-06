@@ -1,3 +1,10 @@
+## [5.5.1](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.5.0...v5.5.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **L327:** give the fleet-gate example fence a language ([3ca83dc](https://github.com/chess-seventh/rusty_cv_creator/commit/3ca83dca7db463f95bc1be66b262c67f67bba495))
+
 ## [5.5.0](https://github.com/chess-seventh/rusty_cv_creator/compare/v5.4.1...v5.5.0) (2026-08-29)
 
 
