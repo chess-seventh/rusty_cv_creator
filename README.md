@@ -278,6 +278,30 @@ cv-template/
 └── bibliography.bib     # References (optional)
 ```
 
+### The page contract, and what a refusal means
+
+A build that exits 0 is not accepted on its own: `compile_cv` reads the page
+count out of the TeX transcript and fails if it exceeds `[build] max_pages`
+(default 2), or if no count can be read at all. So a render can end with
+
+```text
+CV is 3 pages; the contract allows at most 2
+```
+
+**That refusal is the gate working, not this renderer breaking.** The page
+count is a property of the rendered document, so nothing here can shorten it —
+an overflow is a fact about the template's headroom and the tailored content,
+and the fix lives in the template repository. Two write-ups of exactly that:
+
+- `docs/feature/fix-3-page-cv-overflow/rca.md` — 2026-07-09, why this gate
+  exists at all.
+- `docs/feature/l327-page-overflow-recurrence/rca.md` — 2026-09-06, ten jobs
+  lost in one run, with a reproduction against the real corpus.
+
+**Do not raise `max_pages` to make a refusal go away.** The limit was set
+deliberately after a three-page CV shipped; widening it is a decision to take
+with the loss written down.
+
 ### Git Template Source
 
 `cv_template_path` accepts either a local directory (used as-is, the default
